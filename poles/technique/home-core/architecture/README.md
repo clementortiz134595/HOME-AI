@@ -76,3 +76,4 @@ Les appels de mutation doivent recevoir une clé d'idempotence lorsqu'une répé
 Voir les [diagrammes Mermaid](../diagrammes/README.md) et le [plan Docker](../infrastructure/docker.md).
 La décision de structure est consignée dans l'[ADR-0001](adr/0001-monolithe-modulaire-docker.md).
 Le runtime du premier incrément est consigné dans l'[ADR-0002](adr/0002-runtime-go.md).
+Le socle d'appareils extensible par protocole est consigné dans l'[ADR-0005](adr/0005-module-home-control-protocoles.md).

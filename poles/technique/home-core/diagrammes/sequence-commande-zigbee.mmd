@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant app as Application Home Control
+    participant zigbee as Adaptateur Zigbee
+    participant transport as Transport Zigbee
+    participant coordinator as Coordinateur ou bridge
+    app->>zigbee: Execute(deviceID, turn_on/off)
+    zigbee->>transport: WriteSwitch(deviceID, on)
+    transport->>coordinator: Commande protocolaire
+    coordinator-->>transport: Etat observé ou erreur
+    transport-->>zigbee: DeviceState confirmé
+    zigbee-->>app: CommandResult avec état réel
