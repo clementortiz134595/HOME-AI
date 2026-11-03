@@ -1,0 +1,41 @@
+name: home-ai
+
+services:
+  home-core:
+    build:
+      context: ./poles/technique/home-core
+    image: home-ai/home-core:local
+    environment:
+      HOME_CORE_PORT: "8080"
+      HOME_CORE_ZIGBEE_FIXTURE: /app/fixtures/maison-demo.json
+      APPLE_CALDAV_ACCOUNTS_JSON: ${APPLE_CALDAV_ACCOUNTS_JSON:-}
+    volumes:
+      - ./poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
+    expose:
+      - "8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  home-panel:
+    build:
+      context: ./poles/technique/home-panel
+      target: production
+    image: home-ai/home-panel:local
+    ports:
+      - "${HOME_PANEL_PORT:-3000}:80"
+    depends_on:
+      home-core:
+        condition: service_healthy
+    restart: unless-stopped

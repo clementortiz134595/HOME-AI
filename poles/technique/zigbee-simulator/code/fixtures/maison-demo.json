@@ -1,0 +1,22 @@
+{
+  "name": "maison-demo",
+  "clock": "2026-11-03T08:00:00Z",
+  "coordinator": { "id": "coordinator-demo", "channel": 15 },
+  "rooms": [
+    { "id": "salon", "name": "Salon" },
+    { "id": "cuisine", "name": "Cuisine" },
+    { "id": "chambre", "name": "Chambre" }
+  ],
+  "devices": [
+    { "id": "light-salon-main", "roomId": "salon", "kind": "light", "capabilities": ["switch", "brightness"], "state": { "on": false, "brightness": 0 }, "available": true },
+    { "id": "light-salon-side", "roomId": "salon", "kind": "light", "capabilities": ["switch"], "state": { "on": false }, "available": true },
+    { "id": "plug-cuisine", "roomId": "cuisine", "kind": "plug", "capabilities": ["switch"], "state": { "on": false }, "available": true },
+    { "id": "sensor-chambre-temperature", "roomId": "chambre", "kind": "temperature_sensor", "capabilities": ["temperature"], "state": { "temperatureC": 19.5 }, "available": true }
+  ],
+  "links": [
+    { "from": "coordinator-demo", "to": "light-salon-main", "quality": 92 },
+    { "from": "coordinator-demo", "to": "light-salon-side", "quality": 88 },
+    { "from": "coordinator-demo", "to": "plug-cuisine", "quality": 76 },
+    { "from": "coordinator-demo", "to": "sensor-chambre-temperature", "quality": 61 }
+  ]
+}

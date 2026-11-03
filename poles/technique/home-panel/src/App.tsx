@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getWeather, type WeatherReport } from "@/lib/weather";
+import { getDeviceState, getHomeDevices, setDeviceSwitch, type DeviceState, type HomeDevice } from "@/lib/homeControl";
 
 const rooms = [
   { name: "Salon", detail: "2 lumières · 21°", icon: Home, active: true, tone: "bg-amber-100 text-amber-700" },
@@ -46,13 +47,45 @@ const calendarEvents: Record<number, { title: string; owner: string; tone: strin
 };
 
 function HomeView() {
-  const [lightsOn, setLightsOn] = useState(true);
+  const [devices, setDevices] = useState<HomeDevice[]>([]);
+  const [states, setStates] = useState<Record<string, DeviceState>>({});
+  const [unavailable, setUnavailable] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getHomeDevices(controller.signal).then(async (loaded) => {
+      setDevices(loaded);
+      const entries = await Promise.all(loaded.map(async (device) => [device.id, await getDeviceState(device.id, controller.signal)] as const));
+      setStates(Object.fromEntries(entries));
+    }).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setUnavailable(true);
+    });
+    return () => controller.abort();
+  }, []);
+
+  const lights = devices.filter((device) => device.kind === "light");
+  const lightsOn = lights.some((device) => states[device.id]?.switchOn);
+  const rooms = Array.from(new Set(devices.map((device) => device.room))).map((room) => {
+    const roomDevices = devices.filter((device) => device.room === room);
+    const roomLights = roomDevices.filter((device) => device.kind === "light");
+    const temperature = roomDevices.find((device) => states[device.id]?.temperatureC);
+    return { name: room, detail: `${roomLights.length} lumière${roomLights.length > 1 ? "s" : ""}${temperature ? ` · ${Math.round(states[temperature.id].temperatureC!)}°` : ""}`, icon: room === "Cuisine" ? Utensils : room === "Chambre" ? Sparkles : Home, active: roomLights.some((device) => states[device.id]?.switchOn), tone: room === "Cuisine" ? "bg-rose-100 text-rose-700" : room === "Chambre" ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700", roomDevices };
+  });
+
+  const toggleRoom = async (roomDevices: HomeDevice[], on: boolean) => {
+    setPending(roomDevices[0]?.room ?? null);
+    try {
+      const results = await Promise.all(roomDevices.filter((device) => device.kind === "light").map((device) => setDeviceSwitch(device.id, on).then((state) => [device.id, state] as const)));
+      setStates((current) => ({ ...current, ...Object.fromEntries(results) }));
+    } catch { setUnavailable(true); } finally { setPending(null); }
+  };
 
   return (
     <div className="mt-8 space-y-7">
-      <div><p className="text-sm text-slate-500">Vue de l’appartement</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Maison</h2></div>
+      <div><p className="text-sm text-slate-500">Vue de l’appartement</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Maison</h2>{unavailable && <p className="mt-2 text-sm text-amber-300">Home Core est indisponible.</p>}</div>
       <Card className="relative overflow-hidden border-emerald-400/30 bg-gradient-to-br from-emerald-300 via-lime-200 to-sky-200 text-zinc-950"><div className="dot-field absolute inset-y-0 right-0 w-2/5 opacity-50" /><CardContent className="relative flex min-h-40 items-end justify-between p-6"><div><p className="text-sm font-medium text-zinc-700">Ambiance du soir</p><p className="mt-2 text-4xl font-semibold tracking-[-0.06em]">{lightsOn ? "Lumières allumées" : "Lumières éteintes"}</p></div><span className="rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-zinc-700">Commande vocale</span></CardContent></Card>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <Card key={name}><CardContent className="p-5"><div className="flex items-start justify-between"><div className={"grid size-11 place-items-center rounded-2xl " + tone}><Icon className="size-5" /></div><span className={active && lightsOn ? "size-2 rounded-full bg-emerald-400" : "size-2 rounded-full bg-zinc-600"} /></div><div className="mt-8 flex items-end justify-between gap-3"><div><p className="font-medium">{name}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></div><span className="text-xs text-slate-500">À la voix</span></div></CardContent></Card>)}</div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{rooms.map(({ name, detail, icon: Icon, active, tone, roomDevices }) => <Card key={name}><CardContent className="p-5"><div className="flex items-start justify-between"><div className={"grid size-11 place-items-center rounded-2xl " + tone}><Icon className="size-5" /></div><span className={active ? "size-2 rounded-full bg-emerald-400" : "size-2 rounded-full bg-zinc-600"} /></div><div className="mt-8 flex items-end justify-between gap-3"><div><p className="font-medium">{name}</p><p className="mt-1 text-sm text-slate-500">{detail || "Aucun appareil"}</p></div><Button variant="ghost" disabled={pending === name} onClick={() => toggleRoom(roomDevices, !active)}>{active ? "Éteindre" : "Allumer"}</Button></div></CardContent></Card>)}</div>
       <Card><CardHeader><div><p className="text-lg font-semibold">Scènes</p><p className="mt-1 text-sm text-slate-500">Des actions rapides pour le foyer</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3"><Button variant="secondary" className="h-16 justify-start"><Lightbulb className="size-4 text-amber-300" /> Soirée</Button><Button variant="secondary" className="h-16 justify-start"><Home className="size-4 text-emerald-300" /> Retour</Button><Button variant="secondary" className="h-16 justify-start"><Sparkles className="size-4 text-sky-300" /> Bonne nuit</Button></CardContent></Card>
     </div>
   );

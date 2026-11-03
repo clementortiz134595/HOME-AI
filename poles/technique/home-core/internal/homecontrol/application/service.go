@@ -11,6 +11,7 @@ import (
 var (
 	ErrDeviceNotFound    = errors.New("home control device not found")
 	ErrUnsupportedAction = errors.New("home control action is not supported")
+	ErrUnavailable       = errors.New("home control device unavailable")
 )
 
 type Connector interface {

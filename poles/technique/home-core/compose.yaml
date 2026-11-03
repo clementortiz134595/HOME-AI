@@ -6,8 +6,11 @@ services:
     environment:
       HOME_CORE_PORT: "8080"
       APPLE_CALDAV_ACCOUNTS_JSON: ${APPLE_CALDAV_ACCOUNTS_JSON:-}
+      HOME_CORE_ZIGBEE_FIXTURE: /app/fixtures/maison-demo.json
     ports:
       - "127.0.0.1:18080:8080"
+    volumes:
+      - ../zigbee-simulator/code/fixtures:/app/fixtures:ro
     read_only: true
     tmpfs:
       - /tmp

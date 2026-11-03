@@ -17,6 +17,10 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/gemini"
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/google"
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
+	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
+	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
+	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
@@ -36,6 +40,17 @@ func main() {
 	mux.Handle("/healthz", weatherHandler)
 	mux.Handle("/v1/weather/", weatherHandler)
 	mux.Handle("/v1/calendars/apple/", agendahttp.NewHandler(calendarRegistry))
+	fixturePath := os.Getenv("HOME_CORE_ZIGBEE_FIXTURE")
+	if fixturePath == "" {
+		fixturePath = "../zigbee-simulator/code/fixtures/maison-demo.json"
+	}
+	zigbeeTransport, err := simulated.NewTransportFromFile(fixturePath)
+	if err != nil {
+		logger.Error("invalid Zigbee fixture", "error", err)
+		os.Exit(1)
+	}
+	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
+	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	assistantService := assistantapp.NewAskQuestion(aiProvider)
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"))

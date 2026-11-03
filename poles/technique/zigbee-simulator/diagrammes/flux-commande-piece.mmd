@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant usecase as Home Core / home-control
+    participant connector as Simulated Zigbee Connector
+    participant transport as Simulated Transport
+    participant mesh as Virtual Zigbee Mesh
+    usecase->>connector: Execute(roomId, turn_on, idempotencyKey)
+    connector->>transport: Resolve devices and send commands
+    transport->>mesh: Deliver command per device
+    alt device reachable
+        mesh-->>transport: Observed state
+        transport-->>connector: Confirmed DeviceState
+        connector-->>usecase: CommandResult executed
+    else route or device unavailable
+        mesh-->>transport: Transport error
+        transport-->>connector: unavailable / failed
+        connector-->>usecase: Result without false success
+    end

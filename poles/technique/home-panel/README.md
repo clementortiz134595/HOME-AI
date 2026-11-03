@@ -29,3 +29,8 @@ redirige cette route vers Home Core sur `127.0.0.1:18080`. En production, le
 conteneur Home Core doit être joignable sous le nom Docker `home-core` sur le
 même réseau que le panel ; Nginx conserve ainsi une route same-origin pour le
 navigateur.
+
+La vue Maison lit l'inventaire via `/v1/home-control/devices`, les états via
+`/v1/home-control/devices/:id/state` et envoie les commandes d'interrupteur via
+`/v1/home-control/devices/:id/commands`. Le compose Home Core monte la fixture
+du projet [Zigbee Simulator](../zigbee-simulator/code/fixtures/maison-demo.json).

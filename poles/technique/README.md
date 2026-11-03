@@ -2,11 +2,12 @@
 
 Le pôle technique conçoit, réalise et exploite le socle local, les applications et les intégrations. Chaque sous-projet garde ses exigences, études, architecture, ADR, diagrammes, interactions et stratégie de test à côté du code.
 
-## Les trois projets
+## Les quatre projets
 
 - [Home Panel](home-panel/README.md) : interface tablette de l'appartement.
 - [Home Core](home-core/README.md) : serveur, assistant IA et intégrations locales.
 - [Home App](home-app/README.md) : application mobile.
+- [Zigbee Simulator](zigbee-simulator/README.md) : pièces, appareils et réseau Zigbee simulés en attendant le matériel.
 
 La découpe est volontairement limitée à ces trois projets. Le cadrage de leurs parcours, architecture, intégrations et code vient dans un second temps.
 

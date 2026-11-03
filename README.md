@@ -15,6 +15,16 @@ HOME AI est un produit domestique : un assistant personnel et un système domoti
 
 Le document de cadrage v0.1 est synthétisé dans [la vision produit](gouvernance/vision-et-cadrage.md). Les achats, prix et compatibilités restent à confirmer : aucun matériel ou fournisseur n'est validé par cette arborescence.
 
+## Lancer l'environnement local
+
+Le Compose racine lance Home Core, Home Panel et monte la fixture du [Zigbee Simulator](poles/technique/zigbee-simulator/README.md) dans le réseau interne :
+
+```bash
+docker compose up --build
+```
+
+Le panel est disponible sur `http://localhost:3000`. Le port peut être changé avec `HOME_PANEL_PORT=5173`. Home Core reste accessible uniquement par le réseau Docker ; le Panel relaie ses appels `/v1/` vers le service `home-core`.
+
 ## Règle de travail
 
 Chaque sous-projet possède un dossier documentaire avant son code. Une décision qui engage l'architecture, le budget, la confidentialité ou l'expérience est enregistrée dans un ADR. Les liens entre exigences, choix, tests et achats sont ajoutés au fil de l'eau.
