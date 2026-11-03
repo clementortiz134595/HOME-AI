@@ -267,6 +267,24 @@ function WeatherCard() {
 type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
 
 function VoiceOverlay({ status }: { status: VoiceStatus }) {
+  useEffect(() => {
+    if (status.state !== "listening") return;
+    const audioContext = new AudioContext();
+    const now = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(880, now);
+    oscillator.frequency.setValueAtTime(1175, now + 0.11);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+    oscillator.connect(gain).connect(audioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.3);
+    void oscillator.addEventListener("ended", () => void audioContext.close());
+    return () => { void audioContext.close(); };
+  }, [status.state, status.updatedAt]);
   if (status.state === "idle") return null;
   const listening = status.state === "listening";
   const answered = status.state === "answered";
