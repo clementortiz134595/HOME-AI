@@ -65,7 +65,13 @@ func switchCommand(text string) (model.Intent, bool) {
 
 func cleanSearch(text string, words ...string) string {
 	for _, word := range words {
-		text = strings.ReplaceAll(text, word, "")
+		text = strings.ReplaceAll(text, " "+word+" ", " ")
+		text = strings.TrimPrefix(text, word+" ")
+		text = strings.TrimSuffix(text, " "+word)
+	}
+	for _, word := range []string{"regarde", "regarder", "cherche", "chercher", "lis", "lire", "mes", "mails", "emails", "messages", "dans", "ma", "boîte", "boite"} {
+		text = strings.ReplaceAll(text, " "+word+" ", " ")
+		text = strings.TrimPrefix(text, word+" ")
 	}
 	return strings.TrimSpace(strings.TrimLeft(text, " :,-"))
 }

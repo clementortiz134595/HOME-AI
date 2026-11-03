@@ -67,3 +67,23 @@ func (useCase VoiceInteraction) Execute(ctx context.Context, input model.VoiceIn
 	result.Intent = &intent
 	return result, nil
 }
+
+func (useCase VoiceInteraction) ExecuteTranscript(ctx context.Context, transcript string) (model.ActionResult, error) {
+	transcript = strings.TrimSpace(transcript)
+	if transcript == "" {
+		return model.ActionResult{}, ErrEmptyTranscript
+	}
+	intent, err := useCase.interpreter.Interpret(ctx, model.Interaction{Text: transcript, Source: "voice"})
+	if err != nil {
+		return model.ActionResult{Status: model.ActionFailed, Message: "Je n’ai pas compris la demande."}, fmt.Errorf("interpret interaction: %w", err)
+	}
+	if useCase.policy != nil && useCase.policy.RequiresConfirmation(intent) {
+		return model.ActionResult{Status: model.ActionConfirmation, Message: "Cette action nécessite votre confirmation.", Intent: &intent}, nil
+	}
+	result, err := useCase.executor.Execute(ctx, intent)
+	if err != nil {
+		return model.ActionResult{Status: model.ActionFailed, Message: "L’action n’a pas pu être exécutée.", Intent: &intent}, fmt.Errorf("execute intent %q: %w", intent.Name, err)
+	}
+	result.Intent = &intent
+	return result, nil
+}
