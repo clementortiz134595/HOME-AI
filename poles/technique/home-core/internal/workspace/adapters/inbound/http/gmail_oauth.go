@@ -3,6 +3,7 @@ package workspacehttp
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"log/slog"
 	"net/http"
 
 	"github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/outbound/gmail"
@@ -29,6 +30,7 @@ func (handler *GmailOAuthHandler) ServeHTTP(writer http.ResponseWriter, request 
 			return
 		}
 		if err := handler.client.Exchange(request.Context(), request.URL.Query().Get("code")); err != nil {
+			slog.Error("Gmail OAuth exchange failed", "error", err)
 			http.Error(writer, "oauth exchange failed", http.StatusBadGateway)
 			return
 		}
