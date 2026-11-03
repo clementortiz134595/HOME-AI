@@ -9,7 +9,7 @@ Ce dossier rassemble les profils d'agents qui accompagnent la conception et le d
 3. Appliquer le workflow adapté dans [workflows](workflows/).
 4. Enregistrer une décision ou une étude dans l'espace documentaire prévu (Google Drive HOME AI à terme), en utilisant les modèles de ce dépôt.
 
-Les profils spécialisés sont listés dans [registry/agents.yaml](registry/agents.yaml). Chaque profil indique ses limites et ses collaborations attendues.
+Les profils spécialisés sont listés dans [registry.yaml](registry.yaml). Chaque profil indique ses limites et ses collaborations attendues.
 
 ## Limites
 
@@ -20,4 +20,4 @@ Les profils spécialisés sont listés dans [registry/agents.yaml](registry/agen
 
 ## Faire évoluer l'équipe
 
-Copier [le modèle d'agent](templates/agent-template.md), attribuer un identifiant unique, l'ajouter à `registry/agents.yaml` et relire les liens de collaboration. Un agent peut être désactivé dans le registre sans supprimer son historique.
+Copier [le modèle d'agent](templates/agent-template.md), attribuer un identifiant unique, l'ajouter à `registry.yaml` et relire les liens de collaboration. Un agent peut être désactivé dans le registre sans supprimer son historique.

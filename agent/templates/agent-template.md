@@ -26,4 +26,4 @@ pole: domain
 
 ## Quality Checklist
 
-Mettre ensuite à jour `registry/agents.yaml` et vérifier que le profil ne recouvre pas inutilement un agent existant.
+Mettre ensuite à jour `registry.yaml` et vérifier que le profil ne recouvre pas inutilement un agent existant.

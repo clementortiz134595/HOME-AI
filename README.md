@@ -10,7 +10,7 @@ HOME AI est un produit domestique : un assistant personnel et un système domoti
 - [Pôle technique](poles/technique/README.md) : architecture, applications et exploitation.
 - [Pôle design](poles/design/README.md) : expérience, design system et contenus d'interface.
 - [Modèles](templates/README.md) : structure commune des dossiers de sous-projets et modèles de décision.
-- [Équipe virtuelle d'agents](agents/README.md) : profils spécialisés, workflows et registre pour accompagner le projet.
+- [Équipe virtuelle d'agents](agent.md) : point d'entrée vers les profils, workflows et registre.
 
 Le document de cadrage v0.1 est synthétisé dans [la vision produit](gouvernance/vision-et-cadrage.md). Les achats, prix et compatibilités restent à confirmer : aucun matériel ou fournisseur n'est validé par cette arborescence.
 
