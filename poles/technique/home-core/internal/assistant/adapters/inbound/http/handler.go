@@ -1,6 +1,7 @@
 package assistanthttp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -17,10 +18,14 @@ type Handler struct {
 }
 
 type VoiceHandler struct {
-	ask application.AskTranscribedQuestion
+	ask interface {
+		Execute(context.Context, model.VoiceInput) (model.Answer, string, error)
+	}
 }
 
-func NewVoiceHandler(ask application.AskTranscribedQuestion) *VoiceHandler {
+func NewVoiceHandler(ask interface {
+	Execute(context.Context, model.VoiceInput) (model.Answer, string, error)
+}) *VoiceHandler {
 	return &VoiceHandler{ask: ask}
 }
 

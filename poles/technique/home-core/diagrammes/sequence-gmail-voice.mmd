@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant U as Utilisateur
+    participant P as Home Panel / voix
+    participant C as Home Core assistant
+    participant O as Google OAuth
+    participant G as Gmail API
+    U->>P: « regarde mes mails concernant la facture »
+    P->>C: Audio
+    C->>C: STT puis intention gmail.search
+    C-->>P: Confirmation requise
+    U->>P: Confirmation
+    C->>G: messages.list(q, gmail.readonly)
+    G-->>C: Messages et métadonnées
+    C-->>P: Résumé vocal sans jeton
+    C->>O: Premier accès / renouvellement
+    O-->>C: Jeton stocké localement

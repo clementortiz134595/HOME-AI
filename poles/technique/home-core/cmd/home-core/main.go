@@ -24,11 +24,12 @@ import (
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
+	workspacehttp "github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/inbound/http"
+	gmail "github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/outbound/gmail"
 )
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	slog.SetDefault(logger)
 	provider := openmeteo.NewClient(&http.Client{Timeout: 10 * time.Second})
 	weatherService := weatherapp.NewGetWeather(provider)
 	calendarRegistry, err := calendarRegistryFromEnvironment()
@@ -56,9 +57,15 @@ func main() {
 	assistantService := assistantapp.NewAskQuestion(aiProvider)
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
 	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
-	voiceStatus := assistanthttp.NewVoiceStatusStore()
-	mux.Handle("/v1/assistant/voice/state", voiceStatus.Handler())
-	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewAskTranscribedQuestion(sttProvider, aiProvider)))
+	tools := map[string]assistantapp.ActionExecutor{}
+	if gmailProvider, gmailErr := gmail.NewClient(&http.Client{Timeout: 20 * time.Second}, os.Getenv("HOME_CORE_GMAIL_CLIENT_ID"), os.Getenv("HOME_CORE_GMAIL_CLIENT_SECRET"), os.Getenv("HOME_CORE_GMAIL_REDIRECT_URL"), os.Getenv("HOME_CORE_GMAIL_TOKEN_PATH")); gmailErr == nil {
+		tools["gmail.search"] = assistantapp.NewGmailSearchTool(gmailProvider)
+		mux.Handle("/v1/workspace/google/gmail/oauth/", workspacehttp.NewGmailOAuthHandler(gmailProvider))
+	} else {
+		logger.Warn("Gmail is not configured", "error", gmailErr)
+	}
+	voiceAgent := assistantapp.NewAgent(aiProvider, tools, sttProvider)
+	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewVoiceCommand(sttProvider, voiceAgent)))
 	// Fails closed until a local VoiceEmbedder is configured.
 	voiceProfiles := assistantapp.NewMemoryVoiceProfileStore()
 	mux.Handle("/v1/assistant/voice-profiles/", assistanthttp.NewVoiceProfileHandler(assistantapp.NewVoiceEnrollment(nil, voiceProfiles)))

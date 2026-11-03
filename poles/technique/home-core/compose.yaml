@@ -15,10 +15,15 @@ services:
       HOME_CORE_STT_PROJECT: ${HOME_CORE_STT_PROJECT:-}
       HOME_CORE_STT_LOCATION: ${HOME_CORE_STT_LOCATION:-eu}
       HOME_CORE_STT_LANGUAGE: ${HOME_CORE_STT_LANGUAGE:-fr-FR}
+      HOME_CORE_GMAIL_CLIENT_ID: ${HOME_CORE_GMAIL_CLIENT_ID:-}
+      HOME_CORE_GMAIL_CLIENT_SECRET: ${HOME_CORE_GMAIL_CLIENT_SECRET:-}
+      HOME_CORE_GMAIL_REDIRECT_URL: ${HOME_CORE_GMAIL_REDIRECT_URL:-http://localhost:8080/v1/workspace/google/gmail/oauth/callback}
+      HOME_CORE_GMAIL_TOKEN_PATH: ${HOME_CORE_GMAIL_TOKEN_PATH:-/var/lib/home-core/gmail-token.json}
     ports:
       - "127.0.0.1:18080:8080"
     volumes:
       - ../zigbee-simulator/code/fixtures:/app/fixtures:ro
+      - home-core-secrets:/var/lib/home-core
     read_only: true
     tmpfs:
       - /tmp
@@ -33,3 +38,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  home-core-secrets:

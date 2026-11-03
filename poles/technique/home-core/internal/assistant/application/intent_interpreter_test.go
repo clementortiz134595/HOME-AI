@@ -16,10 +16,13 @@ func TestDeterministicInterpreterRoutesHomeCommand(t *testing.T) {
 }
 
 func TestDeterministicInterpreterRoutesPrivateSources(t *testing.T) {
-	for _, test := range []struct{ text, name string }{{"cherche mes mails facture", "gmail.search"}, {"trouve le document budget dans Drive", "drive.search"}} {
+	for _, test := range []struct{ text, name string }{{"cherche mes mails facture", "gmail.search"}, {"regarde mes mails concernant la facture", "gmail.search"}, {"trouve le document budget dans Drive", "drive.search"}} {
 		intent, err := NewDeterministicInterpreter().Interpret(context.Background(), model.Interaction{Text: test.text})
 		if err != nil || intent.Name != test.name || !intent.Sensitive {
 			t.Fatalf("text=%q intent=%#v err=%v", test.text, intent, err)
+		}
+		if test.name == "gmail.search" && intent.Parameters["query"] != "facture concernant la facture" && intent.Parameters["query"] != "concernant la facture" && intent.Parameters["query"] != "facture" {
+			t.Fatalf("text=%q query=%q", test.text, intent.Parameters["query"])
 		}
 	}
 }
