@@ -44,6 +44,12 @@ Le navigateur capture le microphone avec `MediaRecorder` et arrête la capture a
 
 ## Cerveau d'orchestration
 
-Le cas d'usage `NewAgent` assemble la chaîne applicative vocale : transcription, interprétation déterministe, politique de confirmation et registre d'outils. Les commandes `home.turn_on`/`home.turn_off` sont reconnues localement ; les demandes Gmail et Drive sont marquées sensibles et nécessitent une confirmation ; les autres phrases deviennent `assistant.question` et sont envoyées au fournisseur IA via le port `QuestionAnswerer`.
+Le cas d'usage `NewAgent` assemble la chaîne applicative vocale : transcription, interprétation déterministe, politique de confirmation et registre d'outils. Les commandes `home.turn_on`/`home.turn_off` sont reconnues localement ; l'agenda produit `agenda.list` avec une période (`today`, `tomorrow`, `week`) ; les demandes Gmail, Drive et agenda sont marquées sensibles et nécessitent une confirmation ; les autres phrases deviennent `assistant.question` et sont envoyées au fournisseur IA via le port `QuestionAnswerer`.
 
 Les intégrations concrètes sont injectées dans le registre par Home Core. Un outil absent retourne `unavailable` et ne déclenche aucune action implicite. Cette implémentation ne prétend pas fournir à elle seule les adaptateurs STT, TTS, Home Assistant, Gmail ou Drive : ceux-ci doivent être branchés séparément.
+
+## Vérification biométrique vocale
+
+`SpeakerVerifier` compare l'embedding produit par un `VoiceEmbedder` à des profils enrôlés via un `VoiceProfileStore`. Il retourne un profil et une confiance au-dessus du seuil, sinon `unknown`. Le dépôt ne conserve pas l'audio brut dans les profils. L'adaptateur d'embedding reste à choisir et doit être local ou explicitement autorisé ; la correspondance vocale ne remplace pas une authentification forte pour les données et actions sensibles.
+
+Home Panel propose l'enrôlement via `POST /v1/assistant/voice-profiles/{profileId}` avec un extrait audio `audio/webm`. Le parcours UI est disponible ; l'API répond `503 voice_enrollment_unavailable` tant qu'un `VoiceEmbedder` concret n'est pas configuré dans Home Core.

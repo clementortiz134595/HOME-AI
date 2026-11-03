@@ -41,6 +41,9 @@ func main() {
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"))
 	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
 	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewAskTranscribedQuestion(sttProvider, aiProvider)))
+	// Fails closed until a local VoiceEmbedder is configured.
+	voiceProfiles := assistantapp.NewMemoryVoiceProfileStore()
+	mux.Handle("/v1/assistant/voice-profiles/", assistanthttp.NewVoiceProfileHandler(assistantapp.NewVoiceEnrollment(nil, voiceProfiles)))
 	mux.Handle("/", weatherHandler)
 
 	server := &http.Server{
