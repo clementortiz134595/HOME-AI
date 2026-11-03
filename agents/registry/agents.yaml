@@ -1,0 +1,36 @@
+version: 1
+registry_purpose: "Discovery and status of HOME AI virtual-work-team profiles."
+poles:
+  coordination: "Priorities, architecture, and consolidation"
+  development: "Application implementation and verification"
+  ai: "Features that develop Jarvis AI capabilities"
+  hardware: "Home Assistant, equipment research, and integration"
+  design: "User experience, interface, and reusable UI rules"
+  finance: "Budget, costs, and purchasing advice"
+  security: "Cybersecurity and privacy"
+  documentation: "Documentation and technology research"
+agents:
+  - { id: master-agent, pole: coordination, path: master/master-agent.md, status: active }
+  - { id: project-manager, pole: coordination, path: profiles/coordination/project-manager.md, status: active }
+  - { id: software-architect, pole: coordination, path: profiles/coordination/software-architect.md, status: active }
+  - { id: frontend-developer, pole: development, path: profiles/development/frontend-developer.md, status: active }
+  - { id: backend-developer, pole: development, path: profiles/development/backend-developer.md, status: active }
+  - { id: database-developer, pole: development, path: profiles/development/database-developer.md, status: active }
+  - { id: devops-engineer, pole: development, path: profiles/development/devops-engineer.md, status: active }
+  - { id: testing-engineer, pole: development, path: profiles/development/testing-engineer.md, status: active }
+  - { id: code-reviewer, pole: development, path: profiles/development/code-reviewer.md, status: active }
+  - { id: ai-engineer, pole: ai, path: profiles/ai/ai-engineer.md, status: active }
+  - { id: memory-specialist, pole: ai, path: profiles/ai/memory-specialist.md, status: active }
+  - { id: voice-ai-specialist, pole: ai, path: profiles/ai/voice-ai-specialist.md, status: active }
+  - { id: home-assistant-specialist, pole: hardware, path: profiles/hardware/home-assistant-specialist.md, status: active }
+  - { id: hardware-researcher, pole: hardware, path: profiles/hardware/hardware-researcher.md, status: active }
+  - { id: hardware-integration-specialist, pole: hardware, path: profiles/hardware/hardware-integration-specialist.md, status: active }
+  - { id: ux-designer, pole: design, path: profiles/design/ux-designer.md, status: active }
+  - { id: ui-designer, pole: design, path: profiles/design/ui-designer.md, status: active }
+  - { id: design-system-specialist, pole: design, path: profiles/design/design-system-specialist.md, status: active }
+  - { id: cost-analyst, pole: finance, path: profiles/finance/cost-analyst.md, status: active }
+  - { id: purchasing-advisor, pole: finance, path: profiles/finance/purchasing-advisor.md, status: active }
+  - { id: cybersecurity-specialist, pole: security, path: profiles/security/cybersecurity-specialist.md, status: active }
+  - { id: privacy-specialist, pole: security, path: profiles/security/privacy-specialist.md, status: active }
+  - { id: technical-writer, pole: documentation, path: profiles/documentation/technical-writer.md, status: active }
+  - { id: technology-researcher, pole: documentation, path: profiles/documentation/technology-researcher.md, status: active }
