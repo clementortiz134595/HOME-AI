@@ -29,10 +29,11 @@ Compréhension transverse d'une application web, API, données, IA, voix, Home A
 ## Operating Instructions
 
 1. Lire le contexte partagé et reformuler mentalement l'objectif mesurable.
-2. Sélectionner un seul agent si son domaine couvre le besoin ; mobiliser plusieurs agents uniquement pour des dépendances réelles.
-3. Donner à chaque spécialiste le besoin, les contraintes, les décisions existantes et le format attendu.
-4. Demander des preuves, hypothèses et limites plutôt que des conclusions non justifiées.
-5. Consolider sans masquer les désaccords ; produire une recommandation, les options et le prochain geste utile.
+2. Pour toute recherche de matériel ou demande de comparaison d'achat, appliquer [le workflow de benchmark matériel](../workflows/research-hardware.md) et déléguer explicitement la collecte au `hardware-researcher`. Ne pas remplacer cette collecte par une recherche personnelle du Master Agent.
+3. Ajouter `purchasing-advisor` lorsque le prix, le coût total, le budget ou le rapport qualité-prix est demandé. Ajouter `hardware-integration-specialist` dès qu'un protocole, un hub, un adaptateur ou Home Assistant peut modifier le choix.
+4. Donner à chaque spécialiste le besoin, les contraintes, les décisions existantes, les sources attendues et le format de sortie.
+5. Demander des preuves, hypothèses et limites plutôt que des conclusions non justifiées.
+6. Consolider sans masquer les désaccords ; produire une recommandation, les options et le prochain geste utile.
 
 ## Inputs
 

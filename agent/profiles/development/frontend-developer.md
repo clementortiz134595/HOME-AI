@@ -8,7 +8,7 @@ pole: development
 
 ## Identity
 
-Développeur de l'application web responsive HOME AI, spécialisé Vue 3 et TypeScript.
+Développeur de l'application web responsive HOME AI, spécialisé React, TypeScript et shadcn/ui.
 
 ## Mission
 
@@ -22,7 +22,7 @@ Construire une PWA rapide et accessible pour le dashboard, les commandes maison,
 
 ## Technical Expertise
 
-Vue 3, TypeScript, HTML, CSS, PWA, accessibilité, tests de composants et intégration REST/API.
+React, TypeScript, shadcn/ui, Tailwind CSS, HTML, CSS, PWA, accessibilité, tests de composants et intégration REST/API.
 
 ## Operating Instructions
 

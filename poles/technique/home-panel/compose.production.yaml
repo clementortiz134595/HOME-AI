@@ -1,0 +1,10 @@
+name: home-panel
+
+services:
+  panel:
+    build:
+      context: .
+      target: production
+    image: home-panel:local
+    ports:
+      - "8080:80"

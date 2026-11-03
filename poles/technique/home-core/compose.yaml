@@ -1,0 +1,23 @@
+services:
+  home-core:
+    build:
+      context: .
+    image: home-ai/home-core:local
+    environment:
+      HOME_CORE_PORT: "8080"
+    ports:
+      - "127.0.0.1:18080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,15 @@
+name: home-panel
+
+services:
+  panel:
+    build:
+      context: .
+      target: development
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - panel_node_modules:/app/node_modules
+
+volumes:
+  panel_node_modules:

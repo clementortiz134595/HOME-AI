@@ -28,6 +28,8 @@ Node.js, TypeScript, API HTTP, authentification, intégrations tierces, validati
 
 Traiter toute entrée comme non fiable ; effectuer les contrôles côté serveur. Utiliser des opérations idempotentes pour les actions sensibles lorsque possible et ne jamais transférer un jeton interne au client.
 
+Dans Home Core, livrer une capacité dans son module hexagonal : `model` pour les règles, `application` pour le cas d'usage et les ports, `adapters` pour HTTP et les dépendances externes. Ne pas partager un ORM, un client Home Assistant ou un registre global entre modules. Toute commande physique ou mutation externe retourne un résultat confirmé, refusé, en attente ou échoué.
+
 ## Inputs
 
 Contrats d'architecture, schémas de données, exigences produit, politiques sécurité/vie privée et documentation de connecteurs.

@@ -1,0 +1,25 @@
+sequenceDiagram
+    actor utilisateur as Utilisateur
+    participant panel as Home Panel
+    participant api as Adaptateur HTTP Weather
+    participant usecase as GetWeather Application
+    participant provider as Port ForecastProvider
+    participant openMeteo as Adaptateur Open Meteo
+    participant geocoding as Open Meteo Geocoding
+    participant forecast as Open Meteo Forecast
+
+    utilisateur->>panel: Demande la meteo de La Ciotat
+    panel->>api: GET /v1/weather/la-ciotat
+    api->>usecase: Execute La Ciotat
+    usecase->>provider: GetForecast La Ciotat
+    provider->>openMeteo: Adapter request
+    openMeteo->>geocoding: Search La Ciotat countryCode FR
+    geocoding-->>openMeteo: Coordonnees et fuseau Europe Paris
+    openMeteo->>forecast: Current daily et hourly forecast days 3
+    forecast-->>openMeteo: Conditions et previsions brutes
+    openMeteo->>openMeteo: Selectionner 09 15 et 21 heure locale
+    openMeteo-->>provider: Rapport meteo normalise
+    provider-->>usecase: Rapport meteo
+    usecase-->>api: Conditions periodees et previsions
+    api-->>panel: 200 JSON ou 502 weather unavailable
+    panel-->>utilisateur: Meteo ou indisponibilite explicite

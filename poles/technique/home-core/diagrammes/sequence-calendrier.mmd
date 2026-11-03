@@ -1,0 +1,27 @@
+sequenceDiagram
+    actor utilisateur as Utilisateur
+    participant panel as Home Panel
+    participant api as Adaptateur API
+    participant access as Identity Access
+    participant agenda as Agenda Reminders Application
+    participant store as Adaptateur Stockage
+    participant google as Adaptateur Google Calendar
+    participant calendar as Google Calendar
+
+    utilisateur->>panel: Consulte son agenda
+    panel->>api: Requete agenda avec session
+    api->>access: Authentifier et charger le contexte
+    access-->>api: ActorContext
+    api->>agenda: Lire agenda autorise
+    agenda->>agenda: Appliquer visibilite profil et ecran
+    agenda->>store: Lire donnees synchronisees autorisees
+    store-->>agenda: Donnees locales ou absence
+    alt Synchronisation necessaire et connecteur disponible
+        agenda->>google: Demander synchronisation ciblee
+        google->>calendar: Lire calendriers autorises
+        calendar-->>google: Evenements
+        google-->>agenda: Evenements normalises
+        agenda->>store: Mettre a jour le cache autorise
+    end
+    agenda-->>api: Vue calendrier filtree
+    api-->>panel: Donnees sans jeton ni evenement prive non autorise

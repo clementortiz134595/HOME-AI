@@ -1,0 +1,28 @@
+sequenceDiagram
+    actor utilisateur as Utilisateur
+    participant panel as Home Panel
+    participant api as Adaptateur API
+    participant assistant as Assistant Application
+    participant access as Identity Access
+    participant routine as Routines Scenes
+    participant control as Home Control
+    participant ha as Adaptateur Home Assistant
+
+    utilisateur->>panel: Prepare la routine coucher
+    panel->>api: Message et contexte de session
+    api->>assistant: Traiter intention
+    assistant->>access: Verifier droits et contexte partage
+    access-->>assistant: ActorContext
+    assistant->>routine: Construire action proposee
+    routine-->>assistant: Effets et confirmation requise
+    assistant-->>api: ConfirmationRequest
+    api-->>panel: Recapitulatif des effets
+    utilisateur->>panel: Confirme
+    panel->>api: Confirmation avec cle idempotence
+    api->>routine: Executer action confirmee
+    routine->>control: Appliquer chaque commande autorisee
+    control->>ha: Commander appareil
+    ha-->>control: Etat confirme ou erreur
+    control-->>routine: Resultat par appareil
+    routine-->>api: CommandResult
+    api-->>panel: Resultat explicite

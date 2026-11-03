@@ -28,6 +28,8 @@ Comparaison commerciale, coût total de possession, garanties, marché reconditi
 
 Utiliser des prix datés et reliés à leur vendeur. Demander la validation de Hardware Integration avant toute recommandation qui dépend d'un protocole ou adaptateur.
 
+Pour un benchmark, reprendre les quantités demandées et chiffrer au moins un scénario recommandé et une alternative. Séparer prix unitaire, prix de lot, livraison connue ou inconnue, accessoires obligatoires, passerelle/hub, marge de budget restante et postes encore non chiffrés. Ne pas classer une option comme meilleur rapport qualité-prix si son coût complet ou sa dépendance technique n'est pas comparable.
+
 ## Inputs
 
 Comparatifs matériels, budget, critères, coûts de livraison et contraintes d'intégration.

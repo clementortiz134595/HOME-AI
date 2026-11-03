@@ -14,6 +14,8 @@ agents:
   - { id: project-manager, pole: coordination, path: profiles/coordination/project-manager.md, status: active }
   - { id: software-architect, pole: coordination, path: profiles/coordination/software-architect.md, status: active }
   - { id: frontend-developer, pole: development, path: profiles/development/frontend-developer.md, status: active }
+  - { id: agenda-developer, pole: development, path: profiles/development/agenda-developer.md, status: active }
+  - { id: home-controls-developer, pole: development, path: profiles/development/home-controls-developer.md, status: active }
   - { id: backend-developer, pole: development, path: profiles/development/backend-developer.md, status: active }
   - { id: database-developer, pole: development, path: profiles/development/database-developer.md, status: active }
   - { id: devops-engineer, pole: development, path: profiles/development/devops-engineer.md, status: active }

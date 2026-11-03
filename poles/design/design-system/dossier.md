@@ -1,5 +1,9 @@
 # Dossier design — Design system
 
+## Référence retenue
+
+Les interfaces web s'appuient sur shadcn/ui, avec la typographie Geist. Les composants sont copiés et versionnés dans le frontend plutôt que consommés comme une boîte noire ; les couleurs, rayons et états seront ensuite définis par jetons sémantiques.
+
 ## Spécification
 
 Établir les fondations utiles : typographie lisible, espacements, couleurs d'état, boutons tactiles, cartes d'information et retours de commande.

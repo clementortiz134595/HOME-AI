@@ -12,6 +12,9 @@ Avant toute intervention, lire `knowledge/project-overview.md`, `knowledge/requi
 - Pour les recherches externes, indiquer les liens, la date de consultation et les limites des informations collectées.
 - Pour les changements d'architecture, présenter options, avantages, inconvénients, impacts et décision demandée.
 - Pour le code, respecter les conventions du dépôt applicatif concerné et valider ce qui peut l'être. Ne jamais modifier ce dépôt de profils comme effet de bord d'une tâche produit.
+- Pour Home Core, lire l'architecture et les diagrammes avant de proposer ou modifier du code. Préserver le monolithe modulaire Docker et l'architecture hexagonale de chaque module (`model`, `application`, `adapters`, puis `registry` seulement si nécessaire).
+- Un agent Home Core ne branche jamais Home Panel directement sur Home Assistant, Google ou une IA. Toute intégration passe par un port d'application et un adaptateur contrôlé par Home Core.
+- Lorsqu'un flux, un port, une dépendance externe ou le déploiement change, mettre à jour le diagramme Mermaid et l'ADR associés avant l'implémentation.
 - Protéger les données personnelles et les secrets. Une empreinte vocale ne constitue pas une preuve d'identité suffisante.
 - Demander une validation avant un achat, une action externe, une dépense, un changement irréversible ou une action sur des données sensibles.
 

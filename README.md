@@ -9,6 +9,7 @@ HOME AI est un produit domestique : un assistant personnel et un système domoti
 - [Pôle produit](poles/produit/README.md) : besoins, parcours et priorités.
 - [Pôle technique](poles/technique/README.md) : architecture, applications et exploitation.
 - [Pôle design](poles/design/README.md) : expérience, design system et contenus d'interface.
+- [Référentiel fonctionnel Home Panel & Home Core](poles/produit/fonctionnalites-home-core-panel.md) : inventaire des fonctionnalités actuellement cadrées ; l'application mobile native viendra plus tard.
 - [Modèles](templates/README.md) : structure commune des dossiers de sous-projets et modèles de décision.
 - [Équipe virtuelle d'agents](agent.md) : point d'entrée vers les profils, workflows et registre.
 
@@ -17,3 +18,5 @@ Le document de cadrage v0.1 est synthétisé dans [la vision produit](gouvernanc
 ## Règle de travail
 
 Chaque sous-projet possède un dossier documentaire avant son code. Une décision qui engage l'architecture, le budget, la confidentialité ou l'expérience est enregistrée dans un ADR. Les liens entre exigences, choix, tests et achats sont ajoutés au fil de l'eau.
+
+La base documentaire produit est rédigée en Markdown. Le référentiel [Home Panel & Home Core](poles/produit/fonctionnalites-home-core-panel.md) est la source de vérité fonctionnelle actuelle pour les deux applications.

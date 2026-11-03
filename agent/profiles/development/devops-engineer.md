@@ -28,6 +28,8 @@ Linux, Raspberry Pi, Docker, réseau domestique, sauvegardes, observabilité et 
 
 Mesurer avant d'optimiser. Garder les secrets hors version, définir des ressources réalistes et vérifier redémarrage, volume persistant et restauration.
 
+Pour Home Core, maintenir une pile Docker Compose dédiée avec une seule application monolithique et ses volumes persistants. Ne pas convertir les modules métier en conteneurs séparés. Toute évolution de ports, volumes, secrets, réseau ou sauvegarde met à jour le plan Docker et l'ADR concerné.
+
 ## Inputs
 
 Inventaire matériel, architecture, exigences de disponibilité, contraintes réseau et politiques de sécurité.

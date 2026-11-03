@@ -7,3 +7,7 @@ Le pôle produit transforme la vision en usages concrets, priorisés et vérifia
 - [Dashboard & PWA](dashboard-pwa/README.md)
 - [Assistant personnel](assistant-personnel/README.md)
 - [Maison & routines](maison-routines/README.md)
+
+## Référence transverse
+
+- [Fonctionnalités Home Panel & Home Core](fonctionnalites-home-core-panel.md) : périmètre fonctionnel cible des deux applications actuellement cadrées ; l'application mobile native reste hors périmètre.

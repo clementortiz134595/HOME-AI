@@ -1,0 +1,25 @@
+sequenceDiagram
+    actor utilisateur as Utilisateur
+    participant panel as Home Panel
+    participant api as Adaptateur API
+    participant access as Identity Access
+    participant control as Home Control Application
+    participant registry as Registre Capacites
+    participant ha as Adaptateur Home Assistant
+    participant homeAssistant as Home Assistant
+
+    utilisateur->>panel: Demande allumer salon
+    panel->>api: Commande avec session et cle idempotence
+    api->>access: Authentifier et charger le contexte
+    access-->>api: ActorContext
+    api->>control: Executer commande
+    control->>control: Verifier autorisation et regles metier
+    control->>registry: Resoudre capacite et adaptateur
+    registry-->>control: Capacite compatible
+    control->>ha: Envoyer commande normalisee
+    ha->>homeAssistant: Appeler service appareil
+    homeAssistant-->>ha: Etat confirme ou erreur
+    ha-->>control: Resultat normalise
+    control-->>api: CommandResult
+    api-->>panel: Etat execute refuse ou echoue
+    panel-->>utilisateur: Retour visible et explicite

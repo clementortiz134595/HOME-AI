@@ -1,0 +1,9 @@
+.git
+.gitignore
+bin
+coverage
+**/*_test.go
+README.md
+architecture
+diagrammes
+infrastructure

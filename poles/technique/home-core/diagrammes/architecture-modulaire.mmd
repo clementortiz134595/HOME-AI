@@ -1,0 +1,37 @@
+flowchart TB
+    panel[Home Panel]
+    core[Home Core Docker]
+    api[Adaptateur entrant API]
+    auth[identity-access]
+    controls[home-control]
+    routines[routines-scenes]
+    agenda[agenda-reminders]
+    assistant[assistant]
+    memory[memory-preferences]
+    health[system-health]
+    storage[(Stockage local)]
+    homeAssistant[Home Assistant]
+    google[Google Calendar]
+    ai[IA autorisee]
+    weather[Source meteo]
+
+    panel --> api
+    api --> auth
+    api --> controls
+    api --> routines
+    api --> agenda
+    api --> assistant
+    api --> memory
+    api --> health
+    assistant --> controls
+    assistant --> routines
+    assistant --> agenda
+    routines --> controls
+    auth --> storage
+    agenda --> storage
+    memory --> storage
+    health --> storage
+    controls --> homeAssistant
+    agenda --> google
+    assistant --> ai
+    health --> weather

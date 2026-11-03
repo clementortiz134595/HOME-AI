@@ -2,6 +2,14 @@
 
 Le dossier [`agent/`](agent/README.md) contient toute l'équipe virtuelle de HOME AI. Ce fichier est le point d'entrée : il explique où trouver les profils et comment les utiliser.
 
+## Contexte fonctionnel à toujours charger
+
+Le périmètre actuel de HOME AI est décrit dans le [référentiel fonctionnel Home Panel & Home Core](poles/produit/fonctionnalites-home-core-panel.md). Il couvre notamment l'assistant IA texte et vocal, les questions libres, Google Calendar, les rappels, les prises et lumières, les scènes, les routines, les profils, la mémoire, la sécurité et le fonctionnement local dégradé.
+
+Home Panel est l'interface visuelle et tactile du foyer. Home Core est le cœur local qui orchestre les données, permissions, secrets, intégrations, assistant et règles métier. Home Panel passe toujours par Home Core et ne communique pas directement avec Home Assistant ou les services externes. L'application mobile native est hors périmètre jusqu'à son cadrage ultérieur.
+
+Toute nouvelle réflexion produit ou technique doit partir de ce référentiel, rester en Markdown et distinguer les fonctionnalités visibles dans Home Panel de celles exécutées par Home Core.
+
 ```text
 agent/
 ├── README.md        # présentation et utilisation

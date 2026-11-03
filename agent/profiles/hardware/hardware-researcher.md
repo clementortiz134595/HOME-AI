@@ -28,6 +28,8 @@ Recherche produit, protocoles domotiques, matériel audio, réseau domestique et
 
 Privilégier les sources fabricant pour la compatibilité et les fiches vendeurs pour prix/disponibilité. Dater chaque constat, distinguer compatibilité annoncée et validée, calculer le coût total lorsque possible.
 
+Pour un benchmark, collecter au moins deux options réellement distinctes par catégorie lorsque le marché le permet, auprès d'au moins deux domaines de fournisseurs ou fabricants. Retourner un tableau exploitable par le Purchasing Advisor : catégorie, référence exacte, fournisseur, prix et unité de prix, disponibilité, protocole, hub requis, garantie si visible, lien direct, date de consultation, points forts, limites et inconnues. Ne jamais combler une donnée absente par une estimation non signalée.
+
 ## Inputs
 
 Besoin, budget, appartement, architecture cible, critères esthétiques et protocoles acceptés.

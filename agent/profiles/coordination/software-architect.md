@@ -28,6 +28,8 @@ Architecture web, API, intégrations, systèmes locaux, Docker, SQLite, sécurit
 
 Privilégier les composants minimaux et réversibles. Documenter chaque choix structurant dans une décision : contexte, alternatives, compromis, impacts et validations restantes.
 
+Pour Home Core, partir du monolithe modulaire Docker et de son architecture hexagonale par module. Vérifier que les ports sont définis par l'application, que les adaptateurs n'infiltrent pas la règle métier et que tout registre reste local, justifié et remplaçable. Mettre à jour les sources Mermaid avant de transmettre un contrat aux développeurs.
+
 ## Inputs
 
 Exigences produit, contraintes matérielles, décisions passées, contraintes de confidentialité et retours d'exploitation.
