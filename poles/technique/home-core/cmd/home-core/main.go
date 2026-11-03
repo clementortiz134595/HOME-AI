@@ -10,6 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	assistanthttp "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/gemini"
+	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
@@ -19,10 +22,15 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	provider := openmeteo.NewClient(&http.Client{Timeout: 10 * time.Second})
 	weatherService := weatherapp.NewGetWeather(provider)
+	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
+	assistantService := assistantapp.NewAskQuestion(aiProvider)
+	mux := http.NewServeMux()
+	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
+	mux.Handle("/", weatherhttp.NewHandler(weatherService))
 
 	server := &http.Server{
 		Addr:              listenAddress(),
-		Handler:           weatherhttp.NewHandler(weatherService),
+		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,

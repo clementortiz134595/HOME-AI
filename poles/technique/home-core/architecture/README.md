@@ -75,3 +75,5 @@ Les appels de mutation doivent recevoir une clé d'idempotence lorsqu'une répé
 Voir les [diagrammes Mermaid](../diagrammes/README.md) et le [plan Docker](../infrastructure/docker.md).
 La décision de structure est consignée dans l'[ADR-0001](adr/0001-monolithe-modulaire-docker.md).
 Le runtime du premier incrément est consigné dans l'[ADR-0002](adr/0002-runtime-go.md).
+Le premier contrat IA texte est consigné dans l'[ADR-0006](adr/0006-assistant-fournisseur-ia.md) et son flux dans [sequence-assistant-question.mmd](../diagrammes/sequence-assistant-question.mmd).
+L'orchestration vocale et les outils contrôlés sont consignés dans l'[ADR-0005](adr/0005-assistant-vocal-outils-controles.md) et son flux dans [sequence-assistant-vocal-outil.mmd](../diagrammes/sequence-assistant-vocal-outil.mmd).
