@@ -1,0 +1,17 @@
+sequenceDiagram
+    actor utilisateur as Utilisateur
+    participant panel as Home Panel
+    participant api as Adaptateur API Home Core
+    participant assistant as Module assistant
+    participant provider as Adaptateur fournisseur IA
+    participant ai as API IA compatible Chat Completions
+
+    utilisateur->>panel: Pose une question
+    panel->>api: POST /v1/assistant/questions
+    api->>assistant: Question validée
+    assistant->>provider: Question minimale
+    provider->>ai: Requête authentifiée
+    ai-->>provider: Réponse du modèle
+    provider-->>assistant: Answer neutre
+    assistant-->>api: Réponse ou indisponibilité
+    api-->>panel: JSON sans secret
