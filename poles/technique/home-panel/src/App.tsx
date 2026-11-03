@@ -284,7 +284,7 @@ function App() {
           <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:mt-10 lg:flex"><Settings /> Réglages</Button>
         </aside>
 
-        <section className="min-h-0 overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+        <section className="min-h-0 overflow-y-auto px-5 py-7 pb-28 sm:px-8 lg:px-10 lg:py-9">
           <header className="flex flex-wrap items-start justify-between gap-5">
             <div><p className="text-sm text-slate-500">Lundi 3 novembre</p></div>
             <div className="relative flex items-center gap-3">
