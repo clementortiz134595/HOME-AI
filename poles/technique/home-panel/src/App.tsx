@@ -5,6 +5,7 @@ import {
   CloudSun,
   Home,
   Lightbulb,
+  Mic,
   MoreHorizontal,
   Settings,
   Sparkles,
@@ -148,6 +149,39 @@ function AssistantOrb() {
   );
 }
 
+function VoiceEnrollment({ profile }: { profile: Profile }) {
+  const [enrolling, setEnrolling] = useState(false);
+  const [status, setStatus] = useState("");
+
+  const enroll = async () => {
+    setEnrolling(true);
+    setStatus("Parlez pendant 4 secondes…");
+    let capturedStream: MediaStream | null = null;
+    try {
+      capturedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks: Blob[] = [];
+      const recorder = new MediaRecorder(capturedStream);
+      recorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
+      const stopped = new Promise<void>((resolve) => { recorder.onstop = () => resolve(); });
+      recorder.start();
+      await new Promise((resolve) => window.setTimeout(resolve, 4000));
+      recorder.stop();
+      await stopped;
+      const profileID = profile.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const response = await fetch(`/v1/assistant/voice-profiles/${encodeURIComponent(profileID)}`, { method: "POST", headers: { "Content-Type": recorder.mimeType || "audio/webm" }, body: new Blob(chunks, { type: recorder.mimeType || "audio/webm" }) });
+      if (!response.ok) throw new Error("enrollment_failed");
+      setStatus("Voix enregistrée");
+    } catch {
+      setStatus("Enrôlement indisponible");
+    } finally {
+      capturedStream?.getTracks().forEach((track) => track.stop());
+      setEnrolling(false);
+    }
+  };
+
+  return <button type="button" disabled={enrolling} onClick={enroll} className="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-zinc-400 hover:bg-white/10 disabled:opacity-60"><Mic className="size-3.5" />{enrolling ? status : status || "Enrôler ma voix"}</button>;
+}
+
 function WeatherCard() {
   const [weather, setWeather] = useState<WeatherReport | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -200,6 +234,7 @@ function App() {
               {profileOpen && <div className="profile-menu absolute right-12 top-0 z-30 min-w-36 rounded-2xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl">
                 <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Profil</p>
                 {profiles.map((option) => <button key={option} type="button" onClick={() => { setProfile(option); setProfileOpen(false); }} className={profile === option ? "flex w-full items-center justify-between rounded-xl bg-white px-3 py-2 text-left text-sm font-medium text-zinc-950" : "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium text-zinc-300 hover:bg-white/10"}>{option}{profile === option && <span className="text-xs">✓</span>}</button>)}
+                <VoiceEnrollment profile={profile} />
               </div>}
             </div>
           </header>

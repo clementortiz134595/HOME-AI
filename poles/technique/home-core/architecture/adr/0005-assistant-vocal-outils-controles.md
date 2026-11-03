@@ -6,9 +6,9 @@ Acceptée pour le contrat d’orchestration ; les fournisseurs STT, TTS et IA re
 
 ## Décision
 
-Home Core orchestre une interaction vocale selon la chaîne `audio → STT → interprétation d’intention → politique de confirmation → outil de module → réponse`. Chaque étape est un port applicatif du module `assistant`. Les outils appellent les façades des modules `home-control`, `google-workspace` ou autres modules autorisés.
+Home Core orchestre une interaction vocale selon la chaîne `audio → vérification de locuteur → STT → interprétation d’intention → politique de confirmation → outil de module → réponse`. Chaque étape est un port applicatif du module `assistant`. Les outils appellent les façades des modules `home-control`, `google-workspace` ou autres modules autorisés.
 
-Les commandes maison déterministes peuvent être interprétées sans LLM. Les lectures Gmail/Drive et les actions externes restent soumises à l’identité, aux droits et, si nécessaire, à une confirmation explicite. Une voix seule ne prouve jamais l’identité.
+Les commandes maison déterministes peuvent être interprétées sans LLM. La vérification de locuteur compare un embedding vocal à des profils enrôlés et retourne `unknown` sous le seuil de confiance. Les lectures Gmail/Drive et les actions externes restent soumises à l’identité, aux droits et, si nécessaire, à une confirmation explicite. Une correspondance vocale seule ne constitue jamais une authentification forte.
 
 ## Conséquences
 

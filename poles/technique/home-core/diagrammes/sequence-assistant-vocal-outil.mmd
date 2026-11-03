@@ -1,6 +1,7 @@
 sequenceDiagram
     participant Panel as Home Panel
     participant Core as Home Core / assistant
+    participant Speaker as Vérificateur de locuteur
     participant STT as Adaptateur STT
     participant IA as Interpréteur d'intention
     participant Policy as Politique d'autorisation
@@ -8,6 +9,8 @@ sequenceDiagram
     participant TTS as Adaptateur TTS
 
     Panel->>Core: Audio + contexte de session
+    Core->>Speaker: Comparer embedding vocal
+    Speaker-->>Core: Profil ou unknown + confiance
     Core->>STT: Transcrire(audio)
     STT-->>Core: Transcript
     Core->>IA: Interpréter(transcript, contexte minimal)
