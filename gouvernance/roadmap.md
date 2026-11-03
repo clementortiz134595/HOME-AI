@@ -9,4 +9,4 @@
 | V4 — Voix & IA | Commandes fiables, conversation et synthèse vocale | Technique / Produit | À lancer |
 | V5 — Assistant personnel | Profils, autorisations, agendas, rappels et mémoire | Produit / Technique | À lancer |
 
-La prochaine itération débute par V0 : l'inventaire du matériel existant et l'arbitrage du premier usage à démontrer.
+Le prochain jalon n'est pas encore choisi. Les informations les plus utiles à compléter pendant V0 sont l'inventaire du Raspberry Pi, l'intégration iCloud Calendar et les caractéristiques des luminaires lorsque le premier achat domotique sera envisagé.
