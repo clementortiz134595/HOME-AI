@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant Panel as Home Panel
+    participant Core as Home Core / assistant
+    participant STT as Adaptateur STT
+    participant IA as Interpréteur d'intention
+    participant Policy as Politique d'autorisation
+    participant Tool as Façade du module cible
+    participant TTS as Adaptateur TTS
+
+    Panel->>Core: Audio + contexte de session
+    Core->>STT: Transcrire(audio)
+    STT-->>Core: Transcript
+    Core->>IA: Interpréter(transcript, contexte minimal)
+    IA-->>Core: Intent + paramètres
+    Core->>Policy: Vérifier droits / confirmation
+    alt Confirmation nécessaire
+        Policy-->>Core: Confirmation requise
+        Core->>TTS: Demande de confirmation
+        TTS-->>Panel: Réponse vocale
+    else Autorisé
+        Core->>Tool: Exécuter(intent, idempotence)
+        Tool-->>Core: Résultat confirmé ou erreur
+        Core->>TTS: Réponse courte
+        TTS-->>Panel: Réponse vocale + état
+    end

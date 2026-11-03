@@ -1,0 +1,17 @@
+sequenceDiagram
+    participant Mic as Microphone local
+    participant Wake as Détecteur local « Dis Jarvis »
+    participant Core as Session assistant
+    participant STT as Adaptateur STT Gemini
+
+    loop Tant que le foyer est actif
+        Mic->>Wake: Trames audio locales
+        alt Wake word absent
+            Wake-->>Mic: Rien ne sort du domicile
+        else Wake word détecté
+            Wake->>Core: Ouvrir capture
+            Mic->>Core: Audio jusqu'au silence / timeout
+            Core->>STT: Extrait audio uniquement
+            STT-->>Core: Transcript
+        end
+    end
