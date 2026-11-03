@@ -4,3 +4,4 @@ Les décisions structurantes de Home Core sont consignées ici avant l'implémen
 
 - [ADR-0001 — Monolithe modulaire Docker](0001-monolithe-modulaire-docker.md)
 - [ADR-0002 — Runtime Go pour le premier noyau](0002-runtime-go.md)
+- [ADR-0005 — Module Home Control extensible par protocole](0005-module-home-control-protocoles.md)

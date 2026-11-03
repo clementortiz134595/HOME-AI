@@ -7,3 +7,4 @@ Ces diagrammes Mermaid sont des sources versionnables : ils décrivent les flux 
 - [Action assistant avec confirmation](sequence-assistant-confirmation.mmd)
 - [Lecture protégée du calendrier](sequence-calendrier.mmd)
 - [Météo de La Ciotat](sequence-meteo-la-ciotat.mmd)
+- [Contrôle d'un appareil Zigbee](sequence-commande-zigbee.mmd)
