@@ -15,6 +15,7 @@ import (
 	agendaapp "github.com/clementortiz/home-ai/home-core/internal/agenda/application"
 	assistanthttp "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/gemini"
+	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/google"
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
@@ -37,7 +38,9 @@ func main() {
 	mux.Handle("/v1/calendars/apple/", agendahttp.NewHandler(calendarRegistry))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	assistantService := assistantapp.NewAskQuestion(aiProvider)
+	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"))
 	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
+	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewAskTranscribedQuestion(sttProvider, aiProvider)))
 	mux.Handle("/", weatherHandler)
 
 	server := &http.Server{

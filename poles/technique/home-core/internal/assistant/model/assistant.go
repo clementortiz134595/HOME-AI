@@ -6,7 +6,8 @@ type Question struct {
 }
 
 type VoiceInput struct {
-	Audio []byte `json:"-"`
+	Audio       []byte
+	ContentType string
 }
 
 type Interaction struct {

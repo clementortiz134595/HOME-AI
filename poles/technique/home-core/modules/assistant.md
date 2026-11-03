@@ -27,3 +27,17 @@ Les erreurs de forme renvoient `400`. Une configuration absente ou une panne du 
 Pour l'audio bidirectionnel, l'adaptateur devra utiliser Gemini Live API ; le client texte actuel reste un incrément de transition et ne doit pas être présenté comme une intégration audio complète.
 
 Ce premier incrément ne fournit aucun outil au modèle et ne permet pas de déclencher une action sur la maison. Les commandes locales restent indépendantes de la disponibilité de l'IA.
+
+## Contrat vocal initial
+
+`POST /v1/assistant/voice` accepte un corps audio `audio/webm` (limite 10 MiB). La réponse contient la transcription et la réponse texte de l’assistant :
+
+```json
+{"transcript":"Qui est Napoléon ?","answer":{"text":"..."}}
+```
+
+Le navigateur capture le microphone avec `MediaRecorder` et arrête la capture après environ une seconde de silence, ou après dix secondes. L’adaptateur STT utilise Google Cloud Speech-to-Text `speech:recognize` avec l’encodage `WEBM_OPUS` :
+
+- `HOME_CORE_STT_BASE_URL` : URL complète, par défaut `https://speech.googleapis.com/v1/speech:recognize`.
+- `HOME_CORE_STT_API_KEY` : clé Google Cloud conservée par Home Core, avec l’API Speech-to-Text activée.
+- `HOME_CORE_STT_LANGUAGE` : langue BCP-47, par défaut `fr-FR`.

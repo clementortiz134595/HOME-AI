@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Bot,
   CalendarDays,
@@ -73,20 +73,75 @@ function AgendaView({ profile }: { profile: Profile }) {
 
 function AssistantOrb() {
   const [listening, setListening] = useState(false);
+  const [status, setStatus] = useState("Touchez pour parler");
+  const recorder = useRef<MediaRecorder | null>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const silenceTimer = useRef<number | null>(null);
+  const startedAt = useRef(0);
+
+  const stop = () => {
+    if (silenceTimer.current) window.clearInterval(silenceTimer.current);
+    silenceTimer.current = null;
+    recorder.current?.stop();
+    stream.current?.getTracks().forEach((track) => track.stop());
+    recorder.current = null;
+    stream.current = null;
+    setListening(false);
+  };
+
+  const start = async () => {
+    try {
+      const capturedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.current = capturedStream;
+      const chunks: Blob[] = [];
+      const mediaRecorder = new MediaRecorder(capturedStream);
+      recorder.current = mediaRecorder;
+      mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
+      mediaRecorder.onstop = async () => {
+        setStatus("Transcription…");
+        const response = await fetch("/v1/assistant/voice", { method: "POST", headers: { "Content-Type": mediaRecorder.mimeType || "audio/webm" }, body: new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" }) });
+        if (!response.ok) { setStatus("La voix est indisponible"); return; }
+        const result = await response.json() as { transcript: string; answer: { text: string } };
+        setStatus(result.answer.text);
+      };
+      mediaRecorder.start();
+      startedAt.current = Date.now();
+      setListening(true);
+      setStatus("Je t’écoute…");
+      const context = new AudioContext();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 512;
+      context.createMediaStreamSource(capturedStream).connect(analyser);
+      const samples = new Uint8Array(analyser.fftSize);
+      let quietSince = 0;
+      silenceTimer.current = window.setInterval(() => {
+        analyser.getByteTimeDomainData(samples);
+        const level = samples.reduce((sum, value) => sum + Math.abs(value - 128), 0) / samples.length;
+        if (level < 3) quietSince ||= Date.now(); else quietSince = 0;
+        if ((quietSince && Date.now() - quietSince > 1000) || Date.now() - startedAt.current > 10000) {
+          context.close();
+          stop();
+        }
+      }, 100);
+    } catch {
+      setStatus("Microphone non disponible");
+      stop();
+    }
+  };
 
   return (
     <button
       type="button"
       aria-pressed={listening}
-      onClick={() => setListening(!listening)}
+      onClick={() => (listening ? stop() : start())}
       className="group fixed bottom-6 right-6 z-20 flex items-center gap-3 rounded-full border border-sky-200 bg-white/90 py-2 pl-2 pr-4 text-left shadow-[0_16px_50px_rgba(56,189,248,0.18)] backdrop-blur transition hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
     >
       <span className={listening ? "orb orb-listening" : "orb"}>
         <span className="orb-core"><Bot className="size-5" /></span>
       </span>
       <span>
-        <span className="block text-sm font-semibold">{listening ? "Je t’écoute" : "À l’écoute"}</span>
-        <span className="block text-xs text-slate-500">{listening ? "Parle-moi" : "Touchez pour parler"}</span>
+        <span className="block max-w-64 truncate text-sm font-semibold">{listening ? "Je t’écoute" : "À l’écoute"}</span>
+        <span className="block max-w-64 truncate text-xs text-slate-500">{status}</span>
       </span>
     </button>
   );
