@@ -15,8 +15,9 @@ Le Home Panel utilise l'API de Home Core. Home Assistant, Google Calendar, la m�
 | `identity-access` | Profils, sessions, rôles, autorisations et vue invité. | Stockage des identités et sessions. |
 | `home-control` | Inventaire, capacités, états et commandes d'appareils. | Home Assistant. |
 | `routines-scenes` | Scènes, modes maison, routines et confirmations. | Port de commande maison, planificateur. |
-| `agenda-reminders` | Calendriers, rappels, échéances et notifications. | Google Calendar, stockage, planificateur. |
+| `agenda-reminders` | Calendriers, rappels, échéances et notifications. | Google Calendar, iCloud Calendar CalDAV, stockage, planificateur. |
 | `weather` | Conditions actuelles et prévisions localisées. | Fournisseur météo via un port dédié. |
+| `google-workspace` | Gmail et Drive, avec consentement, recherche, lecture et écritures contrôlées. | OAuth Google, Gmail API, Drive API, stockage sécurisé des jetons. |
 | `assistant` | Questions libres, interprétation d'intention, confirmations et réponses. | Fournisseur IA autorisé, ports des autres modules. |
 | `memory-preferences` | Préférences, mémoire contrôlable et rétention. | Stockage chiffré si retenu. |
 | `system-health` | Santé, capacités disponibles, audit minimal et diagnostics. | Horloge, stockage, sondes d'intégration. |

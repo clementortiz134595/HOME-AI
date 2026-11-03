@@ -1,0 +1,32 @@
+sequenceDiagram
+    actor utilisateur as Utilisateur
+    participant agent as Agent futur
+    participant mcp as Facade MCP future
+    participant api as Adaptateur HTTP Workspace
+    participant workspace as Workspace Application
+    participant registry as Registre Comptes Google
+    participant oauth as Adaptateur OAuth Google
+    participant google as Gmail et Drive APIs
+
+    utilisateur->>agent: Demande une recherche ou une action
+    agent->>mcp: Outil Gmail ou Drive
+    mcp->>api: Appel Home Core type
+    api->>workspace: Cas usage explicite
+    workspace->>registry: Resoudre compte et autorisations
+    registry-->>workspace: Connecteur Google
+    workspace->>oauth: Obtenir access token depuis refresh token
+    oauth-->>workspace: Token temporaire
+    alt Lecture ou recherche
+        workspace->>google: Requete Gmail ou Drive
+        google-->>workspace: Donnees filtrees
+        workspace-->>api: Resultat normalise
+    else Ecriture Drive
+        workspace-->>api: Confirmation requise
+        api-->>agent: Demande de confirmation
+        agent->>api: Confirmation explicite
+        api->>workspace: Executer ecriture confirmee
+        workspace->>google: Creer ou mettre a jour fichier
+        google-->>workspace: Fichier modifie
+    end
+    api-->>mcp: Resultat sans secret
+    mcp-->>agent: Resultat actionnable

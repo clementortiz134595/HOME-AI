@@ -14,5 +14,6 @@ Le projet sera livré comme un monolithe Docker autonome, structuré en modules 
 - [Diagrammes Mermaid de flux](diagrammes/README.md)
 - [Plan Docker](infrastructure/docker.md)
 - [Module Weather — La Ciotat](modules/weather.md)
+- [Connecteur Apple iCloud Calendar](modules/apple-icloud-calendar.md)
 
 Le runtime Go est retenu pour le premier noyau par [ADR-0002](architecture/adr/0002-runtime-go.md). Les choix de base de données, authentification, stockage, intégration Home Assistant et autres fournisseurs externes restent à décider par ADR avant leur implémentation.

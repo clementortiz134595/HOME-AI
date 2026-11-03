@@ -5,6 +5,7 @@ services:
     image: home-ai/home-core:local
     environment:
       HOME_CORE_PORT: "8080"
+      APPLE_CALDAV_ACCOUNTS_JSON: ${APPLE_CALDAV_ACCOUNTS_JSON:-}
     ports:
       - "127.0.0.1:18080:8080"
     read_only: true

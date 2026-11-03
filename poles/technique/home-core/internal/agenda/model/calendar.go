@@ -9,10 +9,10 @@ type Calendar struct {
 }
 
 type Event struct {
-	ID        string    `json:"id"`
+	ID         string    `json:"id"`
 	CalendarID string    `json:"calendarId"`
-	Title     string    `json:"title"`
-	StartsAt  time.Time `json:"startsAt"`
-	EndsAt    time.Time `json:"endsAt"`
-	AllDay    bool      `json:"allDay"`
+	Title      string    `json:"title"`
+	StartsAt   time.Time `json:"startsAt"`
+	EndsAt     time.Time `json:"endsAt"`
+	AllDay     bool      `json:"allDay"`
 }

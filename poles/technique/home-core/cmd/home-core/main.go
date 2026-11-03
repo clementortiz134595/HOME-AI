@@ -10,6 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	agendahttp "github.com/clementortiz/home-ai/home-core/internal/agenda/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/agenda/adapters/outbound/applecaldav"
+	agendaapp "github.com/clementortiz/home-ai/home-core/internal/agenda/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
@@ -19,10 +22,20 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	provider := openmeteo.NewClient(&http.Client{Timeout: 10 * time.Second})
 	weatherService := weatherapp.NewGetWeather(provider)
+	calendarRegistry, err := calendarRegistryFromEnvironment()
+	if err != nil {
+		logger.Error("invalid Apple calendar configuration", "error", err)
+		os.Exit(1)
+	}
+	weatherHandler := weatherhttp.NewHandler(weatherService)
+	mux := http.NewServeMux()
+	mux.Handle("/healthz", weatherHandler)
+	mux.Handle("/v1/weather/", weatherHandler)
+	mux.Handle("/v1/calendars/apple/", agendahttp.NewHandler(calendarRegistry))
 
 	server := &http.Server{
 		Addr:              listenAddress(),
-		Handler:           weatherhttp.NewHandler(weatherService),
+		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      15 * time.Second,
@@ -48,6 +61,22 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info("home-core stopped")
+}
+
+func calendarRegistryFromEnvironment() (agendaapp.Registry, error) {
+	accounts, err := applecaldav.AccountsFromEnvironment()
+	if err != nil {
+		return agendaapp.Registry{}, err
+	}
+	providers := make(map[string]agendaapp.CalendarProvider, len(accounts))
+	for _, account := range accounts {
+		provider, err := applecaldav.NewClient(account, &http.Client{Timeout: 15 * time.Second})
+		if err != nil {
+			return agendaapp.Registry{}, err
+		}
+		providers[account.ID] = provider
+	}
+	return agendaapp.NewRegistry(providers), nil
 }
 
 func listenAddress() string {

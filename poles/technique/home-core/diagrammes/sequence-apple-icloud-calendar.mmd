@@ -1,0 +1,33 @@
+sequenceDiagram
+    actor utilisateur as Utilisateur
+    participant panel as Home Panel
+    participant api as Adaptateur HTTP Agenda
+    participant registry as Registre Comptes Agenda
+    participant agenda as Agenda Application
+    participant caldav as Adaptateur Apple CalDAV
+    participant apple as iCloud Calendar
+
+    utilisateur->>panel: Consulte un calendrier Apple
+    panel->>api: GET calendriers compte local
+    api->>registry: Resoudre le compte configure
+    registry-->>api: Port CalendarProvider
+    api->>agenda: ListCalendars
+    agenda->>caldav: Demander principal CalDAV
+    caldav->>apple: PROPFIND avec mot de passe specifique
+    apple-->>caldav: Principal et calendar home
+    caldav->>apple: PROPFIND collections calendrier
+    apple-->>caldav: Calendriers visibles
+    caldav-->>agenda: Calendriers normalises
+    agenda-->>api: Liste autorisee
+    api-->>panel: 200 ou erreur explicite
+
+    utilisateur->>panel: Ouvre une plage de dates
+    panel->>api: GET events calendar from to
+    api->>agenda: ListEvents plage explicite
+    agenda->>caldav: REPORT calendar query
+    caldav->>apple: Requete CalDAV lecture seule
+    apple-->>caldav: Evenements iCalendar
+    caldav->>caldav: Normaliser UID titre debut et fin
+    caldav-->>agenda: Evenements filtres
+    agenda-->>api: Vue agenda
+    api-->>panel: 200 ou 502 indisponible
