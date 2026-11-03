@@ -35,8 +35,12 @@ func (client *Transcriber) Transcribe(ctx context.Context, input model.VoiceInpu
 	if client.apiKey == "" {
 		return "", fmt.Errorf("google STT provider is not configured")
 	}
+	encoding := "WEBM_OPUS"
+	if strings.HasPrefix(strings.ToLower(input.ContentType), "audio/wav") || strings.HasPrefix(strings.ToLower(input.ContentType), "audio/x-wav") {
+		encoding = "LINEAR16"
+	}
 	payload := recognitionRequest{
-		Config: recognitionConfig{Encoding: "WEBM_OPUS", LanguageCode: client.language, Model: "latest_short"},
+		Config: recognitionConfig{Encoding: encoding, LanguageCode: client.language, Model: "latest_short"},
 		Audio:  recognitionAudio{Content: base64.StdEncoding.EncodeToString(input.Audio)},
 	}
 	body, err := json.Marshal(payload)

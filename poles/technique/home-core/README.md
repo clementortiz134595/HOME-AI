@@ -13,6 +13,7 @@ Le projet sera livré comme un monolithe Docker autonome, structuré en modules 
 - [Architecture modulaire et hexagonale](architecture/README.md)
 - [Diagrammes Mermaid de flux](diagrammes/README.md)
 - [Plan Docker](infrastructure/docker.md)
+- [Prototype wake word Mac](scripts/README.md)
 - [Module Weather — La Ciotat](modules/weather.md)
 - [Connecteur Apple iCloud Calendar](modules/apple-icloud-calendar.md)
 - [Module Home Control — appareils et protocoles](modules/home-control.md)
