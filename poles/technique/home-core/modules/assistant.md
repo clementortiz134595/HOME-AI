@@ -41,3 +41,9 @@ Le navigateur capture le microphone avec `MediaRecorder` et arrête la capture a
 - `HOME_CORE_STT_BASE_URL` : URL complète, par défaut `https://speech.googleapis.com/v1/speech:recognize`.
 - `HOME_CORE_STT_API_KEY` : clé Google Cloud conservée par Home Core, avec l’API Speech-to-Text activée.
 - `HOME_CORE_STT_LANGUAGE` : langue BCP-47, par défaut `fr-FR`.
+
+## Cerveau d'orchestration
+
+Le cas d'usage `NewAgent` assemble la chaîne applicative vocale : transcription, interprétation déterministe, politique de confirmation et registre d'outils. Les commandes `home.turn_on`/`home.turn_off` sont reconnues localement ; les demandes Gmail et Drive sont marquées sensibles et nécessitent une confirmation ; les autres phrases deviennent `assistant.question` et sont envoyées au fournisseur IA via le port `QuestionAnswerer`.
+
+Les intégrations concrètes sont injectées dans le registre par Home Core. Un outil absent retourne `unavailable` et ne déclenche aucune action implicite. Cette implémentation ne prétend pas fournir à elle seule les adaptateurs STT, TTS, Home Assistant, Gmail ou Drive : ceux-ci doivent être branchés séparément.
