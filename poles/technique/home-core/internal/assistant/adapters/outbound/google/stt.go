@@ -6,8 +6,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
 )
@@ -19,45 +21,55 @@ type Transcriber struct {
 	baseURL    string
 	apiKey     string
 	language   string
+	project    string
+	location   string
 }
 
-func NewTranscriber(httpClient *http.Client, baseURL, apiKey, language string) *Transcriber {
+func NewTranscriber(httpClient *http.Client, baseURL, apiKey, language, project, location string) *Transcriber {
 	if baseURL == "" {
-		baseURL = "https://speech.googleapis.com/v1/speech:recognize"
+		baseURL = "https://speech.googleapis.com/v2/projects"
 	}
 	if language == "" {
 		language = "fr-FR"
 	}
-	return &Transcriber{httpClient: httpClient, baseURL: baseURL, apiKey: apiKey, language: language}
+	if location == "" {
+		location = "eu"
+	}
+	return &Transcriber{httpClient: httpClient, baseURL: baseURL, apiKey: apiKey, language: language, project: project, location: location}
 }
 
 func (client *Transcriber) Transcribe(ctx context.Context, input model.VoiceInput) (string, error) {
+	started := time.Now()
+	slog.Info("stt request starting", "audio_bytes", len(input.Audio), "content_type", input.ContentType, "language", client.language)
+	defer func() { slog.Info("stt request finished", "duration_ms", time.Since(started).Milliseconds()) }()
 	if client.apiKey == "" {
 		return "", fmt.Errorf("google STT provider is not configured")
 	}
-	encoding := "WEBM_OPUS"
-	if strings.HasPrefix(strings.ToLower(input.ContentType), "audio/wav") || strings.HasPrefix(strings.ToLower(input.ContentType), "audio/x-wav") {
-		encoding = "LINEAR16"
+	if client.project == "" {
+		return "", fmt.Errorf("google STT project is not configured")
 	}
 	payload := recognitionRequest{
-		Config: recognitionConfig{Encoding: encoding, LanguageCode: client.language, Model: "latest_short"},
+		Config: recognitionConfig{AutoDecodingConfig: map[string]any{}, LanguageCodes: []string{client.language}, Model: "chirp_3"},
 		Audio:  recognitionAudio{Content: base64.StdEncoding.EncodeToString(input.Audio)},
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("encode google STT request: %w", err)
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, client.baseURL+"?key="+client.apiKey, bytes.NewReader(body))
+	url := fmt.Sprintf("%s/%s/locations/%s/recognizers/_:recognize?key=%s", strings.TrimRight(client.baseURL, "/"), client.project, client.location, client.apiKey)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("create google STT request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		slog.Error("stt http request failed", "error", err)
 		return "", fmt.Errorf("google STT request failed: %w", err)
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		slog.Error("stt provider returned error", "status", response.StatusCode)
 		return "", fmt.Errorf("google STT returned status %d", response.StatusCode)
 	}
 	var result recognitionResponse
@@ -81,9 +93,9 @@ type recognitionRequest struct {
 	Audio  recognitionAudio  `json:"audio"`
 }
 type recognitionConfig struct {
-	Encoding     string `json:"encoding"`
-	LanguageCode string `json:"languageCode"`
-	Model        string `json:"model"`
+	AutoDecodingConfig map[string]any `json:"autoDecodingConfig"`
+	LanguageCodes      []string       `json:"languageCodes"`
+	Model              string         `json:"model"`
 }
 type recognitionAudio struct {
 	Content string `json:"content"`

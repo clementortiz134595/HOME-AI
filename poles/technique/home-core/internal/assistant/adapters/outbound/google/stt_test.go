@@ -13,7 +13,7 @@ import (
 
 func TestTranscriberSendsGoogleSpeechRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Query().Get("key") != "secret" || request.URL.Path != "/v1/speech:recognize" {
+		if request.URL.Query().Get("key") != "secret" || request.URL.Path != "/v2/projects/project/locations/eu/recognizers/_:recognize" {
 			t.Fatalf("unexpected request: %s", request.URL.String())
 		}
 		var payload recognitionRequest
@@ -21,14 +21,14 @@ func TestTranscriberSendsGoogleSpeechRequest(t *testing.T) {
 			t.Fatal(err)
 		}
 		decoded, _ := base64.StdEncoding.DecodeString(payload.Audio.Content)
-		if string(decoded) != "audio" || payload.Config.Encoding != "WEBM_OPUS" || payload.Config.LanguageCode != "fr-FR" {
+		if string(decoded) != "audio" || payload.Config.Model != "chirp_3" || payload.Config.LanguageCodes[0] != "fr-FR" {
 			t.Fatalf("unexpected payload: %#v", payload)
 		}
 		_, _ = writer.Write([]byte(`{"results":[{"alternatives":[{"transcript":"Qui est Napoléon ?"}]}]}`))
 	}))
 	defer server.Close()
 
-	text, err := NewTranscriber(server.Client(), server.URL+"/v1/speech:recognize", "secret", "fr-FR").Transcribe(context.Background(), model.VoiceInput{Audio: []byte("audio")})
+	text, err := NewTranscriber(server.Client(), server.URL+"/v2/projects", "secret", "fr-FR", "project", "eu").Transcribe(context.Background(), model.VoiceInput{Audio: []byte("audio")})
 	if err != nil || text != "Qui est Napoléon ?" {
 		t.Fatalf("text=%q err=%v", text, err)
 	}

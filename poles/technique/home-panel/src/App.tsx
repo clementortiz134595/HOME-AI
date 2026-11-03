@@ -16,6 +16,7 @@ import {
   Utensils,
   Volume2,
 } from "lucide-react";
+import { Orb } from "@yogesharc/thinking-orbs";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -263,6 +264,25 @@ function WeatherCard() {
   );
 }
 
+type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
+
+function VoiceOverlay({ status }: { status: VoiceStatus }) {
+  if (status.state === "idle") return null;
+  const listening = status.state === "listening";
+  const answered = status.state === "answered";
+  const orb = listening ? <Orb state="using" variant="record" size={260} speed={1} label="Écoute en cours" /> : answered ? <Orb state="idle" size={260} speed={0.7} label="Réponse prête" /> : <Orb state="reasoning" size={260} speed={1} label="Réflexion en cours" />;
+  const label = listening ? "J’attends votre question" : status.state === "transcribing" ? "Je comprends votre question" : answered ? "Réponse prête" : "Création de la réponse";
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950 p-6 text-zinc-100">
+    <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="flex w-full max-w-4xl flex-col items-center justify-center text-center">
+      <div className="voice-orb-stage text-sky-300">{orb}</div>
+      <p className="mt-12 text-sm font-medium uppercase tracking-[0.28em] text-zinc-300">{label}</p>
+      {status.transcript && <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-300">« {status.transcript} »</p>}
+      {answered && status.answer && <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-400">{status.answer}</p>}
+      {!answered && <div className="mt-8 flex items-center gap-1.5"><span className="voice-dot" /><span className="voice-dot voice-dot-delay-1" /><span className="voice-dot voice-dot-delay-2" /></div>}
+    </div>
+  </div>;
+}
+
 function App() {
   const [view, setView] = useState<View>("dashboard");
   const [profile, setProfile] = useState<Profile>("Duo");
@@ -270,6 +290,26 @@ function App() {
   const [navOpen, setNavOpen] = useState(false);
   const calendarLabel = profile === "Duo" ? "Partagé" : "Personnel";
   const profileInitial = profile === "Duo" ? "D" : profile === "Clément" ? "C" : "L";
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
+
+  useEffect(() => {
+    let active = true;
+    const poll = async () => {
+      try {
+        const response = await fetch("/v1/assistant/voice/state", { cache: "no-store" });
+        if (active && response.ok) setVoiceStatus(await response.json() as VoiceStatus);
+      } catch { /* Home Core may be restarting. */ }
+    };
+    poll();
+    const timer = window.setInterval(poll, 300);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
+    if (voiceStatus.state === "idle") return;
+    const timeout = window.setTimeout(() => setVoiceStatus({ state: "idle" }), 20_000);
+    return () => window.clearTimeout(timeout);
+  }, [voiceStatus.state, voiceStatus.updatedAt]);
 
   return (
     <main className="h-screen overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950">
@@ -315,6 +355,7 @@ function App() {
         </section>
       </div>
       <AssistantOrb />
+      <VoiceOverlay status={voiceStatus} />
     </main>
   );
 }

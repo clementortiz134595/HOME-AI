@@ -2,16 +2,22 @@ sequenceDiagram
     participant Mic as Microphone local
     participant Wake as Détecteur local « Dis Jarvis »
     participant Core as Session assistant
-    participant STT as Adaptateur STT Gemini
+    participant STT as Adaptateur STT Google Chirp 3
+    participant Panel as Home Panel
 
     loop Tant que le foyer est actif
         Mic->>Wake: Trames audio locales
         alt Wake word absent
             Wake-->>Mic: Rien ne sort du domicile
         else Wake word détecté
+            Wake->>Core: État « listening »
+            Core-->>Panel: Statut vocal « listening »
             Wake->>Core: Ouvrir capture
-            Mic->>Core: Audio jusqu'au silence / timeout
+            Mic->>Core: Audio pré-roll + phrase jusqu'au silence / timeout
+            Core-->>Panel: Statut vocal « thinking »
             Core->>STT: Extrait audio uniquement
             STT-->>Core: Transcript
+            Core-->>Panel: Transcript affiché
+            Core-->>Panel: Réponse et statut « answered »
         end
     end

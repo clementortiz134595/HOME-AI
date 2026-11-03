@@ -39,7 +39,7 @@ func (client *Client) AnswerQuestion(ctx context.Context, question model.Questio
 		return model.Answer{}, fmt.Errorf("%w: provider is not configured", ErrUnavailable)
 	}
 	payload := generateRequest{
-		SystemInstruction: content{Parts: []part{{Text: "Réponds en français, clairement et honnêtement. Si tu ne sais pas, dis-le. Ne prétends pas avoir consulté une source externe."}}},
+		SystemInstruction: content{Parts: []part{{Text: "Réponds en français, clairement et honnêtement, en trois phrases maximum. Va droit au but pour une réponse vocale. Si tu ne sais pas, dis-le. Ne prétends pas avoir consulté une source externe."}}},
 		Contents:          []content{{Role: "user", Parts: []part{{Text: question.Text}}}},
 	}
 	body, err := json.Marshal(payload)

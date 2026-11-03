@@ -28,6 +28,7 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
 	provider := openmeteo.NewClient(&http.Client{Timeout: 10 * time.Second})
 	weatherService := weatherapp.NewGetWeather(provider)
 	calendarRegistry, err := calendarRegistryFromEnvironment()
@@ -53,8 +54,10 @@ func main() {
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	assistantService := assistantapp.NewAskQuestion(aiProvider)
-	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"))
+	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
 	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
+	voiceStatus := assistanthttp.NewVoiceStatusStore()
+	mux.Handle("/v1/assistant/voice/state", voiceStatus.Handler())
 	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewAskTranscribedQuestion(sttProvider, aiProvider)))
 	// Fails closed until a local VoiceEmbedder is configured.
 	voiceProfiles := assistantapp.NewMemoryVoiceProfileStore()

@@ -38,6 +38,14 @@ button { font: inherit; }
   animation: orb-float 1.5s ease-in-out infinite, orb-pulse 1.5s ease-in-out infinite;
 }
 
+.voice-overlay-orb { border-radius: 9999px; background: radial-gradient(circle at 35% 25%, #e0f2fe, #38bdf8 42%, #4f46e5 78%, #312e81); box-shadow: 0 0 0 14px rgba(56,189,248,.08), 0 0 80px rgba(59,130,246,.5); }
+.voice-overlay-listening { animation: voice-overlay-pulse 1.4s ease-in-out infinite; }
+.voice-overlay-thinking { animation: voice-overlay-pulse 2.4s ease-in-out infinite; }
+.voice-orb-stage { display: grid; min-height: 18rem; min-width: 18rem; place-items: center; }
+.voice-dot { width: .65rem; height: .65rem; border-radius: 9999px; background: #7dd3fc; animation: voice-dot-bounce 1s ease-in-out infinite; }
+.voice-dot-delay-1 { animation-delay: .15s; }
+.voice-dot-delay-2 { animation-delay: .3s; }
+
 .profile-orb {
   background: linear-gradient(135deg, #bae6fd 0%, #ddd6fe 100%);
   box-shadow: 0 0 0 5px rgba(125, 211, 252, 0.12), 0 8px 22px rgba(99, 102, 241, 0.24);
@@ -81,6 +89,9 @@ button { font: inherit; }
   50% { box-shadow: 0 0 0 14px rgba(125, 211, 252, 0.08), 0 0 42px rgba(99, 102, 241, 0.58); }
 }
 
+@keyframes voice-overlay-pulse { 0%, 100% { transform: scale(.96); opacity: .86; } 50% { transform: scale(1.04); opacity: 1; } }
+@keyframes voice-dot-bounce { 0%, 100% { transform: translateY(0); opacity: .35; } 50% { transform: translateY(-7px); opacity: 1; } }
+
 @media (prefers-reduced-motion: reduce) {
-  .orb, .orb-listening { animation: none; }
+  .orb, .orb-listening, .voice-overlay-listening, .voice-overlay-thinking, .voice-dot { animation: none; }
 }
