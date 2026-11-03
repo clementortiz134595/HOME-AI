@@ -23,3 +23,9 @@ docker compose -f compose.production.yaml up -d --build
 ```
 
 Elle est alors servie sur `http://localhost:8080`.
+
+Le panel appelle la météo via `/v1/weather/la-ciotat`. En développement, Vite
+redirige cette route vers Home Core sur `127.0.0.1:18080`. En production, le
+conteneur Home Core doit être joignable sous le nom Docker `home-core` sur le
+même réseau que le panel ; Nginx conserve ainsi une route same-origin pour le
+navigateur.
