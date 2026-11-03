@@ -7,6 +7,12 @@ services:
       HOME_CORE_PORT: "8080"
       APPLE_CALDAV_ACCOUNTS_JSON: ${APPLE_CALDAV_ACCOUNTS_JSON:-}
       HOME_CORE_ZIGBEE_FIXTURE: /app/fixtures/maison-demo.json
+      HOME_CORE_AI_BASE_URL: ${HOME_CORE_AI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+      HOME_CORE_AI_API_KEY: ${HOME_CORE_AI_API_KEY:-}
+      HOME_CORE_AI_MODEL: ${HOME_CORE_AI_MODEL:-gemini-2.5-flash-native-audio-preview-12-2025}
+      HOME_CORE_STT_BASE_URL: ${HOME_CORE_STT_BASE_URL:-https://speech.googleapis.com/v1/speech:recognize}
+      HOME_CORE_STT_API_KEY: ${HOME_CORE_STT_API_KEY:-}
+      HOME_CORE_STT_LANGUAGE: ${HOME_CORE_STT_LANGUAGE:-fr-FR}
     ports:
       - "127.0.0.1:18080:8080"
     volumes:
