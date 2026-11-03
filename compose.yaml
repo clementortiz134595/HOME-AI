@@ -5,6 +5,8 @@ services:
     build:
       context: ./poles/technique/home-core
     image: home-ai/home-core:local
+    env_file:
+      - ./poles/technique/home-core/.env
     environment:
       HOME_CORE_PORT: "8080"
       HOME_CORE_ZIGBEE_FIXTURE: /app/fixtures/maison-demo.json
