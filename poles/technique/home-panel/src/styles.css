@@ -47,6 +47,23 @@ button { font: inherit; }
   animation: profile-menu-in 160ms ease-out both;
 }
 
+.routine-card {
+  display: flex;
+  height: 5rem;
+  align-items: center;
+  gap: .75rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: .75rem;
+  padding: 0 1rem;
+  color: #d4d4d8;
+  font-size: .875rem;
+}
+.routine-evening { background: rgba(120, 102, 65, .22); }
+.routine-night { background: rgba(76, 78, 112, .22); }
+.routine-icon { display: grid; width: 2.25rem; height: 2.25rem; place-items: center; border-radius: .75rem; background: rgba(255,255,255,.08); color: #cbd5e1; }
+.cost-chart { display: flex; height: 14rem; align-items: end; gap: .5rem; border-bottom: 1px solid rgba(255,255,255,.08); background: repeating-linear-gradient(to bottom, transparent 0, transparent 24%, rgba(255,255,255,.05) 25%); padding: 1rem .5rem 0; }
+.cost-bar { flex: 1; min-width: .5rem; border-radius: .45rem .45rem 0 0; background: linear-gradient(to top, #4f46e5, #7dd3fc); opacity: .8; }
+
 @keyframes profile-menu-in {
   from { opacity: 0; transform: translateX(5px) scale(0.96); }
   to { opacity: 1; transform: translateX(0) scale(1); }

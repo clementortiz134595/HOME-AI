@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Bot,
+  BriefcaseBusiness,
   CalendarDays,
   CloudSun,
   Home,
@@ -10,6 +11,7 @@ import {
   Settings,
   Sparkles,
   ThermometerSun,
+  WalletCards,
   UserRound,
   Utensils,
   Volume2,
@@ -25,11 +27,12 @@ const rooms = [
   { name: "Salon", detail: "2 lumières · 21°", icon: Home, active: true, tone: "bg-amber-100 text-amber-700" },
   { name: "Cuisine", detail: "2 lumières · 20°", icon: Utensils, active: true, tone: "bg-rose-100 text-rose-700" },
   { name: "Chambre", detail: "2 lumières · 19°", icon: Sparkles, active: false, tone: "bg-violet-100 text-violet-700" },
+  { name: "Bureau", detail: "1 lumière · 20°", icon: BriefcaseBusiness, active: false, tone: "bg-teal-100 text-teal-700" },
 ];
 
 const profiles = ["Duo", "Clément", "Lise"] as const;
 type Profile = (typeof profiles)[number];
-type View = "dashboard" | "home" | "agenda";
+type View = "dashboard" | "home" | "agenda" | "profile" | "cost";
 
 const agendaItems = [
   { time: "20:30", title: "Dîner avec Lise", detail: "À la maison", owner: "Duo", tone: "bg-emerald-400" },
@@ -70,7 +73,7 @@ function HomeView() {
     const roomDevices = devices.filter((device) => device.room === room);
     const roomLights = roomDevices.filter((device) => device.kind === "light");
     const temperature = roomDevices.find((device) => states[device.id]?.temperatureC);
-    return { name: room, detail: `${roomLights.length} lumière${roomLights.length > 1 ? "s" : ""}${temperature ? ` · ${Math.round(states[temperature.id].temperatureC!)}°` : ""}`, icon: room === "Cuisine" ? Utensils : room === "Chambre" ? Sparkles : Home, active: roomLights.some((device) => states[device.id]?.switchOn), tone: room === "Cuisine" ? "bg-rose-100 text-rose-700" : room === "Chambre" ? "bg-violet-100 text-violet-700" : "bg-amber-100 text-amber-700", roomDevices };
+    return { name: room, detail: `${roomLights.length} lumière${roomLights.length > 1 ? "s" : ""}${temperature ? ` · ${Math.round(states[temperature.id].temperatureC!)}°` : ""}`, icon: room === "Cuisine" ? Utensils : room === "Chambre" ? Sparkles : room === "Bureau" ? BriefcaseBusiness : Home, active: roomLights.some((device) => states[device.id]?.switchOn), tone: room === "Cuisine" ? "bg-rose-100 text-rose-700" : room === "Chambre" ? "bg-violet-100 text-violet-700" : room === "Bureau" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700", roomDevices };
   });
 
   const toggleRoom = async (roomDevices: HomeDevice[], on: boolean) => {
@@ -102,6 +105,28 @@ function AgendaView({ profile }: { profile: Profile }) {
       <div className="grid gap-4 sm:grid-cols-3"><Card className="border-sky-400/30 bg-sky-400/10"><CardContent className="p-5"><p className="text-sm text-slate-400">Aujourd’hui</p><p className="mt-2 text-3xl font-semibold">1</p><p className="mt-1 text-sm text-slate-500">événement partagé</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Cette semaine</p><p className="mt-2 text-3xl font-semibold">4</p><p className="mt-1 text-sm text-slate-500">rendez-vous</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Synchronisation</p><p className="mt-2 text-lg font-semibold text-amber-300">Bientôt</p><p className="mt-1 text-sm text-slate-500">iCloud Calendar</p></CardContent></Card></div>
       <Card><CardHeader><div><p className="text-lg font-semibold">Novembre 2026</p><p className="mt-1 text-sm text-slate-500">Vue calendrier · {profile === "Duo" ? "foyer partagé" : "agenda de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="p-3 sm:p-6"><div className="grid grid-cols-7 gap-1 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px] sm:tracking-[0.12em]">{["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => <span key={day} className="py-1.5 sm:py-2">{day}</span>)}</div><div className="grid grid-cols-7 gap-1">{calendarDays.map((day) => { const event = eventByDay[day] as (typeof calendarEvents)[number] | undefined; return <div key={day} className={"min-h-12 rounded-lg border p-1 text-left sm:min-h-16 sm:rounded-xl sm:p-2 " + (day === 3 ? "border-sky-400/50 bg-sky-400/10" : "border-white/[0.06] bg-white/[0.02]")}><p className={day === 3 ? "text-xs font-semibold text-sky-200 sm:text-sm" : "text-xs text-slate-300 sm:text-sm"}>{day}</p>{event && <div className="mt-1 flex items-start gap-1 sm:mt-2 sm:gap-1.5"><span className={"mt-1 size-1.5 shrink-0 rounded-full " + event.tone} /><p className="hidden line-clamp-2 text-[11px] leading-4 text-slate-400 sm:block">{event.title}</p></div>}</div>; })}</div></CardContent></Card>
       <Card><CardHeader><div><p className="text-lg font-semibold">Prochains rendez-vous</p><p className="mt-1 text-sm text-slate-500">Vue {profile === "Duo" ? "partagée" : "de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{visibleItems.map((item) => <div key={item.title} className="flex items-center gap-4 rounded-2xl px-3 py-4 transition hover:bg-white/[0.04]"><span className={"size-2 shrink-0 rounded-full " + item.tone} /><div className="w-28 shrink-0 text-sm text-slate-400">{item.time}</div><div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="mt-1 text-sm text-slate-500">{item.detail}</p></div><Badge>{item.owner}</Badge></div>)}</CardContent></Card>
+    </div>
+  );
+}
+
+function ProfileView({ profile }: { profile: Profile }) {
+  return (
+    <div className="mt-8 max-w-3xl space-y-7">
+      <div><p className="text-sm text-slate-500">Espace personnel et partagé</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Profil</h2></div>
+      <Card><CardContent className="flex items-center gap-4 p-6"><div className="profile-orb grid size-16 place-items-center rounded-full text-xl font-semibold text-zinc-950">{profile[0]}</div><div><p className="text-lg font-semibold">{profile}</p><p className="mt-1 text-sm text-slate-500">Session active · préférences et données privées protégées</p></div></CardContent></Card>
+      <Card><CardHeader><div><p className="text-lg font-semibold">Préférences</p><p className="mt-1 text-sm text-slate-500">Personnalisez l’expérience de l’assistant.</p></div><Settings className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-3"><div className="flex items-center justify-between rounded-2xl bg-white/[0.04] p-4"><div><p className="font-medium">Voix de l’assistant</p><p className="mt-1 text-sm text-slate-500">Réponses courtes et naturelles</p></div><Badge>Par défaut</Badge></div><div className="flex items-center justify-between rounded-2xl bg-white/[0.04] p-4"><div><p className="font-medium">Mode partagé</p><p className="mt-1 text-sm text-slate-500">Les informations privées restent masquées</p></div><Badge>Activé</Badge></div></CardContent></Card>
+    </div>
+  );
+}
+
+function CostView() {
+  const points = [38, 42, 35, 52, 48, 61, 58, 72, 66, 78, 74, 86];
+  return (
+    <div className="mt-8 space-y-7">
+      <div><p className="text-sm text-slate-500">Pilotage de Home AI</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Coût</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Suivez les dépenses estimées liées aux modèles IA, à l’hébergement et aux services connectés.</p></div>
+      <div className="grid gap-4 sm:grid-cols-3"><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Ce mois-ci</p><p className="mt-2 text-3xl font-semibold">12,40 €</p><p className="mt-1 text-sm text-emerald-400">−8 % vs. mois dernier</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Projection</p><p className="mt-2 text-3xl font-semibold">18,70 €</p><p className="mt-1 text-sm text-slate-500">Estimation mensuelle</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Principal poste</p><p className="mt-2 text-lg font-semibold">Modèles IA</p><p className="mt-1 text-sm text-slate-500">72 % du total estimé</p></CardContent></Card></div>
+      <Card><CardHeader><div><p className="text-lg font-semibold">Évolution des coûts</p><p className="mt-1 text-sm text-slate-500">12 derniers mois · données estimatives</p></div><WalletCards className="size-5 text-slate-400" /></CardHeader><CardContent><div className="cost-chart" role="img" aria-label="Graphique de l’évolution estimée des coûts sur douze mois">{points.map((height, index) => <div key={index} className="cost-bar" style={{ height: `${height}%` }}><span /></div>)}</div><div className="mt-3 flex justify-between text-[11px] text-slate-500"><span>Déc. 25</span><span>Juin 26</span><span>Nov. 26</span></div></CardContent></Card>
+      <Card><CardHeader><div><p className="text-lg font-semibold">Répartition</p><p className="mt-1 text-sm text-slate-500">À connecter aux métriques Home Core</p></div></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-sky-400/10 p-4"><p className="text-sm text-sky-200">Modèles IA</p><p className="mt-2 text-xl font-semibold">8,90 €</p></div><div className="rounded-2xl bg-violet-400/10 p-4"><p className="text-sm text-violet-200">Hébergement</p><p className="mt-2 text-xl font-semibold">2,50 €</p></div><div className="rounded-2xl bg-teal-400/10 p-4"><p className="text-sm text-teal-200">Services</p><p className="mt-2 text-xl font-semibold">1,00 €</p></div></CardContent></Card>
     </div>
   );
 }
@@ -175,7 +200,7 @@ function AssistantOrb() {
         <span className="orb-core"><Bot className="size-5" /></span>
       </span>
       <span>
-        <span className="block max-w-64 truncate text-sm font-semibold">{listening ? "Je t’écoute" : "À l’écoute"}</span>
+        <span className="block max-w-64 truncate text-sm font-semibold">{listening ? "Je t’écoute" : "Parler à Home AI"}</span>
         <span className="block max-w-64 truncate text-xs text-slate-500">{status}</span>
       </span>
     </button>
@@ -254,8 +279,8 @@ function App() {
             <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-2xl bg-white text-zinc-950"><Sparkles className="size-5" /></div><div><p className="text-sm font-semibold tracking-wide">HOME AI</p><p className="text-xs text-zinc-500">Appartement</p></div></div>
             <Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button>
           </div>
-          <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant="ghost" className="w-full justify-start"><UserRound /> Profils</Button></nav>
-          <div className="mt-10 hidden rounded-2xl bg-white/[0.04] p-4 lg:block"><p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">Assistant</p><div className="mt-3 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-white/10 text-zinc-300 shadow-sm"><Volume2 className="size-4" /></div><p className="text-sm">Orb disponible</p></div></div>
+          <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant={view === "profile" ? "secondary" : "ghost"} onClick={() => { setView("profile"); setNavOpen(false); }} className={view === "profile" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><UserRound /> Profil</Button><Button variant={view === "cost" ? "secondary" : "ghost"} onClick={() => { setView("cost"); setNavOpen(false); }} className={view === "cost" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><WalletCards /> Coût</Button></nav>
+          <div className="mt-10 hidden rounded-2xl bg-white/[0.04] p-4 lg:block"><p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">Assistant vocal</p><div className="mt-3 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-sky-400/10 text-sky-200 shadow-sm"><Volume2 className="size-4" /></div><div><p className="text-sm">Prêt à échanger</p><p className="mt-0.5 text-xs text-zinc-500">Touchez l’orbite pour parler</p></div></div></div>
           <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:mt-10 lg:flex"><Settings /> Réglages</Button>
         </aside>
 
@@ -274,6 +299,8 @@ function App() {
 
           {view === "home" && <HomeView />}
           {view === "agenda" && <AgendaView profile={profile} />}
+          {view === "profile" && <ProfileView profile={profile} />}
+          {view === "cost" && <CostView />}
           <div className={view === "dashboard" ? "block" : "hidden"}>
           <div className="mt-8 grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
             <WeatherCard />
@@ -283,7 +310,7 @@ function App() {
           <div className="mt-7 flex items-center justify-between"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>
           <div className="mt-4 grid gap-4 md:grid-cols-3">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <Card key={name} className="transition-shadow hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]"><CardContent className="p-5"><div className="flex items-start justify-between"><div className={"grid size-10 place-items-center rounded-2xl " + tone}><Icon className="size-5" /></div><div className={active ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-slate-200"} /></div><p className="mt-8 text-base font-medium">{name}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></CardContent></Card>)}</div>
 
-          <div className="mt-7 grid gap-4 lg:grid-cols-2"><Card><CardHeader><div><p className="text-lg font-semibold">Routines</p><p className="mt-1 text-sm text-slate-500">Préparer la maison en un geste</p></div><MoreHorizontal className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-3"><div className="flex h-20 items-center gap-3 rounded-xl bg-amber-50 px-4 text-sm text-slate-800"><span className="grid size-9 place-items-center rounded-xl bg-amber-200 text-amber-800"><Lightbulb className="size-4" /></span> Soirée</div><div className="flex h-20 items-center gap-3 rounded-xl bg-sky-50 px-4 text-sm text-slate-800"><span className="grid size-9 place-items-center rounded-xl bg-sky-200 text-sky-800"><Sparkles className="size-4" /></span> Bonne nuit</div></CardContent></Card><Card><CardHeader><div><p className="text-lg font-semibold">Confort</p><p className="mt-1 text-sm text-slate-500">Données indicatives — non connectées</p></div><ThermometerSun className="size-5 text-slate-400" /></CardHeader><CardContent><div className="flex items-end justify-between"><div><p className="text-4xl font-semibold tracking-[-0.04em]">21°</p><p className="mt-1 text-sm text-slate-500">Température moyenne</p></div><div className="text-right"><p className="text-sm font-medium">Tout est normal</p><p className="mt-1 text-sm text-emerald-600">Aucune alerte</p></div></div></CardContent></Card></div>
+          <div className="mt-7 grid gap-4 lg:grid-cols-2"><Card><CardHeader><div><p className="text-lg font-semibold">Routines</p><p className="mt-1 text-sm text-slate-500">Préparer la maison en un geste</p></div><MoreHorizontal className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-3"><div className="routine-card routine-evening"><span className="routine-icon"><Lightbulb className="size-4" /></span> Soirée</div><div className="routine-card routine-night"><span className="routine-icon"><Sparkles className="size-4" /></span> Bonne nuit</div></CardContent></Card><Card><CardHeader><div><p className="text-lg font-semibold">Confort</p><p className="mt-1 text-sm text-slate-500">Données indicatives — non connectées</p></div><ThermometerSun className="size-5 text-slate-400" /></CardHeader><CardContent><div className="flex items-end justify-between"><div><p className="text-4xl font-semibold tracking-[-0.04em]">21°</p><p className="mt-1 text-sm text-slate-500">Température moyenne</p></div><div className="text-right"><p className="text-sm font-medium">Tout est normal</p><p className="mt-1 text-sm text-emerald-600">Aucune alerte</p></div></div></CardContent></Card></div>
           </div>
         </section>
       </div>
