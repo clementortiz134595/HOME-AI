@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   CalendarDays,
@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { getWeather, type WeatherReport } from "@/lib/weather";
 
 const rooms = [
   { name: "Salon", detail: "2 lumières · 21°", icon: Home, active: true, tone: "bg-amber-100 text-amber-700" },
@@ -147,6 +148,29 @@ function AssistantOrb() {
   );
 }
 
+function WeatherCard() {
+  const [weather, setWeather] = useState<WeatherReport | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getWeather(controller.signal).then(setWeather).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setUnavailable(true);
+    });
+    return () => controller.abort();
+  }, []);
+
+  return (
+    <Card className="relative overflow-hidden border-sky-400/30 bg-gradient-to-br from-sky-300 via-cyan-200 to-violet-300 text-zinc-950">
+      <div className="dot-field absolute inset-y-0 right-0 w-2/5 opacity-60" />
+      <CardContent className="relative flex min-h-[220px] flex-col justify-between p-6">
+        <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-zinc-700">{weather?.location.name ?? "Météo locale"}</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">{weather ? `${Math.round(weather.current.temperatureCelsius)}°` : "—"}</p></div><CloudSun className="size-12 text-amber-600" /></div>
+        <div className="flex items-end justify-between gap-4"><p className="max-w-64 text-sm leading-5 text-zinc-700">{weather?.current.summary ?? (unavailable ? "La météo est momentanément indisponible." : "Chargement de la météo…")}</p><span className="shrink-0 rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-zinc-700">{weather ? `Ressenti ${Math.round(weather.current.apparentCelsius)}°` : "Home Core"}</span></div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function App() {
   const [view, setView] = useState<View>("dashboard");
   const [profile, setProfile] = useState<Profile>("Duo");
@@ -184,7 +208,7 @@ function App() {
           {view === "agenda" && <AgendaView profile={profile} />}
           <div className={view === "dashboard" ? "block" : "hidden"}>
           <div className="mt-8 grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
-            <Card className="relative overflow-hidden border-sky-400/30 bg-gradient-to-br from-sky-300 via-cyan-200 to-violet-300 text-zinc-950"><div className="dot-field absolute inset-y-0 right-0 w-2/5 opacity-60" /><CardContent className="relative flex min-h-[220px] flex-col justify-between p-6"><div className="flex items-start justify-between"><div><p className="text-sm font-medium text-zinc-700">À la maison</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">21°</p></div><CloudSun className="size-12 text-amber-600" /></div><div className="flex items-end justify-between"><p className="max-w-64 text-sm leading-5 text-zinc-700">Une soirée calme. La maison est prête pour vous.</p><span className="rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-zinc-700">Commande vocale</span></div></CardContent></Card>
+            <WeatherCard />
             <Card><CardHeader><div><p className="text-sm font-medium">Prochain rendez-vous</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-lg font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-5 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="text-xs text-slate-400">Connecté bientôt à iCloud</span></div></CardContent></Card>
           </div>
 
