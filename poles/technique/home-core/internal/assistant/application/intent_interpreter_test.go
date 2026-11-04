@@ -62,7 +62,7 @@ func TestToolRegistryDelegatesAndRejectsUnknownTools(t *testing.T) {
 
 func TestConfirmationPolicyProtectsPrivateSources(t *testing.T) {
 	policy := DefaultConfirmationPolicy{}
-	if !policy.RequiresConfirmation(model.Intent{Name: "gmail.search"}) || !policy.RequiresConfirmation(model.Intent{Sensitive: true}) || policy.RequiresConfirmation(model.Intent{Name: "home.turn_on"}) {
+	if policy.RequiresConfirmation(model.Intent{Name: "gmail.search"}) || policy.RequiresConfirmation(model.Intent{Sensitive: true}) || policy.RequiresConfirmation(model.Intent{Name: "home.turn_on"}) {
 		t.Fatal("unexpected confirmation policy")
 	}
 }
