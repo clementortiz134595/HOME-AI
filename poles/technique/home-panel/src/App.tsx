@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BriefcaseBusiness,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   CloudSun,
   Home,
   Lightbulb,
@@ -45,14 +47,6 @@ const agendaItems = [
   { time: "Demain · 18:30", title: "Courses", detail: "Liste partagée", owner: "Duo", tone: "bg-amber-400" },
   { time: "Jeudi · 19:00", title: "Cours de yoga", detail: "Agenda de Lise", owner: "Lise", tone: "bg-violet-400" },
 ];
-
-const calendarDays = Array.from({ length: 35 }, (_, index) => index + 1);
-const calendarEvents: Record<number, { title: string; owner: string; tone: string }> = {
-  3: { title: "Dîner avec Lise", owner: "Duo", tone: "bg-emerald-400" },
-  4: { title: "Point projet", owner: "Clément", tone: "bg-sky-400" },
-  5: { title: "Courses", owner: "Duo", tone: "bg-amber-400" },
-  8: { title: "Cours de yoga", owner: "Lise", tone: "bg-violet-400" },
-};
 
 function HomeView() {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
@@ -102,12 +96,14 @@ function HomeView() {
 function AgendaView({ profile }: { profile: Profile }) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [syncState, setSyncState] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [displayMonth, setDisplayMonth] = useState(() => new Date());
+  const swipeStartX = useRef<number | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const from = new Date(displayMonth.getFullYear(), displayMonth.getMonth(), 1);
+    const to = new Date(displayMonth.getFullYear(), displayMonth.getMonth() + 1, 1);
+    setSyncState("loading");
     getCalendars("personal", controller.signal)
       .then((calendars) => Promise.all(calendars.map((calendar) => getCalendarEvents("personal", calendar.id, from, to, controller.signal))))
       .then((calendarEvents) => { setEvents(calendarEvents.flat()); setSyncState("ready"); })
@@ -115,17 +111,24 @@ function AgendaView({ profile }: { profile: Profile }) {
         if (!(error instanceof DOMException && error.name === "AbortError")) setSyncState("unavailable");
       });
     return () => controller.abort();
-  }, []);
+  }, [displayMonth]);
 
-  const eventByDay = Object.fromEntries(events.map((event) => [new Date(event.startsAt).getDate(), { title: event.title, owner: "Duo", tone: "bg-emerald-400" }]));
+  const year = displayMonth.getFullYear();
+  const month = displayMonth.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const leadingDays = new Date(year, month, 1).getDay();
+  const calendarCells = [...Array<null>(leadingDays).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)];
+  const monthLabel = displayMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const eventByDay = Object.fromEntries(events.map((event) => [new Date(event.startsAt).getDate(), { title: event.title, tone: "bg-emerald-400" }]));
   const visibleItems = events.slice().sort((a, b) => a.startsAt.localeCompare(b.startsAt)).slice(0, 6);
+  const changeMonth = (offset: number) => setDisplayMonth(new Date(year, month + offset, 1));
 
   return (
     <div className="agenda-view cost-view mt-6">
       <div><h2 className="text-3xl font-semibold tracking-[-0.04em]">Agenda</h2></div>
       <div className="grid grid-cols-3 gap-2 sm:gap-4"><Card className="border-sky-400/30 bg-sky-400/10"><CardContent className="p-3 sm:p-5"><p className="text-xs text-slate-400 sm:text-sm">Ce mois-ci</p><p className="mt-1 text-xl font-semibold sm:mt-2 sm:text-3xl">{events.length}</p><p className="mt-1 hidden text-sm text-slate-500 sm:block">événement{events.length > 1 ? "s" : ""}</p></CardContent></Card><Card><CardContent className="p-3 sm:p-5"><p className="text-xs text-slate-400 sm:text-sm">Profil</p><p className="mt-1 text-sm font-semibold sm:mt-2 sm:text-lg">{profile === "Duo" ? "Partagé" : profile}</p><p className="mt-1 hidden text-sm text-slate-500 sm:block">Filtrage local du panneau</p></CardContent></Card><Card><CardContent className="p-3 sm:p-5"><p className="text-xs text-slate-400 sm:text-sm">Sync</p><p className={"mt-1 text-sm font-semibold sm:mt-2 sm:text-lg " + (syncState === "ready" ? "text-emerald-300" : syncState === "loading" ? "text-amber-300" : "text-rose-300")}>{syncState === "ready" ? "OK" : syncState === "loading" ? "…" : "Non"}</p><p className="mt-1 hidden text-sm text-slate-500 sm:block">iCloud Calendar</p></CardContent></Card></div>
       <div className="agenda-content grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.85fr)] xl:items-start">
-        <Card className="agenda-calendar"><CardHeader><div><p className="text-lg font-semibold">Novembre 2026</p><p className="mt-1 text-sm text-slate-500">Vue calendrier · {profile === "Duo" ? "foyer partagé" : "agenda de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="p-3 sm:p-6"><div className="grid grid-cols-7 gap-1 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px] sm:tracking-[0.12em]">{["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => <span key={day} className="py-1.5 sm:py-2">{day}</span>)}</div><div className="grid grid-cols-7 gap-1">{calendarDays.map((day) => { const event = eventByDay[day] as (typeof calendarEvents)[number] | undefined; return <div key={day} className={"min-h-12 rounded-lg border p-1 text-left sm:min-h-16 sm:rounded-xl sm:p-2 " + (day === 3 ? "border-sky-400/50 bg-sky-400/10" : "border-white/[0.06] bg-white/[0.02]")}><p className={day === 3 ? "text-xs font-semibold text-sky-200 sm:text-sm" : "text-xs text-slate-300 sm:text-sm"}>{day}</p>{event && <div className="mt-1 flex items-start gap-1 sm:mt-2 sm:gap-1.5"><span className={"mt-1 size-1.5 shrink-0 rounded-full " + event.tone} /><p className="hidden line-clamp-2 text-[11px] leading-4 text-slate-400 sm:block">{event.title}</p></div>}</div>; })}</div></CardContent></Card>
+        <Card className="agenda-calendar" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const start = swipeStartX.current; const end = event.changedTouches[0]?.clientX; swipeStartX.current = null; if (start === null || end === undefined || Math.abs(end - start) < 48) return; changeMonth(end < start ? 1 : -1); }}><CardHeader><div><p className="text-lg font-semibold capitalize">{monthLabel}</p><p className="mt-1 text-sm text-slate-500">Vue calendrier · {profile === "Duo" ? "foyer partagé" : "agenda de " + profile}</p></div><div className="flex items-center gap-1"><Button variant="ghost" size="icon" aria-label="Mois précédent" onClick={() => changeMonth(-1)}><ChevronLeft /></Button><Button variant="ghost" size="icon" aria-label="Mois suivant" onClick={() => changeMonth(1)}><ChevronRight /></Button></div></CardHeader><CardContent className="p-3 sm:p-6"><div className="grid grid-cols-7 gap-1 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px] sm:tracking-[0.12em]">{["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => <span key={day} className="py-1.5 sm:py-2">{day}</span>)}</div><div className="grid grid-cols-7 gap-1">{calendarCells.map((day, index) => { if (day === null) return <div key={`empty-${index}`} aria-hidden="true" />; const event = eventByDay[day]; return <div key={day} className={"min-h-12 rounded-lg border p-1 text-left sm:min-h-16 sm:rounded-xl sm:p-2 " + (event ? "border-sky-400/50 bg-sky-400/10" : "border-white/[0.06] bg-white/[0.02]")}><p className={event ? "text-xs font-semibold text-sky-200 sm:text-sm" : "text-xs text-slate-300 sm:text-sm"}>{day}</p>{event && <div className="mt-1 flex items-start gap-1 sm:mt-2 sm:gap-1.5"><span className={"mt-1 size-1.5 shrink-0 rounded-full " + event.tone} /><p className="hidden line-clamp-2 text-[11px] leading-4 text-slate-400 sm:block">{event.title}</p></div>}</div>; })}</div></CardContent></Card>
         <Card className="max-sm:hidden"><CardHeader><div><p className="text-lg font-semibold">Prochains rendez-vous</p><p className="mt-1 text-sm text-slate-500">Vue {profile === "Duo" ? "partagée" : "de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{visibleItems.length === 0 && syncState === "ready" && <p className="py-4 text-sm text-slate-500">Aucun événement sur la période.</p>}{visibleItems.map((item) => <div key={item.id} className="flex items-center gap-3 rounded-2xl px-2 py-3 transition hover:bg-white/[0.04]"><span className="size-2 shrink-0 rounded-full bg-emerald-400" /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">{item.title || "Sans titre"}</p><Badge>Duo</Badge></div><p className="mt-1 text-sm text-slate-500">{item.allDay ? "Toute la journée" : new Date(item.startsAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p></div></div>)}</CardContent></Card>
       </div>
     </div>
