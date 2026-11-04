@@ -22,7 +22,7 @@ func TestTranscriberSendsGoogleSpeechRequest(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&payload); err != nil {
 			t.Fatal(err)
 		}
-		decoded, _ := base64.StdEncoding.DecodeString(payload.Audio.Content)
+		decoded, _ := base64.StdEncoding.DecodeString(payload.Content)
 		if string(decoded) != "audio" || payload.Config.Model != "chirp_3" || payload.Config.LanguageCodes[0] != "fr-FR" {
 			t.Fatalf("unexpected payload: %#v", payload)
 		}

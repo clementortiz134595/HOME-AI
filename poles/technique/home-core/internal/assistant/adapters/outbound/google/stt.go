@@ -58,8 +58,8 @@ func (client *Transcriber) Transcribe(ctx context.Context, input model.VoiceInpu
 		return "", fmt.Errorf("google STT OAuth credentials are not configured")
 	}
 	payload := recognitionRequest{
-		Config: recognitionConfig{AutoDecodingConfig: map[string]any{}, LanguageCodes: []string{client.language}, Model: "chirp_3"},
-		Audio:  recognitionAudio{Content: base64.StdEncoding.EncodeToString(input.Audio)},
+		Config:  recognitionConfig{AutoDecodingConfig: map[string]any{}, LanguageCodes: []string{client.language}, Model: "chirp_3"},
+		Content: base64.StdEncoding.EncodeToString(input.Audio),
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -104,16 +104,13 @@ func (client *Transcriber) Transcribe(ctx context.Context, input model.VoiceInpu
 }
 
 type recognitionRequest struct {
-	Config recognitionConfig `json:"config"`
-	Audio  recognitionAudio  `json:"audio"`
+	Config  recognitionConfig `json:"config"`
+	Content string            `json:"content"`
 }
 type recognitionConfig struct {
 	AutoDecodingConfig map[string]any `json:"autoDecodingConfig"`
 	LanguageCodes      []string       `json:"languageCodes"`
 	Model              string         `json:"model"`
-}
-type recognitionAudio struct {
-	Content string `json:"content"`
 }
 type recognitionResponse struct {
 	Results []struct {
