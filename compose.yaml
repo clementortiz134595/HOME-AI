@@ -37,6 +37,8 @@ services:
       - ./poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
       - ${HOME_AI_GOOGLE_ADC_FILE:-/Users/clement/.config/gcloud/application_default_credentials.json}:/run/secrets/google-adc.json:ro
       - home-core-secrets:/var/lib/home-core
+    ports:
+      - "127.0.0.1:18080:8080"
     expose:
       - "8080"
     read_only: true
