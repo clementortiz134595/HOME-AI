@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   BedDouble,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
   CloudSun,
   CookingPot,
   Home,
@@ -26,8 +28,6 @@ import {
 } from "lucide-react";
 import { Orb } from "@yogesharc/thinking-orbs";
 import { Ascii } from "ascii.rest/react";
-import { DayPicker } from "react-day-picker";
-import "react-day-picker/style.css";
 import * as earthrise from "ascii.rest/pieces/earthrise";
 
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +111,15 @@ function HomeView() {
   );
 }
 
+function CustomCalendar({ month, selected, eventDays, onMonthChange, onSelect }: { month: Date; selected?: Date; eventDays: Date[]; onMonthChange: (date: Date) => void; onSelect: (date: Date) => void }) {
+  const year = month.getFullYear(); const monthIndex = month.getMonth();
+  const leading = new Date(year, monthIndex, 1).getDay();
+  const days = new Date(year, monthIndex + 1, 0).getDate();
+  const cells = [...Array<null>(leading).fill(null), ...Array.from({ length: days }, (_, index) => index + 1)];
+  const hasEvent = (day: number) => eventDays.some((date) => date.getFullYear() === year && date.getMonth() === monthIndex && date.getDate() === day);
+  return <div className="custom-calendar"><div className="custom-calendar-header"><button type="button" aria-label="Mois précédent" onClick={() => onMonthChange(new Date(year, monthIndex - 1, 1))}><ChevronLeft /></button><p>{month.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</p><button type="button" aria-label="Mois suivant" onClick={() => onMonthChange(new Date(year, monthIndex + 1, 1))}><ChevronRight /></button></div><div className="custom-calendar-grid custom-calendar-weekdays">{["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => <span key={day}>{day}</span>)}</div><div className="custom-calendar-grid custom-calendar-days">{cells.map((day, index) => day === null ? <span key={`empty-${index}`} /> : <button key={day} type="button" onClick={() => onSelect(new Date(year, monthIndex, day))} className={(hasEvent(day) ? "has-event " : "") + (selected?.getFullYear() === year && selected.getMonth() === monthIndex && selected.getDate() === day ? "selected" : "")}>{day}</button>)}</div></div>;
+}
+
 function AgendaView({ profile }: { profile: Profile }) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [syncState, setSyncState] = useState<"loading" | "ready" | "unavailable">("loading");
@@ -142,7 +151,7 @@ function AgendaView({ profile }: { profile: Profile }) {
   return (
     <div className="agenda-view cost-view mt-2">
       <div className="agenda-content grid gap-4 md:grid-cols-[minmax(0,1.45fr)_minmax(230px,0.75fr)]">
-        <Card className="agenda-calendar bg-zinc-900/90" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const start = swipeStartX.current; const end = event.changedTouches[0]?.clientX; swipeStartX.current = null; if (start === null || end === undefined || Math.abs(end - start) < 48) return; changeMonth(end < start ? 1 : -1); }}><CardHeader><div><p className="text-lg font-semibold">Calendrier</p><p className="mt-1 text-sm text-slate-500">Vue foyer partagé</p></div><span role="status" aria-label={syncState === "ready" ? "Synchronisation connectée" : syncState === "loading" ? "Synchronisation en cours" : "Synchronisation indisponible"} className={"mt-1 size-2.5 shrink-0 rounded-full " + (syncState === "ready" ? "bg-emerald-400" : "bg-rose-400")} /></CardHeader><CardContent className="p-3 sm:p-6"><DayPicker mode="single" selected={selectedDate} onSelect={setSelectedDate} month={displayMonth} onMonthChange={setDisplayMonth} showOutsideDays={false} modifiers={{ event: eventDays }} modifiersClassNames={{ event: "agenda-event-day" }} className="agenda-day-picker" /></CardContent></Card>
+        <Card className="agenda-calendar bg-zinc-900/90" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const start = swipeStartX.current; const end = event.changedTouches[0]?.clientX; swipeStartX.current = null; if (start === null || end === undefined || Math.abs(end - start) < 48) return; changeMonth(end < start ? 1 : -1); }}><CardHeader><div><p className="text-lg font-semibold">Calendrier</p><p className="mt-1 text-sm text-slate-500">Vue foyer partagé</p></div><span role="status" aria-label={syncState === "ready" ? "Synchronisation connectée" : syncState === "loading" ? "Synchronisation en cours" : "Synchronisation indisponible"} className={"mt-1 size-2.5 shrink-0 rounded-full " + (syncState === "ready" ? "bg-emerald-400" : "bg-rose-400")} /></CardHeader><CardContent className="p-3 sm:p-6"><CustomCalendar month={displayMonth} selected={selectedDate} eventDays={eventDays} onMonthChange={setDisplayMonth} onSelect={setSelectedDate} /></CardContent></Card>
         <Card className={"agenda-events bg-zinc-900/90 " + (selectedDate ? "block" : "hidden md:block")}>{selectedDate && <><CardHeader><div><p className="text-lg font-semibold">{selectedDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</p><p className="mt-1 text-sm text-slate-500">Détail des événements</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{selectedEvents.length === 0 ? <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-500">Aucun événement ce jour.</p> : selectedEvents.map((item) => <div key={item.id} className="rounded-2xl bg-white/[0.04] p-3"><p className="text-sm font-medium">{item.title || "Sans titre"}</p><p className="mt-1 text-sm text-slate-500">{item.allDay ? "Toute la journée" : new Date(item.startsAt).toLocaleString("fr-FR", { timeStyle: "short" })}</p></div>)}</CardContent></>}</Card>
       </div>
     </div>

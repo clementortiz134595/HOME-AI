@@ -138,9 +138,9 @@ button { font: inherit; }
   grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
 }
-.agenda-content { min-height: 0; height: 100%; }
+.agenda-content { min-height: 0; height: 100%; grid-template-rows: minmax(0, 1fr); align-items: stretch; }
 .agenda-calendar,
-.agenda-events { min-height: 0; overflow: hidden; }
+.agenda-events { height: 100%; min-height: 0; overflow: hidden; }
 .agenda-calendar { display: flex; flex-direction: column; }
 .agenda-calendar > div:last-child { display: flex; min-height: 0; flex: 1; align-items: center; justify-content: center; }
 .agenda-day-picker { --rdp-accent-color: #7dd3fc; --rdp-accent-background-color: rgba(56, 189, 248, .16); --rdp-day-height: min(4.5rem, 11vh); --rdp-day-width: min(4.5rem, 11vw); width: 100%; margin: 0 auto; color: #e4e4e7; }
@@ -154,6 +154,18 @@ button { font: inherit; }
 .agenda-day-picker .rdp-button_previous,
 .agenda-day-picker .rdp-button_next { color: #cbd5e1; }
 .agenda-day-picker .agenda-event-day { border-radius: .65rem; background: rgba(56, 189, 248, .18); color: #e0f2fe; font-weight: 700; }
+.custom-calendar { display: flex; width: 100%; height: 100%; flex-direction: column; }
+.custom-calendar-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: .75rem; }
+.custom-calendar-header p { font-weight: 600; text-transform: capitalize; }
+.custom-calendar-header button { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: .75rem; color: #cbd5e1; }
+.custom-calendar-header button:hover { background: rgba(255,255,255,.08); }
+.custom-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .35rem; text-align: center; }
+.custom-calendar-weekdays { color: #94a3b8; font-size: .7rem; font-weight: 600; }
+.custom-calendar-days { flex: 1; grid-template-rows: repeat(6, minmax(0, 1fr)); margin-top: .5rem; }
+.custom-calendar-days button { min-height: 0; border-radius: .75rem; color: #e4e4e7; font-weight: 600; }
+.custom-calendar-days button:hover { background: rgba(255,255,255,.08); }
+.custom-calendar-days button.has-event { background: rgba(56,189,248,.16); color: #e0f2fe; }
+.custom-calendar-days button.selected { background: #e0f2fe; color: #0f172a; }
 
 .profile-view {
   display: grid;
