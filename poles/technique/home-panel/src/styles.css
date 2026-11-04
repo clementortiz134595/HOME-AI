@@ -145,3 +145,13 @@ button { font: inherit; }
   .dashboard-weather .weather-detail { display: none; }
   .dashboard-weather .weather-content { min-height: 7.5rem; }
 }
+
+@media (max-height: 520px) {
+  .dashboard-overview { margin-top: .25rem; }
+  .dashboard-weather .weather-content { min-height: 5rem; padding: .75rem; }
+  .dashboard-weather .text-5xl { margin-top: 0; font-size: 1.75rem; }
+  .dashboard-weather svg { width: 1.75rem; height: 1.75rem; }
+  .dashboard-weather .weather-detail,
+  .dashboard-weather span { display: none; }
+  .dashboard-room-summary { margin-top: .5rem; }
+}
