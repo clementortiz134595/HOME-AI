@@ -5,7 +5,6 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
 	workspace "github.com/clementortiz/home-ai/home-core/internal/workspace/model"
 	"testing"
-	"time"
 )
 
 type scriptedModel struct {
@@ -44,26 +43,14 @@ func (m *fakeMail) ReadMail(context.Context, string) (workspace.MailMessage, err
 func call(name, key, value string) model.Content {
 	return model.Content{Role: "model", Parts: []model.Part{{FunctionCall: &model.ToolCall{Name: name, Args: map[string]any{key: value}}, ThoughtSignature: "signature"}}}
 }
-func TestToolConversationConfirmationAndRead(t *testing.T) {
+func TestToolConversationAutoApprovesWorkspaceAndReads(t *testing.T) {
 	provider := &scriptedModel{turns: []model.Content{call("gmail_search", "query", "from:edf"), call("gmail_read", "id", "abc"), {Parts: []model.Part{{Text: "42 euros"}}}}}
 	mail := &fakeMail{}
 	agent := NewToolConversation(provider, mail)
 	ctx := context.Background()
 	first, err := agent.AnswerQuestion(ctx, model.Question{Text: "Lis la facture EDF"})
-	if err != nil || first.Status != model.ActionConfirmation || mail.searches != 0 {
+	if err != nil || first.Text != "42 euros" || first.Status != model.ActionExecuted || mail.searches != 1 || mail.reads != 1 {
 		t.Fatalf("first=%+v err=%v", first, err)
-	}
-	second, err := agent.AnswerQuestion(ctx, model.Question{ConfirmationID: first.ConfirmationID})
-	if err != nil || second.Status != model.ActionConfirmation || mail.searches != 1 || mail.reads != 0 {
-		t.Fatalf("second=%+v err=%v", second, err)
-	}
-	replay, _ := agent.AnswerQuestion(ctx, model.Question{ConfirmationID: first.ConfirmationID})
-	if replay.Status != model.ActionRefused {
-		t.Fatal("replay accepted")
-	}
-	answer, err := agent.AnswerQuestion(ctx, model.Question{ConfirmationID: second.ConfirmationID})
-	if err != nil || answer.Text != "42 euros" || mail.reads != 1 {
-		t.Fatalf("answer=%+v err=%v", answer, err)
 	}
 	if provider.seen[1][1].Parts[0].ThoughtSignature != "signature" || provider.seen[2][4].Parts[0].FunctionResponse.Name != "gmail_read" {
 		t.Fatal("conversation lost")
@@ -78,33 +65,13 @@ func TestToolConversationRejectsInvalidCalls(t *testing.T) {
 		}
 	}
 }
-func TestToolConfirmationExpires(t *testing.T) {
-	agent := NewToolConversation(&scriptedModel{turns: []model.Content{call("gmail_search", "query", "x")}}, &fakeMail{})
-	answer, _ := agent.AnswerQuestion(context.Background(), model.Question{Text: "test"})
-	p := agent.pending[answer.ConfirmationID]
-	p.expires = time.Now().Add(-time.Minute)
-	agent.pending[answer.ConfirmationID] = p
-	answer, _ = agent.AnswerQuestion(context.Background(), model.Question{ConfirmationID: answer.ConfirmationID})
-	if answer.Status != model.ActionRefused {
-		t.Fatal("expired accepted")
-	}
-}
-
-func TestToolConversationCanRememberWorkspaceApproval(t *testing.T) {
+func TestToolConversationAutoApprovesDrive(t *testing.T) {
 	drive := &fakeDrive{}
-	provider := &scriptedModel{turns: []model.Content{call("drive_search", "query", "assurance"), {Parts: []model.Part{{Text: "Le document est trouvé."}}}, call("drive_search", "query", "habitation"), {Parts: []model.Part{{Text: "Le second document est trouvé."}}}}}
+	provider := &scriptedModel{turns: []model.Content{call("drive_search", "query", "assurance"), {Parts: []model.Part{{Text: "Le document est trouvé."}}}}}
 	agent := NewToolConversation(provider, nil, drive)
 	first, err := agent.AnswerQuestion(context.Background(), model.Question{Text: "Trouve mon assurance"})
-	if err != nil || first.Status != model.ActionConfirmation {
+	if err != nil || first.Text != "Le document est trouvé." || first.Status != model.ActionExecuted || drive.searches != 1 {
 		t.Fatalf("first=%+v err=%v", first, err)
-	}
-	second, err := agent.AnswerQuestion(context.Background(), model.Question{ConfirmationID: first.ConfirmationID, RememberSession: true})
-	if err != nil || second.Text != "Le document est trouvé." || drive.searches != 1 {
-		t.Fatalf("second=%+v err=%v searches=%d", second, err, drive.searches)
-	}
-	third, err := agent.AnswerQuestion(context.Background(), model.Question{Text: "Trouve aussi habitation"})
-	if err != nil || third.Text != "Le second document est trouvé." || drive.searches != 2 {
-		t.Fatalf("third=%+v err=%v searches=%d", third, err, drive.searches)
 	}
 }
 
