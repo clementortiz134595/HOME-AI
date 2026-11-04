@@ -152,6 +152,7 @@ function CostView() {
 }
 
 const wakeEvent = "home-ai:wake";
+const activateWakeEvent = "home-ai:activate-wake";
 const voiceTranscriptEvent = "home-ai:voice-transcript";
 type WakeEventDetail = { stream: MediaStream };
 type VoiceTranscriptDetail = { transcript: string };
@@ -190,7 +191,6 @@ function downsample(samples: Float32Array, sourceRate: number, targetRate = 1600
 }
 
 function WakeWordListener() {
-  const [activationRequired, setActivationRequired] = useState(true);
   const activate = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
@@ -239,7 +239,6 @@ function WakeWordListener() {
             }
           }).finally(() => { sending = false; });
         };
-        setActivationRequired(false);
       } catch (error) {
         console.warn("Activation de Bonjour Jarvis impossible", error);
         if (processor) processor.onaudioprocess = null;
@@ -249,27 +248,25 @@ function WakeWordListener() {
         context = null;
         stream?.getTracks().forEach((track) => track.stop());
         stream = null;
-        if (active) setActivationRequired(true);
       } finally {
         starting = false;
       }
     };
 
     activate.current = start;
+    const handleActivation = () => { void start(); };
+    window.addEventListener(activateWakeEvent, handleActivation);
     return () => {
       active = false;
       activate.current = null;
+      window.removeEventListener(activateWakeEvent, handleActivation);
       if (processor) processor.onaudioprocess = null;
       processor?.disconnect();
       void context?.close();
       stream?.getTracks().forEach((track) => track.stop());
     };
   }, []);
-
-  if (!activationRequired) return null;
-  return <button type="button" onClick={() => void activate.current?.()} className="fixed bottom-6 right-6 z-30 rounded-full border border-amber-300/40 bg-zinc-900 px-4 py-2 text-sm font-medium text-amber-100 shadow-xl">
-    Autoriser le micro pour Bonjour Jarvis
-  </button>;
+  return null;
 }
 
 function AssistantOrb() {
@@ -364,9 +361,17 @@ function AssistantOrb() {
     return () => window.removeEventListener(wakeEvent, handleWake);
   }, [start]);
 
-  // Capture is triggered exclusively by the wake word. The manual control
-  // stays removed, but this component must remain mounted to handle wakeEvent.
-  return null;
+  const activate = () => {
+    setStatus("Activation du micro…");
+    window.dispatchEvent(new Event(activateWakeEvent));
+  };
+
+  return <Card className="dashboard-assistant-card overflow-hidden border-sky-400/25 bg-gradient-to-br from-sky-500/15 via-indigo-500/10 to-zinc-900">
+    <button type="button" onClick={activate} className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center outline-none transition hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-sky-300">
+      <Orb state={listening ? "using" : "waiting"} size={96} dotSize={0.7} speed={listening ? 1 : 0.7} label="Assistant vocal" />
+      <div><p className="text-lg font-semibold">Bonjour Jarvis</p><p className="mt-1 text-xs text-slate-400">{listening ? status : "Touchez pour activer le micro"}</p></div>
+    </button>
+  </Card>;
 }
 
 function VoiceEnrollment({ profile }: { profile: Profile }) {
@@ -529,7 +534,6 @@ function App() {
             <Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button>
           </div>
           <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant={view === "profile" ? "secondary" : "ghost"} onClick={() => { setView("profile"); setNavOpen(false); }} className={view === "profile" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><UserRound /> Profil</Button><Button variant={view === "cost" ? "secondary" : "ghost"} onClick={() => { setView("cost"); setNavOpen(false); }} className={view === "cost" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><WalletCards /> Coût</Button></nav>
-          <div className="mt-10 hidden place-items-center text-sky-200 lg:grid"><Orb state="waiting" size={144} dotSize={0.8} speed={0.7} label="Assistant vocal en attente" /></div>
           <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:mt-10 lg:flex"><Settings /> Réglages</Button>
         </aside>
 
@@ -562,7 +566,7 @@ function App() {
             <WeatherCard />
             <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <button key={name} type="button" onClick={() => setView("home")} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08]"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{name}</span><span className="block truncate text-xs text-slate-500">{detail}</span></span></button>)}</CardContent></Card>
             <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappel</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-xl font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-4 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="text-xs text-slate-400">Prochain événement</span></div></CardContent></Card>
-            <Card className="dashboard-cost-card"><CardHeader><div><p className="text-lg font-semibold">Coûts</p><p className="mt-1 text-sm text-slate-500">Estimation du mois</p></div><WalletCards className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-4xl font-semibold tracking-[-0.04em]">12,40 €</p><p className="mt-1 text-sm text-emerald-400">−8 % vs. mois dernier</p><Button variant="ghost" className="mt-4 h-8 px-2 text-xs" onClick={() => setView("cost")}>Voir le détail</Button></CardContent></Card>
+            <AssistantOrb />
           </div>
 
           <div className="hidden"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>
@@ -573,7 +577,6 @@ function App() {
         </section>
       </div>
       <WakeWordListener />
-      <AssistantOrb />
       <VoiceOverlay status={voiceStatus} />
     </main>
   );

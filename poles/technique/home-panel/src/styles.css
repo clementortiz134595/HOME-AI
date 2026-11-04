@@ -145,6 +145,7 @@ button { font: inherit; }
 .dashboard-compact-grid .weather-content { min-height: 0; height: 100%; }
 .dashboard-compact-grid .dashboard-rooms-card > div:last-child { padding-top: 0; }
 .dashboard-compact-grid .dashboard-rooms-card button { min-height: 3.25rem; }
+.dashboard-assistant-card button { min-height: 0; }
 
 @media (min-width: 640px) {
   .dashboard-compact-grid { height: calc(100% - 4rem); gap: 1rem; margin-top: 1rem; }
@@ -158,7 +159,8 @@ button { font: inherit; }
   .dashboard-compact-grid .weather-detail,
   .dashboard-compact-grid .weather-content span,
   .dashboard-compact-grid .dashboard-reminder-card span:not(.rounded-full),
-  .dashboard-compact-grid .dashboard-cost-card .text-emerald-400 { display: none; }
+  .dashboard-assistant-card p:last-child { display: none; }
+  .dashboard-assistant-card .orb { transform: scale(.8); }
   .dashboard-compact-grid .weather-content .text-5xl { font-size: 2rem; }
   .dashboard-compact-grid .dashboard-rooms-card button { min-height: 2.5rem; padding: .25rem; }
   .dashboard-compact-grid .dashboard-rooms-card .text-xs { display: none; }
