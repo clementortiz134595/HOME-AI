@@ -123,13 +123,18 @@ button { font: inherit; }
 .home-rooms > section { min-height: 0; overflow: hidden; }
 
 .agenda-view {
+  flex: 1 1 auto;
+  height: auto;
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
 }
-.agenda-content,
-.agenda-calendar { min-height: 0; overflow: hidden; }
-.agenda-day-picker { --rdp-accent-color: #7dd3fc; --rdp-accent-background-color: rgba(56, 189, 248, .16); --rdp-day-height: 2.7rem; --rdp-day-width: 2.7rem; margin: 0 auto; color: #e4e4e7; }
+.agenda-content { min-height: 0; height: 100%; }
+.agenda-calendar,
+.agenda-events { min-height: 0; overflow: hidden; }
+.agenda-calendar { display: flex; flex-direction: column; }
+.agenda-calendar > div:last-child { display: flex; min-height: 0; flex: 1; align-items: center; justify-content: center; }
+.agenda-day-picker { --rdp-accent-color: #7dd3fc; --rdp-accent-background-color: rgba(56, 189, 248, .16); --rdp-day-height: min(3.5rem, 8vh); --rdp-day-width: min(3.5rem, 8vw); margin: 0 auto; color: #e4e4e7; }
 .agenda-day-picker .rdp-caption_label { color: #f4f4f5; font-weight: 600; text-transform: capitalize; }
 .agenda-day-picker .rdp-weekday { color: #94a3b8; }
 .agenda-day-picker .rdp-button_previous,
