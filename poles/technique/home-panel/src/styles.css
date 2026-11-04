@@ -100,6 +100,39 @@ button { font: inherit; }
 .cost-breakdown { display: none; }
 .cost-view .cost-chart { height: 9rem; }
 
+/* Secondary pages share the viewport with the persistent header.  They never
+   scroll: their content contracts, then less essential details are hidden. */
+.home-view,
+.agenda-view,
+.profile-view {
+  height: calc(100% - 3.5rem);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.home-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, .8fr) minmax(0, 1fr) auto;
+  gap: 1rem;
+}
+.home-view > * { min-height: 0; }
+.home-rooms > section { min-height: 0; overflow: hidden; }
+
+.agenda-view {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 1rem;
+}
+.agenda-content,
+.agenda-calendar { min-height: 0; overflow: hidden; }
+
+.profile-view {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 1rem;
+}
+.profile-view > section { min-height: 0; overflow: hidden; }
+
 .dashboard-compact-grid {
   /* The section already owns the viewport height: subtract only its header. */
   height: calc(100% - 3.75rem);
@@ -218,6 +251,11 @@ button { font: inherit; }
   .dashboard-weather .min-h-\[220px\] { min-height: 10rem; }
   .dashboard-weather .text-5xl { font-size: 2.5rem; }
   .dashboard-weather .weather-content { min-height: 10rem; }
+  .home-view,
+  .profile-view { gap: .75rem; }
+  .home-view > section:last-child { display: none; }
+  .agenda-calendar > div:last-child { padding: .75rem; }
+  .agenda-calendar .min-h-12 { min-height: 2.5rem; }
 }
 
 @media (min-width: 640px) and (max-height: 800px) {
@@ -246,6 +284,22 @@ button { font: inherit; }
   .dashboard-weather .p-6 { padding: .875rem; }
   .dashboard-next .mt-5 { margin-top: .75rem; }
   .dashboard-weather .weather-content { min-height: 8.5rem; }
+  .home-view { grid-template-rows: auto minmax(0, .65fr) minmax(0, 1fr); }
+  .home-view > section:nth-child(2) > div:last-child { padding: .875rem; }
+  .home-view > section:nth-child(2) .text-4xl { font-size: 1.5rem; }
+  .home-rooms > section > div { padding: .625rem; }
+  .home-rooms > section .mt-4 { margin-top: .5rem; }
+  .home-rooms > section .sm\:mt-8 { margin-top: .5rem; }
+  .agenda-view { grid-template-rows: auto minmax(0, 1fr); }
+  .agenda-view > section:nth-child(2),
+  .agenda-content > section:last-child { display: none; }
+  .agenda-calendar > div:first-child { padding: .75rem .875rem .25rem; }
+  .agenda-calendar > div:first-child p:last-child { display: none; }
+  .agenda-calendar > div:last-child { padding: .5rem .75rem .75rem; }
+  .agenda-calendar .min-h-12 { min-height: 2rem; }
+  .profile-view { grid-template-rows: auto auto minmax(0, 1fr); }
+  .profile-view > section > div { padding: .875rem; }
+  .profile-view > section:last-child p.text-sm { display: none; }
 }
 
 @media (max-height: 620px) {
@@ -254,6 +308,20 @@ button { font: inherit; }
   .dashboard-weather .text-5xl { font-size: 2rem; }
   .dashboard-weather .weather-detail { display: none; }
   .dashboard-weather .weather-content { min-height: 7.5rem; }
+  .home-view { gap: .5rem; }
+  .home-view > div:first-child p { display: none; }
+  .home-view > section:nth-child(2) { display: none; }
+  .home-rooms > section > div { padding: .5rem; }
+  .home-rooms > section .text-xs { display: none; }
+  .home-rooms > section button { padding-left: .375rem; padding-right: .375rem; }
+  .agenda-calendar > div:first-child { display: none; }
+  .agenda-calendar > div:last-child { padding: .375rem .5rem; }
+  .agenda-calendar .min-h-12 { min-height: 1.65rem; }
+  .agenda-calendar .py-1\.5 { padding-top: .25rem; padding-bottom: .25rem; }
+  .profile-view > section:nth-child(2) { display: none; }
+  .profile-view > section:last-child > div:first-child { padding: .625rem .75rem .25rem; }
+  .profile-view > section:last-child > div:last-child { padding: .25rem .75rem .75rem; }
+  .profile-view > section:last-child .rounded-2xl { padding: .625rem; }
 }
 
 @media (max-height: 520px) {
