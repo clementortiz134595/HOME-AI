@@ -133,6 +133,18 @@ button { font: inherit; }
 }
 .profile-view > section { min-height: 0; overflow: hidden; }
 
+.cost-page {
+  height: calc(100% - 3.5rem);
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 1rem;
+  overflow: hidden;
+}
+.cost-page > section { min-height: 0; overflow: hidden; }
+.cost-page > div:nth-child(2) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cost-page .cost-chart { height: clamp(5rem, 19vh, 9rem); }
+
 .dashboard-compact-grid {
   /* The section already owns the viewport height: subtract only its header. */
   height: calc(100% - 2.75rem);
@@ -256,6 +268,10 @@ button { font: inherit; }
   .home-view > section:last-child { display: none; }
   .agenda-calendar > div:last-child { padding: .75rem; }
   .agenda-calendar .min-h-12 { min-height: 2.5rem; }
+  .cost-page { gap: .75rem; }
+  .cost-page .cost-description { display: none; }
+  .cost-page > section > div { padding: .875rem; }
+  .cost-page .cost-chart { height: clamp(4.5rem, 16vh, 7rem); }
 }
 
 @media (min-width: 640px) and (max-height: 800px) {
@@ -300,6 +316,10 @@ button { font: inherit; }
   .profile-view { grid-template-rows: auto auto minmax(0, 1fr); }
   .profile-view > section > div { padding: .875rem; }
   .profile-view > section:last-child p.text-sm { display: none; }
+  .cost-page { grid-template-rows: auto auto minmax(0, 1fr); gap: .5rem; }
+  .cost-page > div:first-child p:first-child { display: none; }
+  .cost-page > section > div { padding: .625rem .75rem; }
+  .cost-page .cost-chart { height: 4.5rem; }
 }
 
 @media (max-height: 620px) {
@@ -322,6 +342,16 @@ button { font: inherit; }
   .profile-view > section:last-child > div:first-child { padding: .625rem .75rem .25rem; }
   .profile-view > section:last-child > div:last-child { padding: .25rem .75rem .75rem; }
   .profile-view > section:last-child .rounded-2xl { padding: .625rem; }
+  .cost-page > section:nth-child(2) > section:nth-child(3) { display: none; }
+  .cost-page .cost-chart { height: 3.5rem; }
+}
+
+@media (max-width: 639px) {
+  .cost-page { gap: .75rem; }
+  .cost-page > div:nth-child(2) > section > div { padding: .625rem; }
+  .cost-page > div:nth-child(2) .text-3xl { font-size: 1.125rem; }
+  .cost-page > div:nth-child(2) .text-lg { font-size: .875rem; }
+  .cost-page > div:nth-child(2) .text-sm:not(:first-child) { display: none; }
 }
 
 @media (max-height: 520px) {
