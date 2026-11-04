@@ -26,10 +26,15 @@ func (command VoiceCommand) ExecuteWithProgress(ctx context.Context, input model
 	if err != nil {
 		return model.Answer{}, "", err
 	}
-	if progress != nil { progress("thinking", transcript) }
+	if progress != nil {
+		progress("thinking", transcript)
+	}
 	result, err := command.agent.ExecuteTranscript(ctx, transcript)
 	if err != nil {
 		return model.Answer{}, transcript, err
+	}
+	if result.Answer != nil {
+		return *result.Answer, transcript, nil
 	}
 	return model.Answer{Text: result.Message, Provider: "home-core", Model: "deterministic-tools", Generated: false}, transcript, nil
 }

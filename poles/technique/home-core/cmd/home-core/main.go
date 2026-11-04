@@ -18,16 +18,16 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/google"
 	sherpakws "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/sherpa"
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
-	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
 	choreshttp "github.com/clementortiz/home-ai/home-core/internal/chores/adapters/inbound/http"
+	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
+	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
-	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	workspacehttp "github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/inbound/http"
 	gmail "github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/outbound/gmail"
 )
@@ -58,24 +58,30 @@ func main() {
 	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
-	assistantService := assistantapp.NewAskQuestion(aiProvider)
+	var mailReader assistantapp.MailReader
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
-	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
 	tools := map[string]assistantapp.ActionExecutor{}
 	choresService := choresapp.NewService()
 	mux.Handle("/v1/chores/", choreshttp.NewHandler(choresService))
 	remindersService := remindersapp.NewService()
 	choreTool := assistantapp.NewChoreTool(choresService)
 	reminderTool := assistantapp.NewReminderTool(remindersService)
-	for _, name := range []string{"chores.create", "chores.update", "chores.delete"} { tools[name] = choreTool }
-	for _, name := range []string{"reminders.create", "reminders.update", "reminders.delete"} { tools[name] = reminderTool }
+	for _, name := range []string{"chores.create", "chores.update", "chores.delete"} {
+		tools[name] = choreTool
+	}
+	for _, name := range []string{"reminders.create", "reminders.update", "reminders.delete"} {
+		tools[name] = reminderTool
+	}
 	if gmailProvider, gmailErr := gmail.NewClient(&http.Client{Timeout: 20 * time.Second}, os.Getenv("HOME_CORE_GMAIL_CLIENT_ID"), os.Getenv("HOME_CORE_GMAIL_CLIENT_SECRET"), os.Getenv("HOME_CORE_GMAIL_REDIRECT_URL"), os.Getenv("HOME_CORE_GMAIL_TOKEN_PATH")); gmailErr == nil {
-		tools["gmail.search"] = assistantapp.NewGmailSearchTool(gmailProvider)
+		mailReader = gmailProvider
 		mux.Handle("/v1/workspace/google/gmail/oauth/", workspacehttp.NewGmailOAuthHandler(gmailProvider))
 	} else {
 		logger.Warn("Gmail is not configured", "error", gmailErr)
 	}
-	voiceAgent := assistantapp.NewAgent(aiProvider, aiProvider, tools, sttProvider)
+	conversation := assistantapp.NewToolConversation(aiProvider, mailReader)
+	assistantService := assistantapp.NewAskQuestion(conversation)
+	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
+	voiceAgent := assistantapp.NewAgent(conversation, aiProvider, tools, sttProvider)
 	voiceState := assistanthttp.NewVoiceStateHandler()
 	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewVoiceCommand(sttProvider, voiceAgent), voiceState))
 	mux.Handle("/v1/assistant/voice/state", voiceState)
@@ -97,7 +103,7 @@ func main() {
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      15 * time.Second,
+		WriteTimeout:      120 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 

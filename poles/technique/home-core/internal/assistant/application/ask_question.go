@@ -28,7 +28,7 @@ func NewAskQuestion(answerer QuestionAnswerer) AskQuestion {
 
 func (useCase AskQuestion) Execute(ctx context.Context, question model.Question) (model.Answer, error) {
 	question.Text = strings.TrimSpace(question.Text)
-	if question.Text == "" {
+	if question.Text == "" && question.ConfirmationID == "" {
 		return model.Answer{}, ErrEmptyQuestion
 	}
 	return useCase.answerer.AnswerQuestion(ctx, question)
