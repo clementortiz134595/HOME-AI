@@ -26,6 +26,8 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
 	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/insights/adapters/outbound/twelvedata"
+	insightsapp "github.com/clementortiz/home-ai/home-core/internal/insights/application"
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
@@ -59,7 +61,8 @@ func main() {
 	}
 	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
-	mux.Handle("/v1/insights/", insightshttp.NewHandler())
+	marketProvider := twelvedata.NewClient(&http.Client{Timeout: 10 * time.Second}, os.Getenv("HOME_CORE_TWELVE_DATA_BASE_URL"), os.Getenv("HOME_CORE_TWELVE_DATA_API_KEY"))
+	mux.Handle("/v1/insights/", insightshttp.NewHandler(insightsapp.NewGetMarketHistory(marketProvider)))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	var mailReader assistantapp.MailReader
 	var driveReader assistantapp.DriveReader

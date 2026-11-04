@@ -1,0 +1,22 @@
+sequenceDiagram
+    participant Panel as Home Panel
+    participant Core as Home Core / insights
+    participant Cache as Cache mémoire
+    participant TD as Twelve Data
+
+    Panel->>Core: GET /v1/insights/markets/{symbol}?period=year
+    Core->>Cache: Cherche symbol + période
+    alt cache valide
+        Cache-->>Core: Points historiques
+        Core-->>Panel: history + dataStatus=cached
+    else cache absent ou expiré
+        Core->>TD: GET /time_series (ticker, 1day, outputsize)
+        alt réponse valide
+            TD-->>Core: Valeurs datées
+            Core->>Cache: Stocke 6 heures
+            Core-->>Panel: history + dataStatus=live
+        else fournisseur indisponible
+            TD-->>Core: Erreur ou réponse vide
+            Core-->>Panel: history vide + dataStatus=unavailable
+        end
+    end

@@ -2,11 +2,12 @@ package insightshttp
 
 import (
 	"encoding/json"
+	"github.com/clementortiz/home-ai/home-core/internal/insights/application"
 	"net/http"
 	"strings"
 )
 
-type Handler struct{}
+type Handler struct{ history *application.GetMarketHistory }
 type etf struct {
 	Symbol string  `json:"symbol"`
 	Name   string  `json:"name"`
@@ -24,7 +25,7 @@ var trackedETFs = []etf{
 	{"C50", "Amundi Core Euro STOXX 50 UCITS ETF EUR Acc", "LU1681047236", 2.17, 168.86},
 }
 
-func NewHandler() *Handler { return &Handler{} }
+func NewHandler(history *application.GetMarketHistory) *Handler { return &Handler{history: history} }
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	if r.URL.Path == "/v1/insights/trains" {
@@ -40,11 +41,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		symbol := strings.ToUpper(strings.TrimPrefix(r.URL.Path, prefix))
 		for _, item := range trackedETFs {
 			if item.Symbol == symbol {
-				history := make([]map[string]any, 12)
-				for i := range history {
-					history[i] = map[string]any{"label": i + 1, "value": item.Price * (0.86 + float64(i)*0.014 + float64(len(symbol))*0.001)}
+				providerSymbol := symbol + ":PAR"
+				marketHistory, err := h.history.Execute(r.Context(), providerSymbol, r.URL.Query().Get("period"))
+				if err != nil {
+					_ = json.NewEncoder(w).Encode(map[string]any{"period": r.URL.Query().Get("period"), "etf": item, "history": []any{}, "dataStatus": marketHistory.Status})
+					return
 				}
-				_ = json.NewEncoder(w).Encode(map[string]any{"period": r.URL.Query().Get("period"), "etf": item, "history": history, "dataStatus": "fixture"})
+				points := make([]map[string]any, 0, len(marketHistory.Points))
+				for _, point := range marketHistory.Points {
+					points = append(points, map[string]any{"label": point.Time.Format("2006-01-02"), "value": point.Value})
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{"period": r.URL.Query().Get("period"), "etf": item, "history": points, "dataStatus": marketHistory.Status})
 				return
 			}
 		}
