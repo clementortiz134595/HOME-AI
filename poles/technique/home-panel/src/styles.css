@@ -74,6 +74,23 @@ button { font: inherit; }
 }
 
 .voice-overlay-orb { border-radius: 9999px; background: radial-gradient(circle at 35% 25%, #e0f2fe, #38bdf8 42%, #4f46e5 78%, #312e81); box-shadow: 0 0 0 14px rgba(56,189,248,.08), 0 0 80px rgba(59,130,246,.5); }
+.voice-overlay { isolation: isolate; overflow: hidden; background: #7f8791; }
+.voice-overlay::before,
+.voice-overlay::after { content: ""; position: absolute; z-index: -1; border-radius: 9999px; filter: blur(70px); opacity: .6; }
+.voice-overlay::before { width: 34rem; height: 34rem; left: -8rem; top: -10rem; background: rgba(186, 230, 253, .72); }
+.voice-overlay::after { width: 30rem; height: 30rem; right: -8rem; bottom: -9rem; background: rgba(196, 181, 253, .55); }
+.pipeline-trace { width: 100%; border: 1px solid rgba(255,255,255,.38); border-radius: 1.5rem; background: rgba(248,250,252,.74); padding: .6rem; color: #172033; box-shadow: 0 24px 70px rgba(15,23,42,.18); backdrop-filter: blur(18px); }
+.pipeline-steps { margin: 0 .4rem .35rem 1.25rem; border-left: 1px solid rgba(71,85,105,.24); padding: .4rem 0 0 1.25rem; }
+.trace-line { display: flex; min-height: 2.8rem; align-items: center; gap: .75rem; border-radius: 1rem; padding: .65rem .8rem; }
+.trace-line[data-status="running"] { background: rgba(14,165,233,.12); color: #075985; }
+.trace-line[data-status="complete"] { color: #166534; }
+.trace-icon { display: grid; width: 1.75rem; height: 1.75rem; flex: 0 0 auto; place-items: center; border-radius: .6rem; background: rgba(255,255,255,.7); color: #64748b; }
+.trace-line[data-status="running"] .trace-icon { color: #0284c7; }
+.trace-line[data-status="complete"] .trace-icon { color: #16a34a; }
+.trace-title { font-size: .875rem; font-weight: 650; }
+.trace-description { margin-left: .5rem; color: #64748b; font-size: .75rem; font-weight: 500; }
+.pipeline-trace > [data-state="open"] > button { cursor: pointer; }
+.pipeline-trace [data-radix-collapsible-content] { overflow: hidden; }
 .voice-overlay-listening { animation: voice-overlay-pulse 1.4s ease-in-out infinite; }
 .voice-overlay-thinking { animation: voice-overlay-pulse 2.4s ease-in-out infinite; }
 .voice-orb-stage { display: grid; width: min(18rem, 75vw); min-height: min(18rem, 75vw); place-items: center; }
