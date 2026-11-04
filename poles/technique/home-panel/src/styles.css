@@ -120,7 +120,7 @@ button { font: inherit; }
 
 .agenda-view {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 1rem;
 }
 .agenda-content,
@@ -306,7 +306,7 @@ button { font: inherit; }
   .home-rooms > section > div { padding: .625rem; }
   .home-rooms > section .mt-4 { margin-top: .5rem; }
   .home-rooms > section .sm\:mt-8 { margin-top: .5rem; }
-  .agenda-view { grid-template-rows: auto minmax(0, 1fr); }
+  .agenda-view { grid-template-rows: minmax(0, 1fr); }
   .agenda-view > section:nth-child(2),
   .agenda-content > section:last-child { display: none; }
   .agenda-calendar > div:first-child { padding: .75rem .875rem .25rem; }
