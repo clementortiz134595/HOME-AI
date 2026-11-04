@@ -35,6 +35,8 @@ services:
       HOME_CORE_DATABASE_PATH: /var/lib/home-core/home-core.sqlite
       APPLE_CALDAV_ACCOUNTS_JSON: ${APPLE_CALDAV_ACCOUNTS_JSON:-}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-adc.json
+      HOME_CORE_SNCF_BASE_URL: ${HOME_CORE_SNCF_BASE_URL:-https://api.trainnomade.fr}
+      HOME_CORE_SNCF_STOP_AREA: ${HOME_CORE_SNCF_STOP_AREA:-87751784}
     volumes:
       - ./poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
       - ${HOME_AI_GOOGLE_ADC_FILE:-/Users/clement/.config/gcloud/application_default_credentials.json}:/run/secrets/google-adc.json:ro

@@ -9,7 +9,7 @@ import (
 
 func TestMarketsReturnsTrackedETFs(t *testing.T) {
 	rec := httptest.NewRecorder()
-	NewHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/insights/markets?period=year", nil))
+	NewHandler(nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/insights/markets?period=year", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
 	}
@@ -25,7 +25,7 @@ func TestMarketsReturnsTrackedETFs(t *testing.T) {
 }
 func TestMarketDetailReturnsHistory(t *testing.T) {
 	rec := httptest.NewRecorder()
-	NewHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/insights/markets/PAASI?period=month", nil))
+	NewHandler(nil).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/insights/markets/PAASI?period=month", nil))
 	var response struct {
 		ETF     etf              `json:"etf"`
 		History []map[string]any `json:"history"`
