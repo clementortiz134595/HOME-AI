@@ -576,14 +576,26 @@ type VoiceStatus = { confirmationId?: string; state: "idle" | "listening" | "tra
 
 function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (answer: AssistantAnswer) => void }) {
   useEffect(() => {
-    if (status.state !== "answered" || !status.answer || !("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(status.answer);
-    utterance.lang = "fr-FR";
-    utterance.rate = 1;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
-    return () => window.speechSynthesis.cancel();
+    if (status.state !== "answered" || !status.answer) return;
+    let audioURL: string | undefined;
+    let audio: HTMLAudioElement | undefined;
+    const speak = async () => {
+      try {
+        const response = await fetch("/v1/assistant/speech", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: status.answer }) });
+        if (!response.ok) throw new Error("speech unavailable");
+        audioURL = URL.createObjectURL(await response.blob());
+        audio = new Audio(audioURL);
+        await audio.play();
+      } catch {
+        if (!("speechSynthesis" in window)) return;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(status.answer);
+        utterance.lang = "fr-FR";
+        window.speechSynthesis.speak(utterance);
+      }
+    };
+    void speak();
+    return () => { audio?.pause(); window.speechSynthesis?.cancel(); if (audioURL) URL.revokeObjectURL(audioURL); };
   }, [status.state, status.answer, status.updatedAt]);
 
   useEffect(() => {
