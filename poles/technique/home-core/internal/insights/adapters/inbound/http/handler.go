@@ -46,7 +46,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		symbol := strings.ToUpper(strings.TrimPrefix(r.URL.Path, prefix))
 		for _, item := range trackedETFs {
 			if item.Symbol == symbol {
-				providerSymbol := symbol + ":PAR"
+				providerSymbol := symbol + ".PA"
 				marketHistory, err := h.history.Execute(r.Context(), providerSymbol, r.URL.Query().Get("period"))
 				if err != nil {
 					_ = json.NewEncoder(w).Encode(map[string]any{"period": r.URL.Query().Get("period"), "etf": item, "history": []any{}, "dataStatus": marketHistory.Status})
