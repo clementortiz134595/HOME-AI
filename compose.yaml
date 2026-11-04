@@ -35,6 +35,8 @@ services:
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-adc.json
       HOME_CORE_SNCF_BASE_URL: ${HOME_CORE_SNCF_BASE_URL:-https://api.trainnomade.fr}
       HOME_CORE_SNCF_STOP_AREA: ${HOME_CORE_SNCF_STOP_AREA:-87751784}
+      HOME_CORE_EODHD_BASE_URL: ${HOME_CORE_EODHD_BASE_URL:-https://eodhd.com/api}
+      HOME_CORE_EODHD_API_KEY: ${HOME_CORE_EODHD_API_KEY:-}
     volumes:
       - ./poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
       - ${HOME_AI_GOOGLE_ADC_FILE:-/Users/clement/.config/gcloud/application_default_credentials.json}:/run/secrets/google-adc.json:ro
