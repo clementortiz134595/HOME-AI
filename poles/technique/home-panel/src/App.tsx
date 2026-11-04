@@ -597,7 +597,7 @@ function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (an
   const listening = status.state === "listening";
   const orb = listening ? <Orb state="using" variant="record" size={180} speed={1} label="Écoute en cours" /> : <Orb state="reasoning" size={180} speed={1} label="Réflexion en cours" />;
   return <div className="voice-overlay fixed inset-0 z-50 grid place-items-center p-6 text-zinc-100">
-    <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="relative flex w-full max-w-2xl flex-col items-center justify-center text-center">
+    <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="voice-overlay-content relative flex w-full max-w-2xl flex-col items-center text-center">
       <div className="voice-orb-stage text-sky-300">{orb}</div>
       <div className="mt-6 w-full"><AgentPipeline status={status} /></div>
       {status.state === "answered" && status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} />}
