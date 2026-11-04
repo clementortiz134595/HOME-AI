@@ -20,7 +20,7 @@ Les commandes maison déterministes peuvent être interprétées sans LLM. La v�
 
 ## Extension — mot-clé local multiarchitecture
 
-Le mot-clé est détecté dans le conteneur Home Core par sherpa-onnx Keyword Spotting avec un modèle anglais GigaSpeech quantifié. L'adaptateur implémente le port `WakeWordDetector` du module `assistant` et accepte des trames PCM mono 16 kHz. Les expressions initiales sont `Hey Jarvis` et `Jarvis`.
+Le mot-clé est détecté dans le conteneur Home Core par sherpa-onnx Keyword Spotting avec un modèle anglais GigaSpeech quantifié. L'adaptateur implémente le port `WakeWordDetector` du module `assistant` et accepte des trames PCM mono 16 kHz. L'expression retenue pour l'activation est `Bonjour Jarvis`.
 
 En développement macOS, Home Panel capture le microphone autorisé par le navigateur, convertit le signal en PCM 16 kHz et l'envoie à Home Core. Docker Desktop n'accède pas directement au microphone du Mac. Sur Raspberry Pi, un adaptateur ALSA fournira les mêmes trames au même port depuis `/dev/snd`. Le détecteur, son modèle et les règles de session restent identiques sur Linux `amd64` et `arm64`.
 

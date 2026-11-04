@@ -6,7 +6,7 @@ son image Docker multiarchitecture.
 
 En développement, Home Panel demande l'autorisation du microphone au
 navigateur, convertit les trames en PCM mono 16 kHz et les envoie uniquement à
-`POST /v1/assistant/wake` sur Home Core. Après détection de « Hey Jarvis » ou
+`POST /v1/assistant/wake` sur Home Core. Après détection de « Bonjour Jarvis »,
 « Jarvis », le panel ouvre la capture de la question et l'envoie à
 `POST /v1/assistant/voice`.
 

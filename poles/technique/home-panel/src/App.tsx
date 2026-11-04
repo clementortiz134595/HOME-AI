@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Bot,
   BriefcaseBusiness,
   CalendarDays,
   CloudSun,
@@ -14,7 +13,6 @@ import {
   WalletCards,
   UserRound,
   Utensils,
-  Volume2,
 } from "lucide-react";
 import { Orb } from "@yogesharc/thinking-orbs";
 
@@ -219,7 +217,7 @@ function WakeWordListener() {
         };
         setActivationRequired(false);
       } catch (error) {
-        console.warn("Activation de Hey Jarvis impossible", error);
+        console.warn("Activation de Bonjour Jarvis impossible", error);
         if (processor) processor.onaudioprocess = null;
         processor?.disconnect();
         processor = null;
@@ -246,7 +244,7 @@ function WakeWordListener() {
 
   if (!activationRequired) return null;
   return <button type="button" onClick={() => void activate.current?.()} className="fixed bottom-24 right-6 z-30 rounded-full border border-amber-300/40 bg-zinc-900 px-4 py-2 text-sm font-medium text-amber-100 shadow-xl">
-    Activer Hey Jarvis
+    Activer Bonjour Jarvis
   </button>;
 }
 
@@ -314,22 +312,9 @@ function AssistantOrb() {
     return () => window.removeEventListener(wakeEvent, handleWake);
   }, [start]);
 
-  return (
-    <button
-      type="button"
-      aria-pressed={listening}
-      onClick={() => (listening ? stop() : start())}
-      className="group fixed bottom-6 right-6 z-20 flex items-center gap-3 rounded-full border border-sky-200 bg-white/90 py-2 pl-2 pr-4 text-left shadow-[0_16px_50px_rgba(56,189,248,0.18)] backdrop-blur transition hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
-    >
-      <span className={listening ? "orb orb-listening" : "orb"}>
-        <span className="orb-core"><Bot className="size-5" /></span>
-      </span>
-      <span>
-        <span className="block max-w-64 truncate text-sm font-semibold">{listening ? "Je t’écoute" : "Parler à Home AI"}</span>
-        <span className="block max-w-64 truncate text-xs text-slate-500">{status}</span>
-      </span>
-    </button>
-  );
+  // Capture is triggered exclusively by the wake word. The manual control
+  // stays removed, but this component must remain mounted to handle wakeEvent.
+  return null;
 }
 
 function VoiceEnrollment({ profile }: { profile: Profile }) {
@@ -456,7 +441,10 @@ function App() {
 
   useEffect(() => {
     if (voiceStatus.state === "idle") return;
-    const timeout = window.setTimeout(() => setVoiceStatus({ state: "idle" }), 20_000);
+    const timeout = window.setTimeout(() => {
+      lastVoiceUpdate.current = undefined;
+      setVoiceStatus({ state: "idle" });
+    }, 20_000);
     return () => window.clearTimeout(timeout);
   }, [voiceStatus.state, voiceStatus.updatedAt]);
 
@@ -469,7 +457,7 @@ function App() {
             <Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button>
           </div>
           <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant={view === "profile" ? "secondary" : "ghost"} onClick={() => { setView("profile"); setNavOpen(false); }} className={view === "profile" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><UserRound /> Profil</Button><Button variant={view === "cost" ? "secondary" : "ghost"} onClick={() => { setView("cost"); setNavOpen(false); }} className={view === "cost" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><WalletCards /> Coût</Button></nav>
-          <div className="mt-10 hidden rounded-2xl bg-white/[0.04] p-4 lg:block"><p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">Assistant vocal</p><div className="mt-3 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-sky-400/10 text-sky-200 shadow-sm"><Volume2 className="size-4" /></div><div><p className="text-sm">Prêt à échanger</p><p className="mt-0.5 text-xs text-zinc-500">Touchez l’orbite pour parler</p></div></div></div>
+          <div className="mt-10 hidden rounded-2xl bg-white/[0.04] p-4 lg:block"><p className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-500">Assistant vocal</p><div className="mt-3 flex items-center gap-3"><div className="grid size-9 place-items-center rounded-xl bg-sky-400/10 text-sky-200"><Orb state="idle" size={36} speed={0.7} label="Assistant vocal prêt" /></div><div><p className="text-sm">Prêt à échanger</p><p className="mt-0.5 text-xs text-zinc-500">Dites « Bonjour Jarvis »</p></div></div></div>
           <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:mt-10 lg:flex"><Settings /> Réglages</Button>
         </aside>
 
@@ -503,8 +491,8 @@ function App() {
           </div>
         </section>
       </div>
-      <AssistantOrb />
       <WakeWordListener />
+      <AssistantOrb />
       <VoiceOverlay status={voiceStatus} />
     </main>
   );

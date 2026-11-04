@@ -7,7 +7,7 @@ sequenceDiagram
 
     loop Tant que le foyer est actif
         Mic->>Core: Trames PCM mono 16 kHz
-        Core->>Wake: Détecter « Hey Jarvis »
+        Core->>Wake: Détecter « Bonjour Jarvis »
         alt Wake word absent
             Wake-->>Core: Aucun mot-clé
         else Wake word détecté

@@ -46,7 +46,7 @@ Le navigateur capture le microphone avec `MediaRecorder` et arrête la capture a
 
 ## Mot-clé local
 
-`POST /v1/assistant/wake` accepte des trames PCM float32 little-endian, mono 16 kHz. L'adaptateur sherpa-onnx les traite dans Home Core et répond `{"detected":true}` lorsqu'il reconnaît « Hey Jarvis » ou « Jarvis ». Les trames de veille restent locales et ne sont jamais transmises au STT Google.
+`POST /v1/assistant/wake` accepte des trames PCM float32 little-endian, mono 16 kHz. L'adaptateur sherpa-onnx les traite dans Home Core et répond `{"detected":true}` lorsqu'il reconnaît « Bonjour Jarvis ». Les trames de veille restent locales et ne sont jamais transmises au STT Google.
 
 Le modèle GigaSpeech quantifié et ONNX Runtime sont embarqués dans l'image Docker Linux `amd64`/`arm64`. Home Panel fournit les trames depuis le navigateur sur macOS ; l'adaptateur Raspberry Pi utilisera ensuite ALSA via `/dev/snd` sans modifier le détecteur.
 

@@ -1,3 +1,5 @@
+# Do not start this file directly. Use the root panel+core stack:
+#   docker compose -f /Users/clement/Desktop/code/home-ai/compose.yaml up -d --build
 services:
   home-core:
     build:
