@@ -17,6 +17,7 @@ Les commandes maison déterministes peuvent être interprétées sans LLM. La v�
 - STT, LLM, TTS, Home Assistant, Gmail et Drive sont remplaçables par des adaptateurs testables.
 - La capture locale conserve un pré-roll court, attend une fin de parole stabilisée et limite la phrase à 15 secondes.
 - La transcription est renvoyée au Home Panel avant la réponse afin de distinguer une erreur de capture d'une erreur d'interprétation.
+- Après le mot-clé, Home Panel réutilise le flux microphone déjà autorisé afin d'éviter deux captures concurrentes. Une reconnaissance navigateur `fr-FR` peut afficher des résultats intermédiaires pendant la parole ; le STT Home Core reste la transcription finale de référence.
 
 ## Extension — mot-clé local multiarchitecture
 

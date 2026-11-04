@@ -133,6 +133,28 @@ function CostView() {
 }
 
 const wakeEvent = "home-ai:wake";
+const voiceTranscriptEvent = "home-ai:voice-transcript";
+type WakeEventDetail = { stream: MediaStream };
+type VoiceTranscriptDetail = { transcript: string };
+type BrowserRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+function createBrowserRecognition(): BrowserRecognition | null {
+  const factory = (window as Window & { SpeechRecognition?: new () => BrowserRecognition; webkitSpeechRecognition?: new () => BrowserRecognition }).SpeechRecognition
+    ?? (window as Window & { SpeechRecognition?: new () => BrowserRecognition; webkitSpeechRecognition?: new () => BrowserRecognition }).webkitSpeechRecognition;
+  if (!factory) return null;
+  const recognition = new factory();
+  recognition.lang = "fr-FR";
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  return recognition;
+}
 
 function downsample(samples: Float32Array, sourceRate: number, targetRate = 16000): Float32Array {
   if (sourceRate === targetRate) return samples.slice();
@@ -194,7 +216,7 @@ function WakeWordListener() {
             if (result.detected) {
               pausedUntil = Date.now() + 15_000;
               pending = [];
-              window.dispatchEvent(new Event(wakeEvent));
+              window.dispatchEvent(new CustomEvent<WakeEventDetail>(wakeEvent, { detail: { stream: stream! } }));
             }
           }).finally(() => { sending = false; });
         };
@@ -236,6 +258,7 @@ function AssistantOrb() {
   const [status, setStatus] = useState("Touchez pour parler");
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
+  const ownsStream = useRef(false);
   const silenceTimer = useRef<number | null>(null);
   const startedAt = useRef(0);
 
@@ -243,21 +266,30 @@ function AssistantOrb() {
     if (silenceTimer.current) window.clearInterval(silenceTimer.current);
     silenceTimer.current = null;
     recorder.current?.stop();
-    stream.current?.getTracks().forEach((track) => track.stop());
+    if (ownsStream.current) stream.current?.getTracks().forEach((track) => track.stop());
     recorder.current = null;
     stream.current = null;
     setListening(false);
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (existingStream?: MediaStream) => {
     try {
-      const capturedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const capturedStream = existingStream ?? await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
       stream.current = capturedStream;
+      ownsStream.current = !existingStream;
       const chunks: Blob[] = [];
       const mediaRecorder = new MediaRecorder(capturedStream);
       recorder.current = mediaRecorder;
+      const recognition = createBrowserRecognition();
+      try { recognition?.start(); } catch { /* Browser interim STT is optional. */ }
+      if (recognition) recognition.onresult = (event) => {
+        let transcript = "";
+        for (let index = 0; index < event.results.length; index += 1) transcript += event.results[index][0].transcript;
+        window.dispatchEvent(new CustomEvent<VoiceTranscriptDetail>(voiceTranscriptEvent, { detail: { transcript } }));
+      };
       mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
       mediaRecorder.onstop = async () => {
+        recognition?.stop();
         setStatus("Transcription…");
         const response = await fetch("/v1/assistant/voice", { method: "POST", headers: { "Content-Type": mediaRecorder.mimeType || "audio/webm" }, body: new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" }) });
         if (!response.ok) { setStatus("La voix est indisponible"); return; }
@@ -273,12 +305,28 @@ function AssistantOrb() {
       analyser.fftSize = 512;
       context.createMediaStreamSource(capturedStream).connect(analyser);
       const samples = new Uint8Array(analyser.fftSize);
+      const graceUntil = startedAt.current + 800;
+      let speechFrames = 0;
+      let heardSpeech = false;
       let quietSince = 0;
       silenceTimer.current = window.setInterval(() => {
         analyser.getByteTimeDomainData(samples);
         const level = samples.reduce((sum, value) => sum + Math.abs(value - 128), 0) / samples.length;
-        if (level < 3) quietSince ||= Date.now(); else quietSince = 0;
-        if ((quietSince && Date.now() - quietSince > 1000) || Date.now() - startedAt.current > 10000) {
+        const now = Date.now();
+        if (now < graceUntil) {
+          speechFrames = 0;
+          quietSince = 0;
+          return;
+        }
+        if (level >= 3) {
+          speechFrames += 1;
+          if (speechFrames >= 2) heardSpeech = true;
+          quietSince = 0;
+        } else {
+          speechFrames = 0;
+          if (heardSpeech) quietSince ||= now;
+        }
+        if ((heardSpeech && quietSince && now - quietSince > 1200) || now - startedAt.current > 15000) {
           context.close();
           stop();
         }
@@ -290,7 +338,9 @@ function AssistantOrb() {
   }, [stop]);
 
   useEffect(() => {
-    const handleWake = () => { if (!recorder.current) void start(); };
+    const handleWake = (event: Event) => {
+      if (!recorder.current) void start((event as CustomEvent<WakeEventDetail>).detail?.stream);
+    };
     window.addEventListener(wakeEvent, handleWake);
     return () => window.removeEventListener(wakeEvent, handleWake);
   }, [start]);
@@ -440,6 +490,15 @@ function App() {
     const timeout = window.setTimeout(() => setVoiceStatus({ state: "idle" }), 20_000);
     return () => window.clearTimeout(timeout);
   }, [voiceStatus.state, voiceStatus.updatedAt]);
+
+  useEffect(() => {
+    const handleTranscript = (event: Event) => {
+      const transcript = (event as CustomEvent<VoiceTranscriptDetail>).detail?.transcript;
+      if (transcript) setVoiceStatus((current) => ({ ...current, state: "listening", transcript, updatedAt: new Date().toISOString() }));
+    };
+    window.addEventListener(voiceTranscriptEvent, handleTranscript);
+    return () => window.removeEventListener(voiceTranscriptEvent, handleTranscript);
+  }, []);
 
   return (
     <main className="h-screen overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950">

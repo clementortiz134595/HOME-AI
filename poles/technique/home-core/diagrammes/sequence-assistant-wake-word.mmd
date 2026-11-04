@@ -13,12 +13,13 @@ sequenceDiagram
         else Wake word détecté
             Wake-->>Core: Mot-clé détecté
             Core-->>Panel: Statut vocal « listening »
-            Core-->>Mic: Ouvrir capture de la question
+            Core-->>Mic: Réutiliser le flux micro déjà ouvert
             Mic->>Core: Audio pré-roll + phrase jusqu'au silence / timeout
             Core-->>Panel: Statut vocal « thinking »
             Core->>STT: Extrait audio uniquement
             STT-->>Core: Transcript
             Core-->>Panel: Transcript affiché
+            Panel-->>Panel: Afficher les résultats intermédiaires fr-FR
             Core-->>Panel: Réponse et statut « answered »
         end
     end
