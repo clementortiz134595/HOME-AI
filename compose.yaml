@@ -17,7 +17,8 @@ services:
       home-core-secrets-init:
         condition: service_completed_successfully
     env_file:
-      - ./poles/technique/home-core/.env
+      - path: ${HOME_AI_SECRETS_FILE:-/Users/clement/.config/home-ai/home-core.env}
+        required: false
     environment:
       HOME_CORE_PORT: "8080"
       HOME_CORE_ZIGBEE_FIXTURE: /app/fixtures/maison-demo.json
