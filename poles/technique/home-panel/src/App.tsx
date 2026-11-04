@@ -265,8 +265,8 @@ function WakeWordListener() {
   }, []);
 
   if (!activationRequired) return null;
-  return <button type="button" onClick={() => void activate.current?.()} className="fixed bottom-24 right-6 z-30 rounded-full border border-amber-300/40 bg-zinc-900 px-4 py-2 text-sm font-medium text-amber-100 shadow-xl">
-    Activer Bonjour Jarvis
+  return <button type="button" onClick={() => void activate.current?.()} className="fixed bottom-6 right-6 z-30 rounded-full border border-amber-300/40 bg-zinc-900 px-4 py-2 text-sm font-medium text-amber-100 shadow-xl">
+    Autoriser le micro pour Bonjour Jarvis
   </button>;
 }
 
