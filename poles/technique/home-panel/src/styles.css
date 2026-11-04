@@ -144,6 +144,9 @@ button { font: inherit; }
 .cost-page > section { min-height: 0; overflow: hidden; }
 .cost-page > div:nth-child(2) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .cost-page .cost-chart { height: clamp(5rem, 19vh, 9rem); }
+.cost-page > section:last-child { display: flex; flex-direction: column; }
+.cost-page > section:last-child > div:last-child { display: flex; min-height: 0; flex: 1; flex-direction: column; }
+.cost-page > section:last-child .cost-chart { margin-top: auto; }
 
 .dashboard-compact-grid {
   /* The section already owns the viewport height: subtract only its header. */
