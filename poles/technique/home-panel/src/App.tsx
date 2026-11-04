@@ -54,9 +54,9 @@ const agendaItems = [
 ];
 
 const weeklyChores = [
-  { date: "Lun. 3", objective: "Passer l’aspirateur", person: "Clément", icon: RobotVacuum, tone: "bg-sky-400" },
-  { date: "Mer. 5", objective: "Sortir le recyclage", person: "Lise", icon: Recycle, tone: "bg-amber-400" },
-  { date: "Sam. 8", objective: "Nettoyer la cuisine", person: "Duo", icon: UtensilsCrossed, tone: "bg-emerald-400" },
+  { id: "chore-1", date: "Lun. 3", objective: "Passer l’aspirateur", person: "Clément", icon: RobotVacuum, tone: "bg-sky-400", completed: false },
+  { id: "chore-2", date: "Mer. 5", objective: "Sortir le recyclage", person: "Lise", icon: Recycle, tone: "bg-amber-400", completed: false },
+  { id: "chore-3", date: "Sam. 8", objective: "Nettoyer la cuisine", person: "Duo", icon: UtensilsCrossed, tone: "bg-emerald-400", completed: false },
 ];
 
 function HomeView() {
@@ -378,7 +378,7 @@ function AssistantOrb({ compact = false }: { compact?: boolean }) {
     window.dispatchEvent(new Event(activateWakeEvent));
   };
 
-  return <Card className={(compact ? "sidebar-assistant-card " : "dashboard-assistant-card ") + "overflow-hidden border-sky-400/25 bg-black"}>
+  return <Card className={(compact ? "sidebar-assistant-card " : "dashboard-assistant-card ") + "overflow-hidden border-white/10 bg-black"}>
     <button type="button" aria-label="Activer l’assistant vocal" onClick={activate} className="flex h-full w-full items-center justify-center p-4 outline-none transition hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-sky-300">
       <Orb state={listening ? "using" : "waiting"} size={compact ? 112 : 240} dotSize={0.45} speed={listening ? 1 : 0.7} label="Assistant vocal" />
       <span className="sr-only">{status}</span>
@@ -432,7 +432,7 @@ function WeatherCard() {
   }, []);
 
   return (
-    <Card className="dashboard-weather relative overflow-hidden border-sky-400/20 bg-zinc-950 text-sky-50">
+    <Card className="dashboard-weather relative overflow-hidden border-white/10 bg-zinc-950 text-sky-50">
       <div className="weather-landscape" aria-hidden="true">
         <Ascii piece={earthrise} options={{ fps: 8 }} className="weather-landscape-art" style={{ width: "max(100%, 360px)" }} />
       </div>
@@ -512,7 +512,9 @@ function ReminderDetailDialog({ reminder, onClose }: { reminder: Reminder; onClo
 }
 
 function WeeklyChoresCard() {
-  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{weeklyChores.map((task) => { const Icon = task.icon; return <div key={task.objective} className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2"><span className={"grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 " + task.tone}><Icon className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></div>; })}</CardContent></Card>;
+  const [tasks, setTasks] = useState(weeklyChores);
+  const toggle = (id: string) => { const previous = tasks; const next = tasks.map((task) => task.id === id ? { ...task, completed: !task.completed } : task); setTasks(next); const task = next.find((item) => item.id === id)!; void fetch(`/v1/chores/${encodeURIComponent(id)}/completion`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ completed: task.completed }) }).then((response) => { if (!response.ok) setTasks(previous); }).catch(() => setTasks(previous)); };
+  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{tasks.map((task) => { const Icon = task.icon; return <button type="button" onClick={() => toggle(task.id)} key={task.id} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className={"grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 " + task.tone}><Icon className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></button>; })}</CardContent></Card>;
 }
 
 type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };

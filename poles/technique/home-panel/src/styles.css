@@ -99,6 +99,10 @@ button { font: inherit; }
 .cost-bar { flex: 1; min-width: .5rem; border-radius: .45rem .45rem 0 0; background: linear-gradient(to top, #4f46e5, #7dd3fc); opacity: .8; }
 .cost-breakdown { display: none; }
 .cost-view .cost-chart { height: 9rem; }
+.chore-item { transition: opacity 180ms ease, transform 180ms ease, background-color 180ms ease; }
+.chore-item:hover { background: rgba(255,255,255,.08); }
+.chore-complete { opacity: .5; transform: scale(.98); }
+.chore-complete p:first-child { text-decoration: line-through; }
 
 /* Secondary pages share the viewport with the persistent header.  They never
    scroll: their content contracts, then less essential details are hidden. */

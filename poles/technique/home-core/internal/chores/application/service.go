@@ -30,4 +30,6 @@ func (s *Service) Update(id string, patch model.Chore) (model.Chore, error) {
 
 func (s *Service) Delete(id string) error { s.mu.Lock(); defer s.mu.Unlock(); if _, ok := s.chores[id]; !ok { return ErrNotFound }; delete(s.chores, id); return nil }
 
+func (s *Service) SetCompleted(id string, completed bool) (model.Chore, error) { s.mu.Lock(); defer s.mu.Unlock(); chore, ok := s.chores[id]; if !ok { return model.Chore{}, ErrNotFound }; chore.Completed = completed; s.chores[id] = chore; return chore, nil }
+
 func validate(chore model.Chore) error { if strings.TrimSpace(chore.Objective) == "" { return errors.New("objective is required") }; if len(chore.Assignees) == 0 { return errors.New("at least one assignee is required") }; if chore.Alternating && len(chore.Assignees) < 2 { return errors.New("an alternating chore needs two assignees") }; if chore.Frequency != "" && chore.Frequency != "weekly" { return errors.New("unsupported frequency") }; return nil }

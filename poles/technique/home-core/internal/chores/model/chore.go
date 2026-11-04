@@ -10,4 +10,5 @@ type Chore struct {
 	Frequency   string   `json:"frequency,omitempty"`
 	IntervalWeeks int    `json:"intervalWeeks,omitempty"`
 	Alternating bool     `json:"alternating,omitempty"`
+	Completed   bool     `json:"completed"`
 }

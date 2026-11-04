@@ -19,6 +19,7 @@ import (
 	sherpakws "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/sherpa"
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
 	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
+	choreshttp "github.com/clementortiz/home-ai/home-core/internal/chores/adapters/inbound/http"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
@@ -62,6 +63,7 @@ func main() {
 	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
 	tools := map[string]assistantapp.ActionExecutor{}
 	choresService := choresapp.NewService()
+	mux.Handle("/v1/chores/", choreshttp.NewHandler(choresService))
 	remindersService := remindersapp.NewService()
 	choreTool := assistantapp.NewChoreTool(choresService)
 	reminderTool := assistantapp.NewReminderTool(remindersService)
