@@ -517,8 +517,8 @@ function App() {
   }, []);
 
   return (
-    <main className="h-screen overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950">
-      <div className="mx-auto grid h-full min-h-0 max-w-[1600px] grid-cols-1 lg:grid-cols-[248px_1fr]">
+    <main className="h-dvh overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950">
+      <div className="mx-auto grid h-full max-w-[1600px] grid-cols-1 lg:grid-cols-[248px_1fr]">
         <aside className="border-b border-white/10 bg-zinc-900/70 px-5 py-6 lg:border-r lg:border-b-0">
           <div className="flex items-center justify-between lg:block">
             <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-2xl bg-white text-zinc-950"><Sparkles className="size-5" /></div><div><p className="text-sm font-semibold tracking-wide">HOME AI</p><p className="text-xs text-zinc-500">Appartement</p></div></div>
@@ -529,7 +529,7 @@ function App() {
           <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:mt-10 lg:flex"><Settings /> Réglages</Button>
         </aside>
 
-        <section className="min-h-0 overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+        <section className="app-section min-h-0 overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
           <header className="flex flex-wrap items-start justify-between gap-5">
             <div><p className="text-sm text-slate-500">Lundi 3 novembre</p></div>
             <div className="relative flex items-center gap-3">

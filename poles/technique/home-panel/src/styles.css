@@ -41,7 +41,7 @@ button { font: inherit; }
 .voice-overlay-orb { border-radius: 9999px; background: radial-gradient(circle at 35% 25%, #e0f2fe, #38bdf8 42%, #4f46e5 78%, #312e81); box-shadow: 0 0 0 14px rgba(56,189,248,.08), 0 0 80px rgba(59,130,246,.5); }
 .voice-overlay-listening { animation: voice-overlay-pulse 1.4s ease-in-out infinite; }
 .voice-overlay-thinking { animation: voice-overlay-pulse 2.4s ease-in-out infinite; }
-.voice-orb-stage { display: grid; min-height: 18rem; min-width: 18rem; place-items: center; }
+.voice-orb-stage { display: grid; width: min(18rem, 75vw); min-height: min(18rem, 75vw); place-items: center; }
 .voice-dot { width: .65rem; height: .65rem; border-radius: 9999px; background: #7dd3fc; animation: voice-dot-bounce 1s ease-in-out infinite; }
 .voice-dot-delay-1 { animation-delay: .15s; }
 .voice-dot-delay-2 { animation-delay: .3s; }
@@ -94,4 +94,22 @@ button { font: inherit; }
 
 @media (prefers-reduced-motion: reduce) {
   .orb, .orb-listening, .voice-overlay-listening, .voice-overlay-thinking, .voice-dot { animation: none; }
+}
+
+@media (max-width: 639px) {
+  .voice-overlay-orb { transform: scale(.78); }
+
+  .app-section { padding: 1rem; }
+  .app-section > header { gap: .75rem; }
+  .app-section h2 { font-size: 1.5rem; }
+  .app-section .mt-8 { margin-top: 1rem; }
+  .app-section .mt-7 { margin-top: .875rem; }
+  .app-section .space-y-7 > :not([hidden]) ~ :not([hidden]) { margin-top: .875rem; }
+  .app-section .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: .75rem; }
+  .app-section .p-6 { padding: 1rem; }
+  .app-section .p-5 { padding: .875rem; }
+  .app-section .min-h-40 { min-height: 7rem; }
+  .app-section .text-4xl { font-size: 1.75rem; }
+  .app-section .text-5xl { font-size: 2.5rem; }
+  .app-section .cost-chart { height: 7rem; }
 }
