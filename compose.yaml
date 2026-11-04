@@ -13,8 +13,10 @@ services:
       HOME_CORE_WAKE_MODEL_DIR: /app/models/sherpa-kws
       HOME_CORE_GMAIL_TOKEN_PATH: /var/lib/home-core/gmail-token.json
       APPLE_CALDAV_ACCOUNTS_JSON: ${APPLE_CALDAV_ACCOUNTS_JSON:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-adc.json
     volumes:
       - ./poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
+      - ${HOME_AI_GOOGLE_ADC_FILE:-/Users/clement/.config/gcloud/application_default_credentials.json}:/run/secrets/google-adc.json:ro
       - home-core-secrets:/var/lib/home-core
     expose:
       - "8080"

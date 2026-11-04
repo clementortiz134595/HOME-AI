@@ -75,7 +75,7 @@ func (fakeTranscriberForAgent) Transcribe(context.Context, model.VoiceInput) (st
 
 func TestNewAgentRoutesQuestionsToAnswerer(t *testing.T) {
 	answerer := &fakeAnswerer{answer: model.Answer{Text: "Il fera beau."}}
-	agent := NewAgent(answerer, nil, fakeTranscriberForAgent{})
+	agent := NewAgent(answerer, NewDeterministicInterpreter(), nil, fakeTranscriberForAgent{})
 	result, err := agent.Execute(context.Background(), model.VoiceInput{Audio: []byte("audio")})
 	if err != nil || result.Status != model.ActionExecuted || result.Message != "Il fera beau." || answerer.question.Text != "Quel temps fera-t-il demain ?" {
 		t.Fatalf("result=%#v question=%#v err=%v", result, answerer.question, err)

@@ -78,3 +78,20 @@ func TestToolConfirmationExpires(t *testing.T) {
 		t.Fatal("expired accepted")
 	}
 }
+
+func TestMergedRouterKeepsHouseholdToolsAndDelegatesGmail(t *testing.T) {
+	for _, name := range []string{"chores.create", "reminders.create", "gmail.search"} {
+		router := modelToolInterpreter{fallback: fakeInterpreter{intent: model.Intent{Name: name}}}
+		intent, err := router.Interpret(context.Background(), model.Interaction{Text: "ma demande"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected := name
+		if name == "gmail.search" {
+			expected = "assistant.question"
+		}
+		if intent.Name != expected {
+			t.Fatalf("%s became %s", name, intent.Name)
+		}
+	}
+}

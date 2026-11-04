@@ -16,9 +16,18 @@ func NewVoiceCommand(transcriber AudioTranscriber, agent VoiceInteraction) Voice
 }
 
 func (command VoiceCommand) Execute(ctx context.Context, input model.VoiceInput) (model.Answer, string, error) {
+	return command.ExecuteWithProgress(ctx, input, nil)
+}
+
+// ExecuteWithProgress exposes pipeline stages to the HTTP adapter without
+// coupling the voice use case to transport concerns.
+func (command VoiceCommand) ExecuteWithProgress(ctx context.Context, input model.VoiceInput, progress func(string, string)) (model.Answer, string, error) {
 	transcript, err := command.transcriber.Transcribe(ctx, input)
 	if err != nil {
 		return model.Answer{}, "", err
+	}
+	if progress != nil {
+		progress("thinking", transcript)
 	}
 	result, err := command.agent.ExecuteTranscript(ctx, transcript)
 	if err != nil {

@@ -95,17 +95,19 @@ func (DefaultConfirmationPolicy) RequiresConfirmation(intent model.Intent) bool 
 	return intent.Sensitive || strings.HasPrefix(intent.Name, "gmail.") || strings.HasPrefix(intent.Name, "drive.")
 }
 
-// NewAgent assembles the application brain. Integrations are injected as
-// tools, keeping Home Core responsible for routing without owning adapters.
-func NewAgent(answerer QuestionAnswerer, tools map[string]ActionExecutor, transcriber AudioTranscriber) VoiceInteraction {
+// NewAgent assembles the application brain. The interpreter may use an
+// external model, but Home Core keeps validation, confirmation and execution.
+func NewAgent(answerer QuestionAnswerer, interpreter IntentInterpreter, tools map[string]ActionExecutor, transcriber AudioTranscriber) VoiceInteraction {
 	registryTools := make(map[string]ActionExecutor, len(tools)+1)
 	for name, tool := range tools {
 		registryTools[name] = tool
 	}
 	registryTools["assistant.question"] = questionTool{answerer: NewAskQuestion(answerer)}
-	interpreter := IntentInterpreter(NewDeterministicInterpreter())
+	if interpreter == nil {
+		interpreter = NewDeterministicInterpreter()
+	}
 	if _, ok := answerer.(*ToolConversation); ok {
-		interpreter = modelToolInterpreter{}
+		interpreter = modelToolInterpreter{fallback: interpreter}
 	}
 	return NewVoiceInteraction(transcriber, interpreter, NewToolRegistry(registryTools), DefaultConfirmationPolicy{})
 }
@@ -124,11 +126,18 @@ func (tool questionTool) Execute(ctx context.Context, intent model.Intent) (mode
 	return model.ActionResult{Status: model.ActionExecuted, Message: answer.Text, Answer: &answer}, nil
 }
 
-type modelToolInterpreter struct{}
+type modelToolInterpreter struct{ fallback IntentInterpreter }
 
-func (modelToolInterpreter) Interpret(_ context.Context, interaction model.Interaction) (model.Intent, error) {
+func (router modelToolInterpreter) Interpret(ctx context.Context, interaction model.Interaction) (model.Intent, error) {
 	if action, ok := switchCommand(strings.TrimSpace(strings.ToLower(interaction.Text))); ok {
 		return action, nil
 	}
-	return model.Intent{Name: "assistant.question", Parameters: map[string]any{"text": interaction.Text}}, nil
+	intent, err := router.fallback.Interpret(ctx, interaction)
+	if err != nil {
+		return model.Intent{}, err
+	}
+	if strings.HasPrefix(intent.Name, "gmail.") {
+		return model.Intent{Name: "assistant.question", Parameters: map[string]any{"text": interaction.Text}}, nil
+	}
+	return intent, nil
 }

@@ -52,7 +52,9 @@ Le modèle GigaSpeech quantifié et ONNX Runtime sont embarqués dans l'image Do
 
 ## Cerveau d'orchestration
 
-Le cas d'usage `NewAgent` assemble la chaîne applicative vocale : transcription, interprétation déterministe, politique de confirmation et registre d'outils. Les commandes `home.turn_on`/`home.turn_off` sont reconnues localement ; l'agenda produit `agenda.list` avec une période (`today`, `tomorrow`, `week`) ; les demandes Gmail, Drive et agenda sont marquées sensibles et nécessitent une confirmation ; les autres phrases deviennent `assistant.question` et sont envoyées au fournisseur IA via le port `QuestionAnswerer`.
+Le cas d'usage `NewAgent` assemble la chaîne applicative vocale : transcription, interprétation d'intention via Gemini en JSON, politique de confirmation et registre d'outils. Gemini peut produire `home.turn_on`, `home.turn_off`, `agenda.list`, `gmail.search`, `drive.search` ou `assistant.question`. Home Core valide la liste d'intentions autorisées, force le caractère sensible de Gmail, Drive et agenda, puis décide si une confirmation est nécessaire. Les autres phrases deviennent `assistant.question` et sont envoyées au même fournisseur via le port `QuestionAnswerer`.
+
+Le modèle ne déclenche jamais directement un outil : il propose une intention et ses paramètres. Home Core conserve l'exécution, les permissions, la confirmation et le retour d'erreur. L'ancien interpréteur déterministe reste disponible comme fallback technique si aucun interpréteur n'est fourni, mais l'assemblage de production injecte le client Gemini.
 
 Les intégrations concrètes sont injectées dans le registre par Home Core. Un outil absent retourne `unavailable` et ne déclenche aucune action implicite. Cette implémentation ne prétend pas fournir à elle seule les adaptateurs STT, TTS, Home Assistant, Gmail ou Drive : ceux-ci doivent être branchés séparément.
 

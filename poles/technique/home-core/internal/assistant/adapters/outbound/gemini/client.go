@@ -17,6 +17,13 @@ const defaultModel = "gemini-3.8-flash"
 
 var ErrUnavailable = errors.New("assistant provider unavailable")
 
+const intentSystemInstruction = `Tu es le routeur d'intentions de Home Core. Réponds uniquement avec un objet JSON valide, sans Markdown.
+Intentions autorisées : home.turn_on, home.turn_off, gmail.search, drive.search, agenda.list, chores.create, chores.update, chores.delete, reminders.create, reminders.update, reminders.delete, assistant.question.
+Retourne exactement les champs name, parameters et sensitive. Les paramètres doivent être un objet JSON.
+Pour chores.create, retourne objective, date (YYYY-MM-DD si connue), assignees (tableau), frequency:"weekly" pour une récurrence hebdomadaire, intervalWeeks et alternating. Exemple alterné : {"name":"chores.create","parameters":{"objective":"faire les poussières du salon","assignees":["Lise","Clément"],"frequency":"weekly","intervalWeeks":1,"alternating":true},"sensitive":false}. Pour modifier/supprimer, retourne l'id de la tâche demandé. Pour reminders.create, retourne title, date (YYYY-MM-DD) et details; pour modifier/supprimer, retourne l'id du rappel.
+Utilise assistant.question pour toute demande qui ne correspond pas clairement à un outil.
+Marque sensitive à true pour Gmail, Drive et agenda. Ne déclenche jamais d'action et n'invente aucun résultat.`
+
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
@@ -101,13 +108,85 @@ func (client *Client) generate(ctx context.Context, payload generateRequest) (mo
 	return result.Candidates[0].Content, nil
 }
 
+// Interpret classifies a transcript into a validated Home Core intent. Gemini
+// only proposes the intent; execution and confirmation remain in Home Core.
+func (client *Client) Interpret(ctx context.Context, interaction model.Interaction) (model.Intent, error) {
+	if client.apiKey == "" || client.model == "" {
+		return model.Intent{}, fmt.Errorf("%w: provider is not configured", ErrUnavailable)
+	}
+	payload := generateRequest{
+		SystemInstruction: content{Parts: []part{{Text: intentSystemInstruction}}},
+		Contents:          []content{{Role: "user", Parts: []part{{Text: interaction.Text}}}},
+		GenerationConfig:  &generationConfig{ResponseMIMEType: "application/json"},
+	}
+	response, err := client.generate(ctx, payload)
+	if err != nil {
+		return model.Intent{}, err
+	}
+	var intent model.Intent
+	if err := json.Unmarshal([]byte(response.Parts[0].Text), &intent); err != nil {
+		return model.Intent{}, fmt.Errorf("%w: invalid intent JSON", ErrUnavailable)
+	}
+	if err := validateIntent(&intent, interaction.Text); err != nil {
+		return model.Intent{}, fmt.Errorf("%w: %v", ErrUnavailable, err)
+	}
+	return intent, nil
+}
+
+func validateIntent(intent *model.Intent, transcript string) error {
+	if intent.Name == "" {
+		return errors.New("intent name is empty")
+	}
+	switch intent.Name {
+	case "home.turn_on", "home.turn_off", "gmail.search", "drive.search", "agenda.list", "chores.create", "chores.update", "chores.delete", "reminders.create", "reminders.update", "reminders.delete", "assistant.question":
+	default:
+		return fmt.Errorf("unsupported intent %q", intent.Name)
+	}
+	if intent.Parameters == nil {
+		intent.Parameters = map[string]any{}
+	}
+	if intent.Name == "assistant.question" {
+		if text, ok := intent.Parameters["text"].(string); !ok || strings.TrimSpace(text) == "" {
+			intent.Parameters["text"] = strings.TrimSpace(transcript)
+		}
+	}
+	if intent.Name == "chores.create" {
+		if value, ok := intent.Parameters["objective"].(string); !ok || strings.TrimSpace(value) == "" {
+			return errors.New("chore objective is required")
+		}
+		if values, ok := intent.Parameters["assignees"].([]any); !ok || len(values) == 0 {
+			return errors.New("chore assignees are required")
+		}
+	}
+	if intent.Name == "chores.update" || intent.Name == "chores.delete" || intent.Name == "reminders.update" || intent.Name == "reminders.delete" {
+		if value, ok := intent.Parameters["id"].(string); !ok || strings.TrimSpace(value) == "" {
+			return errors.New("resource id is required")
+		}
+	}
+	if intent.Name == "reminders.create" {
+		for _, key := range []string{"title", "date"} {
+			if value, ok := intent.Parameters[key].(string); !ok || strings.TrimSpace(value) == "" {
+				return fmt.Errorf("reminder %s is required", key)
+			}
+		}
+	}
+	if intent.Name == "gmail.search" || intent.Name == "drive.search" || intent.Name == "agenda.list" {
+		intent.Sensitive = true
+	}
+	return nil
+}
+
 type generateRequest struct {
+	GenerationConfig  *generationConfig  `json:"generationConfig,omitempty"`
 	SystemInstruction content            `json:"systemInstruction"`
 	Contents          []content          `json:"contents"`
 	Tools             []toolDeclarations `json:"tools,omitempty"`
 }
 type toolDeclarations struct {
 	FunctionDeclarations []model.ToolDefinition `json:"functionDeclarations"`
+}
+type generationConfig struct {
+	ResponseMIMEType string `json:"responseMimeType,omitempty"`
 }
 type content = model.Content
 type part = model.Part
