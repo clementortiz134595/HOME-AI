@@ -16,6 +16,7 @@ import (
 	assistanthttp "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/gemini"
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/google"
+	sherpakws "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/sherpa"
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
@@ -65,7 +66,17 @@ func main() {
 		logger.Warn("Gmail is not configured", "error", gmailErr)
 	}
 	voiceAgent := assistantapp.NewAgent(aiProvider, tools, sttProvider)
-	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewVoiceCommand(sttProvider, voiceAgent)))
+	voiceState := assistanthttp.NewVoiceStateHandler()
+	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewVoiceCommand(sttProvider, voiceAgent), voiceState))
+	mux.Handle("/v1/assistant/voice/state", voiceState)
+	var wakeDetector *sherpakws.Detector
+	if detector, detectorErr := sherpakws.NewDetector(os.Getenv("HOME_CORE_WAKE_MODEL_DIR")); detectorErr != nil {
+		logger.Warn("wake word detector is not configured", "error", detectorErr)
+	} else {
+		wakeDetector = detector
+		defer wakeDetector.Close()
+	}
+	mux.Handle("/v1/assistant/wake", assistanthttp.NewWakeHandler(wakeDetector, voiceState))
 	// Fails closed until a local VoiceEmbedder is configured.
 	voiceProfiles := assistantapp.NewMemoryVoiceProfileStore()
 	mux.Handle("/v1/assistant/voice-profiles/", assistanthttp.NewVoiceProfileHandler(assistantapp.NewVoiceEnrollment(nil, voiceProfiles)))

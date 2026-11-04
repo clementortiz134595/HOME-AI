@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Bot,
   BriefcaseBusiness,
@@ -132,6 +132,105 @@ function CostView() {
   );
 }
 
+const wakeEvent = "home-ai:wake";
+
+function downsample(samples: Float32Array, sourceRate: number, targetRate = 16000): Float32Array {
+  if (sourceRate === targetRate) return samples.slice();
+  const ratio = sourceRate / targetRate;
+  const output = new Float32Array(Math.floor(samples.length / ratio));
+  for (let index = 0; index < output.length; index += 1) {
+    const start = Math.floor(index * ratio);
+    const end = Math.max(start + 1, Math.floor((index + 1) * ratio));
+    let sum = 0;
+    for (let sourceIndex = start; sourceIndex < end && sourceIndex < samples.length; sourceIndex += 1) sum += samples[sourceIndex];
+    output[index] = sum / (end - start);
+  }
+  return output;
+}
+
+function WakeWordListener() {
+  const [activationRequired, setActivationRequired] = useState(true);
+  const activate = useRef<(() => Promise<void>) | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    let starting = false;
+    let stream: MediaStream | null = null;
+    let context: AudioContext | null = null;
+    let processor: ScriptProcessorNode | null = null;
+    let pending: number[] = [];
+    let sending = false;
+    let pausedUntil = 0;
+
+    const start = async () => {
+      if (starting || processor) return;
+      starting = true;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+        if (!active) return;
+        context = new AudioContext();
+        await context.resume();
+        if (context.state !== "running") throw new Error("audio_context_suspended");
+        const source = context.createMediaStreamSource(stream);
+        processor = context.createScriptProcessor(4096, 1, 1);
+        const silentOutput = context.createGain();
+        silentOutput.gain.value = 0;
+        source.connect(processor);
+        processor.connect(silentOutput).connect(context.destination);
+        processor.onaudioprocess = (event) => {
+          if (!active || Date.now() < pausedUntil) return;
+          const frame = downsample(event.inputBuffer.getChannelData(0), context?.sampleRate ?? 48000);
+          pending.push(...frame);
+          if (pending.length < 3200 || sending) return;
+          const payload = new Float32Array(pending.splice(0, 3200));
+          sending = true;
+          void fetch("/v1/assistant/wake", {
+            method: "POST",
+            headers: { "Content-Type": "application/octet-stream" },
+            body: payload.buffer,
+          }).then(async (response) => {
+            if (!response.ok) return;
+            const result = await response.json() as { detected: boolean };
+            if (result.detected) {
+              pausedUntil = Date.now() + 15_000;
+              pending = [];
+              window.dispatchEvent(new Event(wakeEvent));
+            }
+          }).finally(() => { sending = false; });
+        };
+        setActivationRequired(false);
+      } catch (error) {
+        console.warn("Activation de Hey Jarvis impossible", error);
+        if (processor) processor.onaudioprocess = null;
+        processor?.disconnect();
+        processor = null;
+        await context?.close();
+        context = null;
+        stream?.getTracks().forEach((track) => track.stop());
+        stream = null;
+        if (active) setActivationRequired(true);
+      } finally {
+        starting = false;
+      }
+    };
+
+    activate.current = start;
+    return () => {
+      active = false;
+      activate.current = null;
+      if (processor) processor.onaudioprocess = null;
+      processor?.disconnect();
+      void context?.close();
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  if (!activationRequired) return null;
+  return <button type="button" onClick={() => void activate.current?.()} className="fixed bottom-24 right-6 z-30 rounded-full border border-amber-300/40 bg-zinc-900 px-4 py-2 text-sm font-medium text-amber-100 shadow-xl">
+    Activer Hey Jarvis
+  </button>;
+}
+
 function AssistantOrb() {
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState("Touchez pour parler");
@@ -140,7 +239,7 @@ function AssistantOrb() {
   const silenceTimer = useRef<number | null>(null);
   const startedAt = useRef(0);
 
-  const stop = () => {
+  const stop = useCallback(() => {
     if (silenceTimer.current) window.clearInterval(silenceTimer.current);
     silenceTimer.current = null;
     recorder.current?.stop();
@@ -148,9 +247,9 @@ function AssistantOrb() {
     recorder.current = null;
     stream.current = null;
     setListening(false);
-  };
+  }, []);
 
-  const start = async () => {
+  const start = useCallback(async () => {
     try {
       const capturedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.current = capturedStream;
@@ -188,7 +287,13 @@ function AssistantOrb() {
       setStatus("Microphone non disponible");
       stop();
     }
-  };
+  }, [stop]);
+
+  useEffect(() => {
+    const handleWake = () => { if (!recorder.current) void start(); };
+    window.addEventListener(wakeEvent, handleWake);
+    return () => window.removeEventListener(wakeEvent, handleWake);
+  }, [start]);
 
   return (
     <button
@@ -309,13 +414,20 @@ function App() {
   const calendarLabel = profile === "Duo" ? "Partagé" : "Personnel";
   const profileInitial = profile === "Duo" ? "D" : profile === "Clément" ? "C" : "L";
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
+  const lastVoiceUpdate = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
     const poll = async () => {
       try {
         const response = await fetch("/v1/assistant/voice/state", { cache: "no-store" });
-        if (active && response.ok) setVoiceStatus(await response.json() as VoiceStatus);
+        if (active && response.ok) {
+          const nextStatus = await response.json() as VoiceStatus;
+          if (nextStatus.updatedAt !== lastVoiceUpdate.current) {
+            lastVoiceUpdate.current = nextStatus.updatedAt;
+            setVoiceStatus(nextStatus);
+          }
+        }
       } catch { /* Home Core may be restarting. */ }
     };
     poll();
@@ -373,6 +485,7 @@ function App() {
         </section>
       </div>
       <AssistantOrb />
+      <WakeWordListener />
       <VoiceOverlay status={voiceStatus} />
     </main>
   );

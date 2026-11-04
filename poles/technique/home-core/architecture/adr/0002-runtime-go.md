@@ -9,10 +9,11 @@ Le premier module appelle une API météo publique depuis un serveur local, doit
 
 ## Décision
 
-Le premier incrément de Home Core est écrit en Go 1.23, en utilisant la bibliothèque standard pour HTTP, JSON, tests et arrêt contrôlé. L'image Docker construit un binaire Linux statique puis l'exécute sans privilège.
+Le premier incrément de Home Core est écrit en Go 1.23, en utilisant la bibliothèque standard pour HTTP, JSON, tests et arrêt contrôlé. L'image Docker construit un binaire Linux et l'exécute sans privilège. Le socle reste statique tant qu'aucun adaptateur ne requiert de bibliothèque native ; sherpa-onnx constitue l'exception documentée pour la détection locale du mot-clé et active CGO dans une image glibc multiarchitecture.
 
 ## Conséquences
 
 - Une image compacte et un processus unique simplifient le déploiement sur une machine domestique.
 - Les ports d'application préservent le remplacement d'Open-Meteo et l'ajout de connecteurs IA, domotique ou agenda.
 - Les SDK spécifiques devront être évalués avant introduction ; un besoin démontré peut justifier une bibliothèque Go ou une décision de coexistence, pas un second serveur par défaut.
+- Les bibliothèques dynamiques sherpa-onnx et ONNX Runtime sont embarquées dans la même image et le même processus Home Core sur Linux `amd64` et `arm64`.

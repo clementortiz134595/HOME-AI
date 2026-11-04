@@ -21,12 +21,17 @@ type VoiceHandler struct {
 	ask interface {
 		Execute(context.Context, model.VoiceInput) (model.Answer, string, error)
 	}
+	state *VoiceStateHandler
 }
 
 func NewVoiceHandler(ask interface {
 	Execute(context.Context, model.VoiceInput) (model.Answer, string, error)
-}) *VoiceHandler {
-	return &VoiceHandler{ask: ask}
+}, states ...*VoiceStateHandler) *VoiceHandler {
+	var state *VoiceStateHandler
+	if len(states) > 0 {
+		state = states[0]
+	}
+	return &VoiceHandler{ask: ask, state: state}
 }
 
 func (handler *VoiceHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
@@ -43,8 +48,14 @@ func (handler *VoiceHandler) ServeHTTP(writer http.ResponseWriter, request *http
 		writeJSON(writer, http.StatusBadRequest, map[string]string{"error": "invalid_audio"})
 		return
 	}
+	if handler.state != nil {
+		handler.state.Update(map[string]any{"state": "transcribing"})
+	}
 	answer, transcript, err := handler.ask.Execute(request.Context(), model.VoiceInput{Audio: audio, ContentType: request.Header.Get("Content-Type")})
 	if err != nil {
+		if handler.state != nil {
+			handler.state.Update(map[string]any{"state": "error"})
+		}
 		slog.Error("voice pipeline failed", "error", err, "audio_bytes", len(audio))
 		if errors.Is(err, application.ErrEmptyTranscript) {
 			writeJSON(writer, http.StatusUnprocessableEntity, map[string]string{"error": "empty_transcript"})
@@ -54,6 +65,9 @@ func (handler *VoiceHandler) ServeHTTP(writer http.ResponseWriter, request *http
 		return
 	}
 	slog.Info("voice pipeline succeeded", "transcript_length", len(transcript), "answer_length", len(answer.Text))
+	if handler.state != nil {
+		handler.state.Update(map[string]any{"state": "answered", "transcript": transcript, "answer": answer.Text})
+	}
 	writeJSON(writer, http.StatusOK, map[string]any{"transcript": transcript, "answer": answer})
 }
 
