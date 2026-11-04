@@ -92,7 +92,10 @@ func (registry ToolRegistry) Execute(ctx context.Context, intent model.Intent) (
 type DefaultConfirmationPolicy struct{}
 
 func (DefaultConfirmationPolicy) RequiresConfirmation(intent model.Intent) bool {
-	return intent.Sensitive || strings.HasPrefix(intent.Name, "gmail.") || strings.HasPrefix(intent.Name, "drive.")
+	// HOME AI runs in the user's trusted local environment. OAuth scopes,
+	// tool validation and provider permissions remain enforced, while the
+	// product-level confirmation step is disabled by default.
+	return false
 }
 
 // NewAgent assembles the application brain. The interpreter may use an
