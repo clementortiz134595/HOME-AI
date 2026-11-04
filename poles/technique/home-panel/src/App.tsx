@@ -443,12 +443,12 @@ function VoiceOverlay({ status }: { status: VoiceStatus }) {
     oscillator.stop(now + 0.3);
     void oscillator.addEventListener("ended", () => void audioContext.close());
     return () => { void audioContext.close(); };
-  }, [status.state, status.updatedAt]);
+  }, [status.state]);
   if (status.state === "idle") return null;
   const listening = status.state === "listening";
   const answered = status.state === "answered";
   const orb = listening ? <Orb state="using" variant="record" size={260} speed={1} label="Écoute en cours" /> : answered ? <Orb state="idle" size={260} speed={0.7} label="Réponse prête" /> : <Orb state="reasoning" size={260} speed={1} label="Réflexion en cours" />;
-  const label = listening ? "J’attends votre question" : status.state === "transcribing" ? "Je comprends votre question" : answered ? "Réponse prête" : "Création de la réponse";
+  const label = listening ? "J’attends votre question" : status.state === "transcribing" ? "Je comprends votre question" : status.state === "error" ? "La réponse est indisponible" : answered ? "Réponse prête" : "Création de la réponse";
   return <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950 p-6 text-zinc-100">
     <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="flex w-full max-w-4xl flex-col items-center justify-center text-center">
       <div className="voice-orb-stage text-sky-300">{orb}</div>

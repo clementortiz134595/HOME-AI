@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -69,7 +70,8 @@ func (client *Transcriber) Transcribe(ctx context.Context, input model.VoiceInpu
 	}
 	defer response.Body.Close()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		slog.Error("stt provider returned error", "status", response.StatusCode)
+		detail, _ := io.ReadAll(io.LimitReader(response.Body, 2048))
+		slog.Error("stt provider returned error", "status", response.StatusCode, "detail", strings.TrimSpace(string(detail)))
 		return "", fmt.Errorf("google STT returned status %d", response.StatusCode)
 	}
 	var result recognitionResponse
