@@ -34,7 +34,6 @@ export function AgentPipeline({ status }: { status: AgentStatus }) {
         </TraceCollapsibleContent>
       </TraceCollapsible>
     </Trace>
-    {status.transcript && <div className="rounded-3xl border border-white/10 bg-zinc-900/70 p-4"><p className="text-xs font-medium uppercase tracking-[.14em] text-slate-500">Vous</p><p className="mt-2 text-sm leading-6 text-zinc-200">{status.transcript}</p></div>}
     {status.answer && <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-4"><p className="text-xs font-medium uppercase tracking-[.14em] text-zinc-400">Assistant</p><p className="mt-2 text-sm leading-6 text-zinc-200">{status.answer}</p></div>}
     {status.state === "error" && <div className="flex items-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-100"><XCircle className="size-4" />La pipeline vocale est indisponible.</div>}
   </div>;
