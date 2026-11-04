@@ -68,6 +68,8 @@ function HomeView() {
   const [states, setStates] = useState<Record<string, DeviceState>>({});
   const [unavailable, setUnavailable] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<RoomDialogRoom | null>(null);
+  const [activePreset, setActivePreset] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -103,8 +105,9 @@ function HomeView() {
     <div className="home-view mt-8">
       <div><p className="text-sm text-slate-500">Vue de l’appartement</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Maison</h2>{unavailable && <p className="mt-2 text-sm text-amber-300">Home Core est indisponible.</p>}</div>
       <Card className="relative overflow-hidden border-emerald-400/30 bg-gradient-to-br from-emerald-300 via-lime-200 to-sky-200 text-zinc-950"><div className="dot-field absolute inset-y-0 right-0 w-2/5 opacity-50" /><CardContent className="relative flex min-h-40 items-end justify-between p-6"><div><p className="text-sm font-medium text-zinc-700">Ambiance du soir</p><p className="mt-2 text-4xl font-semibold tracking-[-0.06em]">{lightsOn ? "Lumières allumées" : "Lumières éteintes"}</p></div><span className="rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-zinc-700">Commande vocale</span></CardContent></Card>
-      <div className="home-rooms grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">{displayedRooms.map(({ name, detail, icon: Icon, active, tone, roomDevices, remote }) => <Card key={name}><CardContent className="p-3 sm:p-5"><div className="flex items-start justify-between"><div className={"grid size-9 place-items-center rounded-xl sm:size-11 sm:rounded-2xl " + tone}><Icon className="size-4 sm:size-5" /></div><span className={active ? "size-2 rounded-full bg-emerald-400" : "size-2 rounded-full bg-zinc-600"} /></div><div className="mt-4 flex flex-col gap-1 sm:mt-8 sm:flex-row sm:items-end sm:justify-between sm:gap-3"><div><p className="text-sm font-medium sm:text-base">{name}</p><p className="mt-1 text-xs text-slate-500 sm:text-sm">{detail || "Aucun appareil"}</p></div>{remote === false ? <span className="text-xs text-slate-500">Hors ligne</span> : <Button variant="ghost" className="h-8 self-start px-2 text-xs sm:h-10 sm:self-auto sm:px-4 sm:text-sm" disabled={pending === name} onClick={() => toggleRoom(roomDevices, !active)}>{active ? "Éteindre" : "Allumer"}</Button>}</div></CardContent></Card>)}</div>
-      <Card className="max-sm:hidden"><CardHeader><div><p className="text-lg font-semibold">Scènes</p><p className="mt-1 text-sm text-slate-500">Des actions rapides pour le foyer</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3"><Button variant="secondary" className="h-16 justify-start"><Lightbulb className="size-4 text-amber-300" /> Soirée</Button><Button variant="secondary" className="h-16 justify-start"><Home className="size-4 text-emerald-300" /> Retour</Button><Button variant="secondary" className="h-16 justify-start"><Sparkles className="size-4 text-sky-300" /> Bonne nuit</Button></CardContent></Card>
+      <div className="home-rooms grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">{displayedRooms.map(({ name, detail, icon: Icon, active, tone, roomDevices, remote }) => <Card key={name} onClick={() => setSelectedRoom({ name, icon: Icon, tone })} className="cursor-pointer transition hover:border-white/25"><CardContent className="p-3 sm:p-5"><div className="flex items-start justify-between"><div className={"grid size-9 place-items-center rounded-xl sm:size-11 sm:rounded-2xl " + tone}><Icon className="size-4 sm:size-5" /></div><span className={active ? "size-2 rounded-full bg-emerald-400" : "size-2 rounded-full bg-zinc-600"} /></div><div className="mt-4 flex flex-col gap-1 sm:mt-8 sm:flex-row sm:items-end sm:justify-between sm:gap-3"><div><p className="text-sm font-medium sm:text-base">{name}</p><p className="mt-1 text-xs text-slate-500 sm:text-sm">{detail || "Aucun appareil"}</p></div>{remote === false ? <span className="text-xs text-slate-500">Hors ligne</span> : <Button variant="ghost" className="h-8 self-start px-2 text-xs sm:h-10 sm:self-auto sm:px-4 sm:text-sm" disabled={pending === name} onClick={(event) => { event.stopPropagation(); void toggleRoom(roomDevices, !active); }}>{active ? "Éteindre" : "Allumer"}</Button>}</div></CardContent></Card>)}</div>
+      <Card><CardHeader><div><p className="text-lg font-semibold">Presets</p><p className="mt-1 text-sm text-slate-500">Une ambiance pour chaque moment</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2 sm:grid-cols-5">{["Matin", "Journée de travail", "Soirée", "Lecture", "Dodo"].map((preset) => <Button key={preset} variant={activePreset === preset ? "default" : "secondary"} className="h-12 text-xs" onClick={() => setActivePreset(preset)}>{preset}</Button>)}</CardContent></Card>
+      {selectedRoom && <RoomDetailDialog room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
     </div>
   );
 }
@@ -113,6 +116,7 @@ function AgendaView({ profile }: { profile: Profile }) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [syncState, setSyncState] = useState<"loading" | "ready" | "unavailable">("loading");
   const [displayMonth, setDisplayMonth] = useState(() => new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const swipeStartX = useRef<number | null>(null);
 
   useEffect(() => {
@@ -133,13 +137,14 @@ function AgendaView({ profile }: { profile: Profile }) {
   const month = displayMonth.getMonth();
   const eventDays = events.map((event) => new Date(event.startsAt));
   const visibleItems = events.slice().sort((a, b) => a.startsAt.localeCompare(b.startsAt)).slice(0, 6);
+  const selectedEvents = selectedDate ? events.filter((event) => { const date = new Date(event.startsAt); return date.getFullYear() === selectedDate.getFullYear() && date.getMonth() === selectedDate.getMonth() && date.getDate() === selectedDate.getDate(); }) : [];
   const changeMonth = (offset: number) => setDisplayMonth(new Date(year, month + offset, 1));
 
   return (
     <div className="agenda-view cost-view mt-2">
       <div className="agenda-content grid gap-4 md:grid-cols-[minmax(0,1.45fr)_minmax(230px,0.75fr)]">
-        <Card className="agenda-calendar bg-zinc-900/90" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const start = swipeStartX.current; const end = event.changedTouches[0]?.clientX; swipeStartX.current = null; if (start === null || end === undefined || Math.abs(end - start) < 48) return; changeMonth(end < start ? 1 : -1); }}><CardHeader><div><p className="text-lg font-semibold">Calendrier</p><p className="mt-1 text-sm text-slate-500">Vue foyer partagé</p></div><span role="status" aria-label={syncState === "ready" ? "Synchronisation connectée" : syncState === "loading" ? "Synchronisation en cours" : "Synchronisation indisponible"} className={"mt-1 size-2.5 shrink-0 rounded-full " + (syncState === "ready" ? "bg-emerald-400" : "bg-rose-400")} /></CardHeader><CardContent className="p-3 sm:p-6"><DayPicker mode="single" month={displayMonth} onMonthChange={setDisplayMonth} showOutsideDays={false} modifiers={{ event: eventDays }} modifiersClassNames={{ event: "agenda-event-day" }} className="agenda-day-picker" /></CardContent></Card>
-        <Card className="agenda-events max-sm:hidden bg-zinc-900/90"><CardHeader><div><p className="text-lg font-semibold">À venir</p><p className="mt-1 text-sm text-slate-500">Rendez-vous du foyer</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{visibleItems.length === 0 && <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-500">{syncState === "loading" ? "Chargement des rendez-vous…" : "Aucun rendez-vous ce mois-ci."}</p>}{visibleItems.map((item) => <div key={item.id} className="flex items-center gap-3 rounded-2xl px-2 py-3 transition hover:bg-white/[0.04]"><span className="size-2 shrink-0 rounded-full bg-emerald-400" /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">{item.title || "Sans titre"}</p><Badge>Duo</Badge></div><p className="mt-1 text-sm text-slate-500">{item.allDay ? "Toute la journée" : new Date(item.startsAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p></div></div>)}</CardContent></Card>
+        <Card className="agenda-calendar bg-zinc-900/90" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const start = swipeStartX.current; const end = event.changedTouches[0]?.clientX; swipeStartX.current = null; if (start === null || end === undefined || Math.abs(end - start) < 48) return; changeMonth(end < start ? 1 : -1); }}><CardHeader><div><p className="text-lg font-semibold">Calendrier</p><p className="mt-1 text-sm text-slate-500">Vue foyer partagé</p></div><span role="status" aria-label={syncState === "ready" ? "Synchronisation connectée" : syncState === "loading" ? "Synchronisation en cours" : "Synchronisation indisponible"} className={"mt-1 size-2.5 shrink-0 rounded-full " + (syncState === "ready" ? "bg-emerald-400" : "bg-rose-400")} /></CardHeader><CardContent className="p-3 sm:p-6"><DayPicker mode="single" selected={selectedDate} onSelect={setSelectedDate} month={displayMonth} onMonthChange={setDisplayMonth} showOutsideDays={false} modifiers={{ event: eventDays }} modifiersClassNames={{ event: "agenda-event-day" }} className="agenda-day-picker" /></CardContent></Card>
+        <Card className="agenda-events max-sm:hidden bg-zinc-900/90">{selectedDate && <><CardHeader><div><p className="text-lg font-semibold">{selectedDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}</p><p className="mt-1 text-sm text-slate-500">Détail des événements</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{selectedEvents.length === 0 ? <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-500">Aucun événement ce jour.</p> : selectedEvents.map((item) => <div key={item.id} className="rounded-2xl bg-white/[0.04] p-3"><p className="text-sm font-medium">{item.title || "Sans titre"}</p><p className="mt-1 text-sm text-slate-500">{item.allDay ? "Toute la journée" : new Date(item.startsAt).toLocaleString("fr-FR", { timeStyle: "short" })}</p></div>)}</CardContent></>}</Card>
       </div>
     </div>
   );
@@ -467,9 +472,10 @@ function WeatherCard() {
 }
 
 type DashboardRoom = (typeof rooms)[number];
+type RoomDialogRoom = Pick<DashboardRoom, "name" | "icon" | "tone">;
 type Reminder = (typeof agendaItems)[number];
 
-function RoomDetailDialog({ room, onClose }: { room: DashboardRoom; onClose: () => void }) {
+function RoomDetailDialog({ room, onClose }: { room: RoomDialogRoom; onClose: () => void }) {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [states, setStates] = useState<Record<string, DeviceState>>({});
   const [unavailable, setUnavailable] = useState(false);
