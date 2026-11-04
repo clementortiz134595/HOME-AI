@@ -101,18 +101,38 @@ button { font: inherit; }
 .cost-breakdown { display: none; }
 .cost-view .cost-chart { height: 9rem; }
 
-@media (min-width: 1024px) {
-  .dashboard-compact-grid {
-    height: calc(100dvh - 7.5rem);
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-  .dashboard-compact-grid > section { min-height: 0; overflow: hidden; }
-  .dashboard-compact-grid .weather-content { min-height: 0; height: 100%; }
-  .dashboard-compact-grid .dashboard-rooms-card > div:last-child { padding-top: 0; }
-  .dashboard-compact-grid .dashboard-rooms-card button { min-height: 3.25rem; }
+.dashboard-compact-grid {
+  height: calc(100dvh - 6rem);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: .5rem;
+  margin-top: .75rem;
+}
+.dashboard-compact-grid > section { min-height: 0; overflow: hidden; }
+.dashboard-compact-grid .weather-content { min-height: 0; height: 100%; }
+.dashboard-compact-grid .dashboard-rooms-card > div:last-child { padding-top: 0; }
+.dashboard-compact-grid .dashboard-rooms-card button { min-height: 3.25rem; }
+
+@media (min-width: 640px) {
+  .dashboard-compact-grid { height: calc(100dvh - 7.5rem); gap: 1rem; margin-top: 1rem; }
+}
+
+@media (max-width: 639px) {
+  .dashboard-compact-grid { height: calc(100dvh - 5.75rem); }
+  .dashboard-compact-grid > section > div:first-child { padding: .75rem .75rem .375rem; }
+  .dashboard-compact-grid > section > div:last-child { padding: 0 .75rem .75rem; }
+  .dashboard-compact-grid .weather-content { padding: .75rem; }
+  .dashboard-compact-grid .weather-detail,
+  .dashboard-compact-grid .weather-content span,
+  .dashboard-compact-grid .dashboard-reminder-card span:not(.rounded-full),
+  .dashboard-compact-grid .dashboard-cost-card .text-emerald-400 { display: none; }
+  .dashboard-compact-grid .weather-content .text-5xl { font-size: 2rem; }
+  .dashboard-compact-grid .dashboard-rooms-card button { min-height: 2.5rem; padding: .25rem; }
+  .dashboard-compact-grid .dashboard-rooms-card .text-xs { display: none; }
+  .dashboard-compact-grid .dashboard-rooms-card .size-8 { width: 1.5rem; height: 1.5rem; }
+  .dashboard-compact-grid .text-lg { font-size: .875rem; }
+  .dashboard-compact-grid .text-xl { font-size: 1rem; }
+  .dashboard-compact-grid .text-4xl { font-size: 1.5rem; }
 }
 
 @media (min-width: 1024px) and (max-height: 700px) {
