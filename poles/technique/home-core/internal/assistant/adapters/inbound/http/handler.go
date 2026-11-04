@@ -73,7 +73,7 @@ func (handler *VoiceHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	}
 	slog.Info("voice pipeline succeeded", "transcript_length", len(transcript), "answer_length", len(answer.Text))
 	if handler.state != nil {
-		handler.state.Update(map[string]any{"state": "answered", "transcript": transcript, "answer": answer.Text})
+		handler.state.Update(map[string]any{"state": "answered", "transcript": transcript, "answer": answer.Text, "confirmationId": answer.ConfirmationID})
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"transcript": transcript, "answer": answer})
 }

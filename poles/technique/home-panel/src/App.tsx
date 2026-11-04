@@ -281,9 +281,26 @@ function WakeWordListener() {
   return null;
 }
 
+type AssistantAnswer = { text: string; confirmationId?: string };
+
+function MailConfirmation({ id, onAnswer }: { id: string; onAnswer: (answer: AssistantAnswer) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return <div className="mt-4"><Button disabled={busy} onClick={async () => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/v1/assistant/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmationId: id }) });
+      if (!response.ok) throw new Error("unavailable");
+      onAnswer(await response.json() as AssistantAnswer);
+    } catch { setError("Confirmation indisponible. Relancez votre demande."); }
+    finally { setBusy(false); }
+  }}>{busy ? "Consultation…" : "Confirmer l’accès Gmail et l’envoi à Gemini"}</Button>{error && <p role="alert">{error}</p>}</div>;
+}
+
 function AssistantOrb({ compact = false }: { compact?: boolean }) {
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState("Touchez pour parler");
+
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const ownsStream = useRef(false);
@@ -321,8 +338,9 @@ function AssistantOrb({ compact = false }: { compact?: boolean }) {
         setStatus("Transcription…");
         const response = await fetch("/v1/assistant/voice", { method: "POST", headers: { "Content-Type": mediaRecorder.mimeType || "audio/webm" }, body: new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" }) });
         if (!response.ok) { setStatus("La voix est indisponible"); return; }
-        const result = await response.json() as { transcript: string; answer: { text: string } };
+        const result = await response.json() as { transcript: string; answer: AssistantAnswer };
         setStatus(result.answer.text);
+
       };
       mediaRecorder.start();
       startedAt.current = Date.now();
@@ -517,9 +535,9 @@ function WeeklyChoresCard() {
   return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{tasks.map((task) => { const Icon = task.icon; return <button type="button" onClick={() => toggle(task.id)} key={task.id} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className={"grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 " + task.tone}><Icon className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></button>; })}</CardContent></Card>;
 }
 
-type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
+type VoiceStatus = { confirmationId?: string; state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
 
-function VoiceOverlay({ status }: { status: VoiceStatus }) {
+function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (answer: AssistantAnswer) => void }) {
   useEffect(() => {
     if (status.state !== "listening") return;
     const audioContext = new AudioContext();
@@ -545,6 +563,7 @@ function VoiceOverlay({ status }: { status: VoiceStatus }) {
     <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="flex w-full max-w-4xl flex-col items-center justify-center text-center">
       <div className="voice-orb-stage text-sky-300">{orb}</div>
       <div className="mt-6 w-full"><AgentPipeline status={status} /></div>
+      {status.state === "answered" && status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} />}
     </div>
   </div>;
 }
@@ -591,11 +610,10 @@ function App() {
   useEffect(() => {
     if (voiceStatus.state === "idle") return;
     const timeout = window.setTimeout(() => {
-      lastVoiceUpdate.current = undefined;
       setVoiceStatus({ state: "idle" });
-    }, 20_000);
+    }, voiceStatus.confirmationId ? 300_000 : 20_000);
     return () => window.clearTimeout(timeout);
-  }, [voiceStatus.state, voiceStatus.updatedAt]);
+  }, [voiceStatus.state, voiceStatus.updatedAt, voiceStatus.confirmationId]);
 
   useEffect(() => {
     const handleTranscript = (event: Event) => {
@@ -649,7 +667,7 @@ function App() {
       <WakeWordListener />
       {selectedRoom && <RoomDetailDialog room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
       {selectedReminder && <ReminderDetailDialog reminder={selectedReminder} onClose={() => setSelectedReminder(null)} />}
-      <VoiceOverlay status={voiceStatus} />
+      <VoiceOverlay status={voiceStatus} onAnswer={(answer) => setVoiceStatus({ state: "answered", answer: answer.text, confirmationId: answer.confirmationId })} />
     </main>
   );
 }

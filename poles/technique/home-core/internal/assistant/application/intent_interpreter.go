@@ -106,6 +106,9 @@ func NewAgent(answerer QuestionAnswerer, interpreter IntentInterpreter, tools ma
 	if interpreter == nil {
 		interpreter = NewDeterministicInterpreter()
 	}
+	if _, ok := answerer.(*ToolConversation); ok {
+		interpreter = modelToolInterpreter{fallback: interpreter}
+	}
 	return NewVoiceInteraction(transcriber, interpreter, NewToolRegistry(registryTools), DefaultConfirmationPolicy{})
 }
 
@@ -120,5 +123,21 @@ func (tool questionTool) Execute(ctx context.Context, intent model.Intent) (mode
 	if err != nil {
 		return model.ActionResult{Status: model.ActionUnavailable, Message: "La réponse IA est indisponible."}, err
 	}
-	return model.ActionResult{Status: model.ActionExecuted, Message: answer.Text}, nil
+	return model.ActionResult{Status: model.ActionExecuted, Message: answer.Text, Answer: &answer}, nil
+}
+
+type modelToolInterpreter struct{ fallback IntentInterpreter }
+
+func (router modelToolInterpreter) Interpret(ctx context.Context, interaction model.Interaction) (model.Intent, error) {
+	if action, ok := switchCommand(strings.TrimSpace(strings.ToLower(interaction.Text))); ok {
+		return action, nil
+	}
+	intent, err := router.fallback.Interpret(ctx, interaction)
+	if err != nil {
+		return model.Intent{}, err
+	}
+	if strings.HasPrefix(intent.Name, "gmail.") {
+		return model.Intent{Name: "assistant.question", Parameters: map[string]any{"text": interaction.Text}}, nil
+	}
+	return intent, nil
 }
