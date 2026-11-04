@@ -17,6 +17,8 @@ import {
   RobotVacuum,
   Thermometer,
   ThermometerSun,
+  TrainFront,
+  TrendingUp,
   UtensilsCrossed,
   WalletCards,
   UserRound,
@@ -58,6 +60,8 @@ const weeklyChores = [
   { id: "chore-2", date: "Mer. 5", objective: "Sortir le recyclage", person: "Lise", icon: Recycle, tone: "bg-amber-400", completed: false },
   { id: "chore-3", date: "Sam. 8", objective: "Nettoyer la cuisine", person: "Duo", icon: UtensilsCrossed, tone: "bg-emerald-400", completed: false },
 ];
+const fallbackTrains = [{ time: "07:42", arrival: "08:18", status: "on_time", message: "À l’heure" }, { time: "08:42", arrival: "09:18", status: "delayed", message: "Retard estimé : 10 min" }, { time: "09:42", arrival: "10:18", status: "on_time", message: "À l’heure" }];
+const fallbackMarkets = [{ symbol: "ETF Monde", change: .42 }, { symbol: "ETF Europe", change: -.18 }, { symbol: "ETF USA", change: .63 }];
 
 function HomeView() {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
@@ -535,6 +539,20 @@ function WeeklyChoresCard() {
   return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{tasks.map((task) => { const Icon = task.icon; return <button type="button" onClick={() => toggle(task.id)} key={task.id} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className={"grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 " + task.tone}><Icon className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></button>; })}</CardContent></Card>;
 }
 
+function TrainsCard() {
+  const [trains, setTrains] = useState(fallbackTrains);
+  useEffect(() => { const controller = new AbortController(); fetch("/v1/insights/trains", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => { if (Array.isArray(data.trains)) setTrains(data.trains); }).catch(() => {}); return () => controller.abort(); }, []);
+  return <Card className="dashboard-trains-card"><CardHeader><div><p className="text-lg font-semibold">Prochain train</p><p className="mt-1 text-sm text-slate-500">La Ciotat → Marseille</p></div><TrainFront className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{trains.map((train) => <div key={train.time} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-2 py-2"><span className="text-sm font-semibold">{train.time}</span><Badge className={train.status === "delayed" ? "bg-amber-400/15 text-amber-200" : "bg-emerald-400/15 text-emerald-200"}>{train.message}</Badge></div>)}</CardContent></Card>;
+}
+
+function MarketsCard() {
+  const [period, setPeriod] = useState("Jour");
+  const [markets, setMarkets] = useState(fallbackMarkets);
+  const [news, setNews] = useState(["Les marchés européens ouvrent en hausse.", "La BCE maintient ses taux directeurs.", "Les valeurs technologiques restent soutenues."]);
+  useEffect(() => { const controller = new AbortController(); fetch("/v1/insights/markets", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => { if (Array.isArray(data.etfs)) setMarkets(data.etfs); if (Array.isArray(data.news)) setNews(data.news); }).catch(() => {}); return () => controller.abort(); }, []);
+  return <Card className="dashboard-markets-card"><CardHeader><div><p className="text-lg font-semibold">Marchés & actualités</p><div className="mt-2 flex gap-1">{["Jour", "Mois", "Année"].map((item) => <Button key={item} type="button" variant={period === item ? "secondary" : "ghost"} className="h-6 px-2 text-[10px]" onClick={() => setPeriod(item)}>{item}</Button>)}</div></div><TrendingUp className="size-5 text-slate-400" /></CardHeader><CardContent><div className="grid grid-cols-3 gap-1">{markets.map((market) => <div key={market.symbol} className="rounded-lg bg-white/[0.04] p-1.5"><p className="truncate text-[10px] text-slate-400">{market.symbol}</p><p className={market.change >= 0 ? "text-xs font-semibold text-emerald-400" : "text-xs font-semibold text-rose-400"}>{market.change >= 0 ? "+" : ""}{market.change}%</p></div>)}</div><ol className="mt-2 space-y-1">{news.slice(0, 3).map((item) => <li key={item} className="truncate text-[10px] text-slate-400">• {item}</li>)}</ol></CardContent></Card>;
+}
+
 type VoiceStatus = { confirmationId?: string; state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
 
 function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (answer: AssistantAnswer) => void }) {
@@ -655,6 +673,8 @@ function App() {
             <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map((room) => { const Icon = room.icon; return <button key={room.name} type="button" onClick={() => setSelectedRoom(room)} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + room.tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={room.active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{room.name}</span><span className="block truncate text-xs text-slate-500">{room.detail}</span></span></button>; })}</CardContent></Card>
             <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappels</p><p className="mt-1 text-sm text-slate-400">À venir</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{agendaItems.slice(0, 3).map((reminder) => <button key={reminder.title} type="button" onClick={() => setSelectedReminder(reminder)} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"size-2 shrink-0 rounded-full " + reminder.tone} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reminder.title}</span><span className="block text-xs text-slate-500">{reminder.time}</span></span></button>)}</CardContent></Card>
             <WeeklyChoresCard />
+            <TrainsCard />
+            <MarketsCard />
           </div>
 
           <div className="hidden"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>

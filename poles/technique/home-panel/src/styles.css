@@ -172,6 +172,10 @@ button { font: inherit; }
   gap: .5rem;
   margin-top: .75rem;
 }
+
+@media (min-width: 1024px) {
+  .dashboard-compact-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 .dashboard-compact-grid > section { min-height: 0; overflow: hidden; }
 .dashboard-compact-grid .weather-content { min-height: 0; height: 100%; }
 .dashboard-compact-grid .dashboard-rooms-card > div:last-child { padding-top: 0; }

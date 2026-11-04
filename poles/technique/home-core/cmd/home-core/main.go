@@ -20,6 +20,7 @@ import (
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
 	choreshttp "github.com/clementortiz/home-ai/home-core/internal/chores/adapters/inbound/http"
 	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
+	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
@@ -57,6 +58,7 @@ func main() {
 	}
 	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
+	mux.Handle("/v1/insights/", insightshttp.NewHandler())
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	var mailReader assistantapp.MailReader
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
