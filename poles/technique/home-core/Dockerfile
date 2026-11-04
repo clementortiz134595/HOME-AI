@@ -1,19 +1,21 @@
 FROM debian:bookworm-slim AS wake-model
 
-ARG SHERPA_KWS_URL=https://github.com/k2-fsa/sherpa-onnx/releases/download/kws-models/sherpa-onnx-kws-zipformer-gigaspeech-3.3M-2024-01-01.tar.bz2
-ARG SHERPA_KWS_SHA256=f170013b4716e41b62b9bfd809687c207cef798ef9bc6534d524e17af9b6561a
+ARG SHERPA_KWS_BASE_URL=https://huggingface.co/jguerrisi/sherpa-onnx-kws-zipformer-fr-3M-2026-08-08/resolve/main
+ARG SHERPA_KWS_ENCODER_SHA256=7bec12683c0d5730fab58ff6e3427c9645f186af619d463e43fcc88838aa7aa4
+ARG SHERPA_KWS_DECODER_SHA256=3628efb17bd1edbdbd69eb664a89aba940b8bac3e498eb5383e240de6bc56df2
+ARG SHERPA_KWS_JOINER_SHA256=c090840b89767c1e11f3423d157e961332cd80079e2a4da836ea54a0a7cf606b
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl bzip2 \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL "$SHERPA_KWS_URL" -o /tmp/sherpa-kws.tar.bz2 \
-    && echo "$SHERPA_KWS_SHA256  /tmp/sherpa-kws.tar.bz2" | sha256sum -c - \
-    && mkdir -p /models/sherpa-kws /tmp/model \
-    && tar -xjf /tmp/sherpa-kws.tar.bz2 -C /tmp/model --strip-components=1 \
-    && cp /tmp/model/encoder-epoch-12-avg-2-chunk-16-left-64.int8.onnx /models/sherpa-kws/encoder.int8.onnx \
-    && cp /tmp/model/decoder-epoch-12-avg-2-chunk-16-left-64.onnx /models/sherpa-kws/decoder.onnx \
-    && cp /tmp/model/joiner-epoch-12-avg-2-chunk-16-left-64.int8.onnx /models/sherpa-kws/joiner.int8.onnx \
-    && cp /tmp/model/tokens.txt /models/sherpa-kws/tokens.txt
+    && mkdir -p /models/sherpa-kws \
+    && curl -fsSL "$SHERPA_KWS_BASE_URL/encoder-epoch-20-avg-2-chunk-16-left-64.int8.onnx" -o /models/sherpa-kws/encoder.int8.onnx \
+    && curl -fsSL "$SHERPA_KWS_BASE_URL/decoder-epoch-20-avg-2-chunk-16-left-64.int8.onnx" -o /models/sherpa-kws/decoder.onnx \
+    && curl -fsSL "$SHERPA_KWS_BASE_URL/joiner-epoch-20-avg-2-chunk-16-left-64.int8.onnx" -o /models/sherpa-kws/joiner.int8.onnx \
+    && curl -fsSL "$SHERPA_KWS_BASE_URL/tokens.txt" -o /models/sherpa-kws/tokens.txt \
+    && echo "$SHERPA_KWS_ENCODER_SHA256  /models/sherpa-kws/encoder.int8.onnx" | sha256sum -c - \
+    && echo "$SHERPA_KWS_DECODER_SHA256  /models/sherpa-kws/decoder.onnx" | sha256sum -c - \
+    && echo "$SHERPA_KWS_JOINER_SHA256  /models/sherpa-kws/joiner.int8.onnx" | sha256sum -c -
 
 COPY models/sherpa-kws/keywords.txt /models/sherpa-kws/keywords.txt
 
