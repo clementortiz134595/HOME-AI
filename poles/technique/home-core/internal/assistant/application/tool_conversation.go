@@ -180,7 +180,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	if calls[0].Name == "drive_read" {
 		description = "la lecture du fichier Drive sélectionné"
 	}
-	return model.Answer{Text: fmt.Sprintf("Confirmez %s. Le résultat Gmail sera envoyé à Gemini pour répondre à votre demande.", description), Status: model.ActionConfirmation, ConfirmationID: id, Provider: "home-core"}, nil
+	return model.Answer{Text: fmt.Sprintf("Confirmez %s. Le résultat sera envoyé à Gemini pour répondre à votre demande.", description), Status: model.ActionConfirmation, ConfirmationID: id, Provider: "home-core"}, nil
 }
 func (agent *ToolConversation) validate(call model.ToolCall, history []model.Content) error {
 	if (agent.mail == nil && agent.drive == nil) || len(call.Args) != 1 {
