@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant Panel as Home Panel
+    participant Core as Home Core
+    participant Service as Service rappels/tâches
+    participant DB as SQLite local
+    participant Jarvis as Assistant vocal
+    Panel->>Core: GET/PATCH rappels ou tâches
+    Jarvis->>Core: commande vocale transcrite
+    Core->>Service: cas d'usage
+    Service->>DB: lecture/écriture persistante
+    DB-->>Service: état durable
+    Service-->>Core: résultat
+    Core-->>Panel: état confirmé

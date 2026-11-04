@@ -26,7 +26,9 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
 	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
+	remindershttp "github.com/clementortiz/home-ai/home-core/internal/reminders/adapters/inbound/http"
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
+	"github.com/clementortiz/home-ai/home-core/internal/storage/sqlite"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
@@ -65,9 +67,20 @@ func main() {
 	var driveReader assistantapp.DriveReader
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
 	tools := map[string]assistantapp.ActionExecutor{}
-	choresService := choresapp.NewService()
+	databasePath := os.Getenv("HOME_CORE_DATABASE_PATH")
+	if databasePath == "" {
+		databasePath = "/var/lib/home-core/home-core.sqlite"
+	}
+	database, err := sqlite.Open(databasePath)
+	if err != nil {
+		logger.Error("household database unavailable", "error", err)
+		os.Exit(1)
+	}
+	defer database.Close()
+	choresService := choresapp.NewService(database)
 	mux.Handle("/v1/chores/", choreshttp.NewHandler(choresService))
-	remindersService := remindersapp.NewService()
+	remindersService := remindersapp.NewService(database)
+	mux.Handle("/v1/reminders", remindershttp.NewHandler(remindersService))
 	choreTool := assistantapp.NewChoreTool(choresService)
 	reminderTool := assistantapp.NewReminderTool(remindersService)
 	for _, name := range []string{"chores.create", "chores.update", "chores.delete"} {

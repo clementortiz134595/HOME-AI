@@ -1,9 +1,98 @@
 package application
 
-import ("errors"; "fmt"; "strings"; "sync"; "github.com/clementortiz/home-ai/home-core/internal/reminders/model")
+import (
+	"errors"
+	"fmt"
+	"github.com/clementortiz/home-ai/home-core/internal/reminders/model"
+	"strings"
+	"sync"
+)
+
 var ErrNotFound = errors.New("reminder not found")
-type Service struct { mu sync.RWMutex; reminders map[string]model.Reminder; next int }
-func NewService() *Service { return &Service{reminders: map[string]model.Reminder{}} }
-func (s *Service) Create(value model.Reminder) (model.Reminder, error) { if strings.TrimSpace(value.Title)=="" || strings.TrimSpace(value.Date)=="" { return model.Reminder{}, errors.New("title and date are required") }; s.mu.Lock(); defer s.mu.Unlock(); s.next++; value.ID=fmt.Sprintf("reminder-%d",s.next); s.reminders[value.ID]=value; return value,nil }
-func (s *Service) Update(id string, patch model.Reminder) (model.Reminder,error) { s.mu.Lock(); defer s.mu.Unlock(); value,ok:=s.reminders[id]; if !ok{return model.Reminder{},ErrNotFound}; if patch.Title!=""{value.Title=patch.Title};if patch.Date!=""{value.Date=patch.Date};if patch.Details!=""{value.Details=patch.Details};s.reminders[id]=value;return value,nil }
-func (s *Service) Delete(id string) error { s.mu.Lock();defer s.mu.Unlock();if _,ok:=s.reminders[id];!ok{return ErrNotFound};delete(s.reminders,id);return nil }
+
+type Repository interface {
+	ListReminders() ([]model.Reminder, error)
+	SaveReminder(model.Reminder) error
+	DeleteReminder(string) error
+}
+type Service struct {
+	mu         sync.RWMutex
+	reminders  map[string]model.Reminder
+	next       int
+	repository Repository
+}
+
+func NewService(repositories ...Repository) *Service {
+	s := &Service{reminders: map[string]model.Reminder{}}
+	if len(repositories) > 0 && repositories[0] != nil {
+		s.repository = repositories[0]
+		if values, err := s.repository.ListReminders(); err == nil {
+			for _, value := range values {
+				s.reminders[value.ID] = value
+			}
+		}
+	}
+	return s
+}
+
+func (s *Service) List() []model.Reminder {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]model.Reminder, 0, len(s.reminders))
+	for _, value := range s.reminders {
+		result = append(result, value)
+	}
+	return result
+}
+func (s *Service) Create(value model.Reminder) (model.Reminder, error) {
+	if strings.TrimSpace(value.Title) == "" || strings.TrimSpace(value.Date) == "" {
+		return model.Reminder{}, errors.New("title and date are required")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.next++
+	value.ID = fmt.Sprintf("reminder-%d", s.next)
+	s.reminders[value.ID] = value
+	if s.repository != nil {
+		if err := s.repository.SaveReminder(value); err != nil {
+			return model.Reminder{}, err
+		}
+	}
+	return value, nil
+}
+func (s *Service) Update(id string, patch model.Reminder) (model.Reminder, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	value, ok := s.reminders[id]
+	if !ok {
+		return model.Reminder{}, ErrNotFound
+	}
+	if patch.Title != "" {
+		value.Title = patch.Title
+	}
+	if patch.Date != "" {
+		value.Date = patch.Date
+	}
+	if patch.Details != "" {
+		value.Details = patch.Details
+	}
+	s.reminders[id] = value
+	if s.repository != nil {
+		if err := s.repository.SaveReminder(value); err != nil {
+			return model.Reminder{}, err
+		}
+	}
+	return value, nil
+}
+func (s *Service) Delete(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if _, ok := s.reminders[id]; !ok {
+		return ErrNotFound
+	}
+	delete(s.reminders, id)
+	if s.repository != nil {
+		return s.repository.DeleteReminder(id)
+	}
+	return nil
+}

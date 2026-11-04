@@ -10,5 +10,7 @@ github.com/k2-fsa/sherpa-onnx-go-macos v1.13.8 h1:TQFOntGvoH+L+9HpmKukq6cDag674W
 github.com/k2-fsa/sherpa-onnx-go-macos v1.13.8/go.mod h1:ZOhUAXC62Unj0ZNfu6zxSFKcW96aXf7P3BsqiUyOBbE=
 github.com/k2-fsa/sherpa-onnx-go-windows v1.13.8 h1:PjALQ7qHH6wmGyVeHMhGESh+EAtC/24rzZIth4PXcEs=
 github.com/k2-fsa/sherpa-onnx-go-windows v1.13.8/go.mod h1:5AX7TU8+P/gInjglY1ijtWUM2b8iyR0QX4yEngzMe64=
+github.com/mattn/go-sqlite3 v1.14.24 h1:tpSp2G2KyMnnQu99ngJ47EIkWVmliIizyZBfPrBWDRM=
+github.com/mattn/go-sqlite3 v1.14.24/go.mod h1:Uh1q+B4BYcTPb+yiD3kU8Ct7aC0hY9fxUwlHK0RXw+Y=
 golang.org/x/oauth2 v0.27.0 h1:da9Vo7/tDv5RH/7nZDz1eMGS/q1Vv1N/7FCrBhI9I3M=
 golang.org/x/oauth2 v0.27.0/go.mod h1:onh5ek6nERTohokkhCD/y2cV4Do3fxFHFuAejCkRWT8=
