@@ -2,6 +2,8 @@ package gmail
 
 import (
 	"encoding/base64"
+	"net/http"
+	"net/url"
 	"testing"
 )
 
@@ -9,6 +11,23 @@ func body(mime, text string) gmailPayload {
 	p := gmailPayload{MimeType: mime}
 	p.Body.Data = base64.RawURLEncoding.EncodeToString([]byte(text))
 	return p
+}
+
+func TestAuthorizationURLDoesNotForceRepeatedConsent(t *testing.T) {
+	client, err := NewClient(http.DefaultClient, "client", "secret", "http://localhost/callback", t.TempDir()+"/token.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := url.Parse(client.AuthorizationURL("state"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := parsed.Query().Get("prompt"); got != "" {
+		t.Fatalf("prompt = %q, want omitted", got)
+	}
+	if parsed.Query().Get("access_type") != "offline" {
+		t.Fatalf("access_type = %q", parsed.Query().Get("access_type"))
+	}
 }
 func TestDecodeBodyPrefersTextAndSkipsAttachments(t *testing.T) {
 	attachment := body("text/plain", "secret attachment")
