@@ -422,6 +422,15 @@ function App() {
 
   useEffect(() => {
     let active = true;
+    const resetVoiceState = async () => {
+      try {
+        await fetch("/v1/assistant/voice/state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ state: "idle" }),
+        });
+      } catch { /* Home Core may be restarting. */ }
+    };
     const poll = async () => {
       try {
         const response = await fetch("/v1/assistant/voice/state", { cache: "no-store" });
@@ -434,7 +443,7 @@ function App() {
         }
       } catch { /* Home Core may be restarting. */ }
     };
-    poll();
+    void resetVoiceState().then(() => { if (active) void poll(); });
     const timer = window.setInterval(poll, 300);
     return () => { active = false; window.clearInterval(timer); };
   }, []);
