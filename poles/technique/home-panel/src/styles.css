@@ -18,26 +18,25 @@ button { font: inherit; }
   overflow: hidden;
   pointer-events: none;
   user-select: none;
-  container-type: inline-size;
-  color: rgba(12, 74, 110, .46);
-  mask-image: linear-gradient(to right, transparent 8%, rgba(0, 0, 0, .2) 32%, #000 66%);
+}
+
+.weather-landscape::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(3, 4, 8, .78), rgba(3, 4, 8, .12) 70%),
+    linear-gradient(to top, rgba(3, 4, 8, .65), transparent 65%);
 }
 
 .weather-landscape-art {
   position: absolute;
-  right: -3%;
-  top: 50%;
+  right: 0;
+  top: 65%;
   transform: translateY(-50%);
-  margin: 0;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: clamp(8px, 2.35cqw, 15px);
-  line-height: 1.2;
-  letter-spacing: 0;
-  white-space: pre;
-  font-variant-ligatures: none;
+  display: block;
 }
 
-.dashboard-weather .weather-content { text-shadow: 0 1px 8px rgba(207, 250, 254, .8); }
+.dashboard-weather .weather-content { text-shadow: 0 1px 8px rgba(0, 0, 0, .8); }
 
 .orb {
   display: grid;
@@ -100,31 +99,6 @@ button { font: inherit; }
 .cost-bar { flex: 1; min-width: .5rem; border-radius: .45rem .45rem 0 0; background: linear-gradient(to top, #4f46e5, #7dd3fc); opacity: .8; }
 .cost-breakdown { display: none; }
 .cost-view .cost-chart { height: 9rem; }
-
-@media (min-width: 1024px) {
-  .dashboard-compact-grid {
-    height: calc(100dvh - 7.5rem);
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-  .dashboard-compact-grid > section { min-height: 0; overflow: hidden; }
-  .dashboard-compact-grid .weather-content { min-height: 0; height: 100%; }
-  .dashboard-compact-grid .dashboard-rooms-card > div:last-child { padding-top: 0; }
-  .dashboard-compact-grid .dashboard-rooms-card button { min-height: 3.25rem; }
-}
-
-@media (min-width: 1024px) and (max-height: 700px) {
-  .dashboard-compact-grid { height: calc(100dvh - 6.5rem); gap: .75rem; margin-top: .75rem; }
-  .dashboard-compact-grid > section > div:first-child { padding: .875rem .875rem .5rem; }
-  .dashboard-compact-grid > section > div:last-child { padding: 0 .875rem .875rem; }
-  .dashboard-compact-grid .weather-detail,
-  .dashboard-compact-grid .weather-content span { display: none; }
-  .dashboard-compact-grid .weather-content .text-5xl { font-size: 2.25rem; }
-  .dashboard-compact-grid .dashboard-rooms-card button { min-height: 2.75rem; padding: .375rem; }
-  .dashboard-compact-grid .dashboard-rooms-card .text-xs { display: none; }
-}
 
 @keyframes profile-menu-in {
   from { opacity: 0; transform: translateX(5px) scale(0.96); }
