@@ -65,7 +65,7 @@ func main() {
 	} else {
 		logger.Warn("Gmail is not configured", "error", gmailErr)
 	}
-	voiceAgent := assistantapp.NewAgent(aiProvider, tools, sttProvider)
+	voiceAgent := assistantapp.NewAgent(aiProvider, aiProvider, tools, sttProvider)
 	voiceState := assistanthttp.NewVoiceStateHandler()
 	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewVoiceCommand(sttProvider, voiceAgent), voiceState))
 	mux.Handle("/v1/assistant/voice/state", voiceState)

@@ -95,15 +95,18 @@ func (DefaultConfirmationPolicy) RequiresConfirmation(intent model.Intent) bool 
 	return intent.Sensitive || strings.HasPrefix(intent.Name, "gmail.") || strings.HasPrefix(intent.Name, "drive.")
 }
 
-// NewAgent assembles the application brain. Integrations are injected as
-// tools, keeping Home Core responsible for routing without owning adapters.
-func NewAgent(answerer QuestionAnswerer, tools map[string]ActionExecutor, transcriber AudioTranscriber) VoiceInteraction {
+// NewAgent assembles the application brain. The interpreter may use an
+// external model, but Home Core keeps validation, confirmation and execution.
+func NewAgent(answerer QuestionAnswerer, interpreter IntentInterpreter, tools map[string]ActionExecutor, transcriber AudioTranscriber) VoiceInteraction {
 	registryTools := make(map[string]ActionExecutor, len(tools)+1)
 	for name, tool := range tools {
 		registryTools[name] = tool
 	}
 	registryTools["assistant.question"] = questionTool{answerer: NewAskQuestion(answerer)}
-	return NewVoiceInteraction(transcriber, NewDeterministicInterpreter(), NewToolRegistry(registryTools), DefaultConfirmationPolicy{})
+	if interpreter == nil {
+		interpreter = NewDeterministicInterpreter()
+	}
+	return NewVoiceInteraction(transcriber, interpreter, NewToolRegistry(registryTools), DefaultConfirmationPolicy{})
 }
 
 type questionTool struct{ answerer AskQuestion }
