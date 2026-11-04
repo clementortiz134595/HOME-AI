@@ -55,17 +55,19 @@ func main() {
 	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
-	assistantService := assistantapp.NewAskQuestion(aiProvider)
+	var mailReader assistantapp.MailReader
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
-	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
-	tools := map[string]assistantapp.ActionExecutor{}
+
 	if gmailProvider, gmailErr := gmail.NewClient(&http.Client{Timeout: 20 * time.Second}, os.Getenv("HOME_CORE_GMAIL_CLIENT_ID"), os.Getenv("HOME_CORE_GMAIL_CLIENT_SECRET"), os.Getenv("HOME_CORE_GMAIL_REDIRECT_URL"), os.Getenv("HOME_CORE_GMAIL_TOKEN_PATH")); gmailErr == nil {
-		tools["gmail.search"] = assistantapp.NewGmailSearchTool(gmailProvider)
+		mailReader = gmailProvider
 		mux.Handle("/v1/workspace/google/gmail/oauth/", workspacehttp.NewGmailOAuthHandler(gmailProvider))
 	} else {
 		logger.Warn("Gmail is not configured", "error", gmailErr)
 	}
-	voiceAgent := assistantapp.NewAgent(aiProvider, tools, sttProvider)
+	conversation := assistantapp.NewToolConversation(aiProvider, mailReader)
+	assistantService := assistantapp.NewAskQuestion(conversation)
+	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
+	voiceAgent := assistantapp.NewAgent(conversation, map[string]assistantapp.ActionExecutor{}, sttProvider)
 	voiceState := assistanthttp.NewVoiceStateHandler()
 	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewVoiceCommand(sttProvider, voiceAgent), voiceState))
 	mux.Handle("/v1/assistant/voice/state", voiceState)
@@ -87,7 +89,7 @@ func main() {
 		Handler:           mux,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      15 * time.Second,
+		WriteTimeout:      120 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 

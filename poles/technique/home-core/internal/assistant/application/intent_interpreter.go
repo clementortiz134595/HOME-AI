@@ -103,7 +103,11 @@ func NewAgent(answerer QuestionAnswerer, tools map[string]ActionExecutor, transc
 		registryTools[name] = tool
 	}
 	registryTools["assistant.question"] = questionTool{answerer: NewAskQuestion(answerer)}
-	return NewVoiceInteraction(transcriber, NewDeterministicInterpreter(), NewToolRegistry(registryTools), DefaultConfirmationPolicy{})
+	interpreter := IntentInterpreter(NewDeterministicInterpreter())
+	if _, ok := answerer.(*ToolConversation); ok {
+		interpreter = modelToolInterpreter{}
+	}
+	return NewVoiceInteraction(transcriber, interpreter, NewToolRegistry(registryTools), DefaultConfirmationPolicy{})
 }
 
 type questionTool struct{ answerer AskQuestion }
@@ -117,5 +121,14 @@ func (tool questionTool) Execute(ctx context.Context, intent model.Intent) (mode
 	if err != nil {
 		return model.ActionResult{Status: model.ActionUnavailable, Message: "La réponse IA est indisponible."}, err
 	}
-	return model.ActionResult{Status: model.ActionExecuted, Message: answer.Text}, nil
+	return model.ActionResult{Status: model.ActionExecuted, Message: answer.Text, Answer: &answer}, nil
+}
+
+type modelToolInterpreter struct{}
+
+func (modelToolInterpreter) Interpret(_ context.Context, interaction model.Interaction) (model.Intent, error) {
+	if action, ok := switchCommand(strings.TrimSpace(strings.ToLower(interaction.Text))); ok {
+		return action, nil
+	}
+	return model.Intent{Name: "assistant.question", Parameters: map[string]any{"text": interaction.Text}}, nil
 }

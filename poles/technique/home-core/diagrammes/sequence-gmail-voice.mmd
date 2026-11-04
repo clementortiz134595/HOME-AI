@@ -1,16 +1,17 @@
 sequenceDiagram
     participant U as Utilisateur
-    participant P as Home Panel / voix
-    participant C as Home Core assistant
-    participant O as Google OAuth
+    participant C as Home Core
+    participant AI as Gemini
     participant G as Gmail API
-    U->>P: « regarde mes mails concernant la facture »
-    P->>C: Audio
-    C->>C: STT puis intention gmail.search
-    C-->>P: Confirmation requise
-    U->>P: Confirmation
-    C->>G: messages.list(q, gmail.readonly)
-    G-->>C: Messages et métadonnées
-    C-->>P: Résumé vocal sans jeton
-    C->>O: Premier accès / renouvellement
-    O-->>C: Jeton stocké localement
+    U->>C: Question texte ou transcription vocale
+    C->>AI: Question et déclarations des outils configurés
+    AI-->>C: Appel gmail_search ou gmail_read
+    C->>C: Validation, conservation éphémère, identifiant unique
+    C-->>U: Confirmation requise, envoi à Gemini annoncé
+    U->>C: POST questions avec confirmationId
+    C->>C: Consomme la confirmation, vérifie expiration
+    C->>G: Recherche ou lecture, scope readonly
+    G-->>C: Résultat structuré
+    C->>AI: functionResponse
+    AI-->>C: Synthèse ou prochain appel soumis à confirmation
+    C-->>U: Réponse ou nouvelle confirmation

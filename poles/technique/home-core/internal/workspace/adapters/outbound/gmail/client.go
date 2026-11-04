@@ -148,7 +148,7 @@ func (client *Client) token(ctx context.Context) (*oauth2.Token, error) {
 	return refreshed, nil
 }
 func (client *Client) httpClient(token *oauth2.Token) *http.Client {
-	return oauth2.NewClient(context.Background(), oauth2.StaticTokenSource(token))
+	return &http.Client{Timeout: client.http.Timeout, Transport: &oauth2.Transport{Source: oauth2.StaticTokenSource(token), Base: client.http.Transport}}
 }
 
 func (store *fileTokenStore) load() (*oauth2.Token, error) {
@@ -186,8 +186,10 @@ type gmailMessage struct {
 	Payload      gmailPayload `json:"payload"`
 }
 type gmailPayload struct {
-	Headers []struct{ Name, Value string } `json:"headers"`
-	Body    struct {
+	MimeType string                         `json:"mimeType"`
+	Filename string                         `json:"filename"`
+	Headers  []struct{ Name, Value string } `json:"headers"`
+	Body     struct {
 		Data string `json:"data"`
 	} `json:"body"`
 	Parts []gmailPayload `json:"parts"`
@@ -206,16 +208,27 @@ func (message gmailMessage) summary() model.MailSummary {
 	return model.MailSummary{ID: message.ID, ThreadID: message.ThreadID, From: headers["from"], Subject: headers["subject"], ReceivedAt: received, Snippet: message.Snippet}
 }
 func decodeBody(payload gmailPayload) string {
-	if payload.Body.Data != "" {
-		data, err := base64.RawURLEncoding.DecodeString(payload.Body.Data)
+	// Prefer the text alternative and never read attachment bodies.
+	if body := decodeMIMEBody(payload, "text/plain"); body != "" {
+		return body
+	}
+	return decodeMIMEBody(payload, "text/html")
+}
+func decodeMIMEBody(payload gmailPayload, mimeType string) string {
+	if payload.Filename != "" {
+		return ""
+	}
+	if payload.MimeType == mimeType && payload.Body.Data != "" {
+		data, err := base64.RawURLEncoding.DecodeString(strings.TrimRight(payload.Body.Data, "="))
 		if err == nil {
 			return string(data)
 		}
 	}
+	var bodies []string
 	for _, part := range payload.Parts {
-		if body := decodeBody(part); body != "" {
-			return body
+		if body := decodeMIMEBody(part, mimeType); body != "" {
+			bodies = append(bodies, body)
 		}
 	}
-	return ""
+	return strings.Join(bodies, "\n")
 }

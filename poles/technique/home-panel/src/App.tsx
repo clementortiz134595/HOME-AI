@@ -248,9 +248,26 @@ function WakeWordListener() {
   </button>;
 }
 
+type AssistantAnswer = { text: string; confirmationId?: string };
+
+function MailConfirmation({ id, onAnswer }: { id: string; onAnswer: (answer: AssistantAnswer) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  return <div className="mt-4"><Button disabled={busy} onClick={async () => {
+    setBusy(true); setError("");
+    try {
+      const response = await fetch("/v1/assistant/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmationId: id }) });
+      if (!response.ok) throw new Error("unavailable");
+      onAnswer(await response.json() as AssistantAnswer);
+    } catch { setError("Confirmation indisponible. Relancez votre demande."); }
+    finally { setBusy(false); }
+  }}>{busy ? "Consultation…" : "Confirmer l’accès Gmail et l’envoi à Gemini"}</Button>{error && <p role="alert">{error}</p>}</div>;
+}
+
 function AssistantOrb() {
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState("Touchez pour parler");
+
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const silenceTimer = useRef<number | null>(null);
@@ -278,8 +295,9 @@ function AssistantOrb() {
         setStatus("Transcription…");
         const response = await fetch("/v1/assistant/voice", { method: "POST", headers: { "Content-Type": mediaRecorder.mimeType || "audio/webm" }, body: new Blob(chunks, { type: mediaRecorder.mimeType || "audio/webm" }) });
         if (!response.ok) { setStatus("La voix est indisponible"); return; }
-        const result = await response.json() as { transcript: string; answer: { text: string } };
+        const result = await response.json() as { transcript: string; answer: AssistantAnswer };
         setStatus(result.answer.text);
+
       };
       mediaRecorder.start();
       startedAt.current = Date.now();
@@ -373,9 +391,9 @@ function WeatherCard() {
   );
 }
 
-type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
+type VoiceStatus = { confirmationId?: string; state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
 
-function VoiceOverlay({ status }: { status: VoiceStatus }) {
+function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (answer: AssistantAnswer) => void }) {
   useEffect(() => {
     if (status.state !== "listening") return;
     const audioContext = new AudioContext();
@@ -405,6 +423,7 @@ function VoiceOverlay({ status }: { status: VoiceStatus }) {
       <p className="mt-12 text-sm font-medium uppercase tracking-[0.28em] text-zinc-300">{label}</p>
       {status.transcript && <p className="mt-6 max-w-2xl text-base leading-7 text-zinc-300">« {status.transcript} »</p>}
       {answered && status.answer && <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-400">{status.answer}</p>}
+      {answered && status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} />}
       {!answered && <div className="mt-8 flex items-center gap-1.5"><span className="voice-dot" /><span className="voice-dot voice-dot-delay-1" /><span className="voice-dot voice-dot-delay-2" /></div>}
     </div>
   </div>;
@@ -451,11 +470,10 @@ function App() {
   useEffect(() => {
     if (voiceStatus.state === "idle") return;
     const timeout = window.setTimeout(() => {
-      lastVoiceUpdate.current = undefined;
       setVoiceStatus({ state: "idle" });
-    }, 20_000);
+    }, voiceStatus.confirmationId ? 300_000 : 20_000);
     return () => window.clearTimeout(timeout);
-  }, [voiceStatus.state, voiceStatus.updatedAt]);
+  }, [voiceStatus.state, voiceStatus.updatedAt, voiceStatus.confirmationId]);
 
   return (
     <main className="h-screen overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950">
@@ -502,7 +520,7 @@ function App() {
       </div>
       <WakeWordListener />
       <AssistantOrb />
-      <VoiceOverlay status={voiceStatus} />
+      <VoiceOverlay status={voiceStatus} onAnswer={(answer) => setVoiceStatus({ state: "answered", answer: answer.text, confirmationId: answer.confirmationId })} />
     </main>
   );
 }

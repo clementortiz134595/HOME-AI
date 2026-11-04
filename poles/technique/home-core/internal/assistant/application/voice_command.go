@@ -24,5 +24,8 @@ func (command VoiceCommand) Execute(ctx context.Context, input model.VoiceInput)
 	if err != nil {
 		return model.Answer{}, transcript, err
 	}
+	if result.Answer != nil {
+		return *result.Answer, transcript, nil
+	}
 	return model.Answer{Text: result.Message, Provider: "home-core", Model: "deterministic-tools", Generated: false}, transcript, nil
 }
