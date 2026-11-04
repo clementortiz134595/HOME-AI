@@ -2,7 +2,7 @@
 
 ## Statut
 
-Acceptée pour le contrat d’orchestration. Le premier adaptateur STT utilise Google Cloud Speech-to-Text V2 avec le modèle Chirp 3 en `fr-FR`, dans la région européenne ; le fournisseur reste remplaçable par le port applicatif.
+Acceptée pour le contrat d’orchestration. Le premier adaptateur STT utilise Google Cloud Speech-to-Text V2 avec le modèle Chirp 3 en `fr-FR`, dans la région européenne ; le fournisseur reste remplaçable par le port applicatif. La détection du mot-clé utilise sherpa-onnx dans Home Core et remplace le prototype openWakeWord exécuté sur macOS.
 
 ## Décision
 
@@ -17,6 +17,14 @@ Les commandes maison déterministes peuvent être interprétées sans LLM. La v�
 - STT, LLM, TTS, Home Assistant, Gmail et Drive sont remplaçables par des adaptateurs testables.
 - La capture locale conserve un pré-roll court, attend une fin de parole stabilisée et limite la phrase à 15 secondes.
 - La transcription est renvoyée au Home Panel avant la réponse afin de distinguer une erreur de capture d'une erreur d'interprétation.
+
+## Extension — mot-clé local multiarchitecture
+
+Le mot-clé est détecté dans le conteneur Home Core par sherpa-onnx Keyword Spotting avec un modèle anglais GigaSpeech quantifié. L'adaptateur implémente le port `WakeWordDetector` du module `assistant` et accepte des trames PCM mono 16 kHz. Les expressions initiales sont `Hey Jarvis` et `Jarvis`.
+
+En développement macOS, Home Panel capture le microphone autorisé par le navigateur, convertit le signal en PCM 16 kHz et l'envoie à Home Core. Docker Desktop n'accède pas directement au microphone du Mac. Sur Raspberry Pi, un adaptateur ALSA fournira les mêmes trames au même port depuis `/dev/snd`. Le détecteur, son modèle et les règles de session restent identiques sur Linux `amd64` et `arm64`.
+
+Les trames de veille restent locales au réseau Docker et ne sont envoyées ni au STT Google ni au fournisseur IA. Seul l'extrait enregistré après détection est transmis à l'adaptateur STT. sherpa-onnx impose CGO et des bibliothèques dynamiques ; l'image Home Core utilise donc une base glibc multiarchitecture au lieu d'un binaire Alpine totalement statique. Aucun second serveur ni microservice n'est introduit.
 
 ## Extension — état vocal exposé au Home Panel
 

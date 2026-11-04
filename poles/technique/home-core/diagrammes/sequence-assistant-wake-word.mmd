@@ -1,18 +1,19 @@
 sequenceDiagram
-    participant Mic as Microphone local
-    participant Wake as Détecteur local « Dis Jarvis »
-    participant Core as Session assistant
+    participant Mic as Microphone navigateur ou ALSA
+    participant Core as Home Core Docker
+    participant Wake as sherpa-onnx KWS
     participant STT as Adaptateur STT Google Chirp 3
     participant Panel as Home Panel
 
     loop Tant que le foyer est actif
-        Mic->>Wake: Trames audio locales
+        Mic->>Core: Trames PCM mono 16 kHz
+        Core->>Wake: Détecter « Hey Jarvis »
         alt Wake word absent
-            Wake-->>Mic: Rien ne sort du domicile
+            Wake-->>Core: Aucun mot-clé
         else Wake word détecté
-            Wake->>Core: État « listening »
+            Wake-->>Core: Mot-clé détecté
             Core-->>Panel: Statut vocal « listening »
-            Wake->>Core: Ouvrir capture
+            Core-->>Mic: Ouvrir capture de la question
             Mic->>Core: Audio pré-roll + phrase jusqu'au silence / timeout
             Core-->>Panel: Statut vocal « thinking »
             Core->>STT: Extrait audio uniquement

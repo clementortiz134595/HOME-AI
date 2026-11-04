@@ -1,31 +1,26 @@
-# Prototype wake word sur Mac
+# Mot-clé local dans Docker
 
-Ce prototype garde le micro et la détection du mot-clé sur le Mac. Il utilise
-`openWakeWord` avec le modèle local `hey_jarvis`, puis envoie uniquement
-l'extrait capturé après détection à `POST /v1/assistant/voice` de Home Core.
+Le prototype Python/openWakeWord sur macOS a été retiré. Home Core embarque
+désormais sherpa-onnx Keyword Spotting et le modèle GigaSpeech quantifié dans
+son image Docker multiarchitecture.
 
-## Préparer l'environnement
+En développement, Home Panel demande l'autorisation du microphone au
+navigateur, convertit les trames en PCM mono 16 kHz et les envoie uniquement à
+`POST /v1/assistant/wake` sur Home Core. Après détection de « Hey Jarvis » ou
+« Jarvis », le panel ouvre la capture de la question et l'envoie à
+`POST /v1/assistant/voice`.
 
-Depuis `poles/technique/home-core` :
-
-```bash
-python3 -m venv .venv-mac-wakeword
-PIP_USER=no .venv-mac-wakeword/bin/pip install openwakeword sounddevice
-.venv-mac-wakeword/bin/python -c 'from openwakeword.utils import download_models; download_models()'
-```
+Les trames de veille restent dans le réseau local et ne sont pas envoyées à
+Google. Sur Raspberry Pi, l'adaptateur d'entrée sera ALSA via `/dev/snd` ; le
+détecteur sherpa-onnx et son modèle restent inchangés.
 
 ## Lancer
 
-Home Core doit déjà être disponible sur `http://127.0.0.1:18080` :
+Depuis la racine du dépôt :
 
 ```bash
-.venv-mac-wakeword/bin/python scripts/mac-wakeword.py
+docker compose up -d --build
 ```
 
-macOS demandera l'autorisation d'accès au microphone au premier lancement.
-Les trames avant « Hey Jarvis » restent locales et ne sont pas transmises à
-Home Core ni à Google. Le fichier WAV envoyé après détection est traité par
-l'adaptateur STT de Home Core.
-
-Ce script est un adaptateur matériel de prototype pour Mac ; il sera remplacé
-par l'adaptateur ALSA du serveur domestique lors du déploiement Raspberry Pi.
+Ouvrir ensuite Home Panel sur le port publié par Compose et autoriser le
+microphone dans le navigateur.

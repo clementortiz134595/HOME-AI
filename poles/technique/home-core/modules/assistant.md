@@ -36,11 +36,19 @@ Ce premier incrément ne fournit aucun outil au modèle et ne permet pas de déc
 {"transcript":"Qui est Napoléon ?","answer":{"text":"..."}}
 ```
 
-Le navigateur capture le microphone avec `MediaRecorder` et arrête la capture après environ une seconde de silence, ou après dix secondes. L’adaptateur STT utilise Google Cloud Speech-to-Text `speech:recognize` avec l’encodage `WEBM_OPUS` :
+Le navigateur capture le microphone avec `MediaRecorder` et arrête la capture après environ une seconde de silence, ou après dix secondes. L’adaptateur STT utilise Google Cloud Speech-to-Text V2 avec le modèle Chirp 3 :
 
-- `HOME_CORE_STT_BASE_URL` : URL complète, par défaut `https://speech.googleapis.com/v1/speech:recognize`.
+- `HOME_CORE_STT_BASE_URL` : préfixe d'API, par défaut `https://speech.googleapis.com/v2/projects`.
 - `HOME_CORE_STT_API_KEY` : clé Google Cloud conservée par Home Core, avec l’API Speech-to-Text activée.
+- `HOME_CORE_STT_PROJECT` : projet Google Cloud qui porte Speech-to-Text.
+- `HOME_CORE_STT_LOCATION` : région V2, `eu` par défaut.
 - `HOME_CORE_STT_LANGUAGE` : langue BCP-47, par défaut `fr-FR`.
+
+## Mot-clé local
+
+`POST /v1/assistant/wake` accepte des trames PCM float32 little-endian, mono 16 kHz. L'adaptateur sherpa-onnx les traite dans Home Core et répond `{"detected":true}` lorsqu'il reconnaît « Hey Jarvis » ou « Jarvis ». Les trames de veille restent locales et ne sont jamais transmises au STT Google.
+
+Le modèle GigaSpeech quantifié et ONNX Runtime sont embarqués dans l'image Docker Linux `amd64`/`arm64`. Home Panel fournit les trames depuis le navigateur sur macOS ; l'adaptateur Raspberry Pi utilisera ensuite ALSA via `/dev/snd` sans modifier le détecteur.
 
 ## Cerveau d'orchestration
 
