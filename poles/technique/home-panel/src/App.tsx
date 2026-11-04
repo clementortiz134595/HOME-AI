@@ -576,6 +576,17 @@ type VoiceStatus = { confirmationId?: string; state: "idle" | "listening" | "tra
 
 function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (answer: AssistantAnswer) => void }) {
   useEffect(() => {
+    if (status.state !== "answered" || !status.answer || !("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(status.answer);
+    utterance.lang = "fr-FR";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    window.speechSynthesis.speak(utterance);
+    return () => window.speechSynthesis.cancel();
+  }, [status.state, status.answer, status.updatedAt]);
+
+  useEffect(() => {
     if (status.state !== "listening") return;
     const audioContext = new AudioContext();
     const now = audioContext.currentTime;
