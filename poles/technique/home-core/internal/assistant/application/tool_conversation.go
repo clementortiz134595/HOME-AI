@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -61,6 +62,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 		}
 		result, err := agent.execute(ctx, pending.call)
 		if err != nil {
+			slog.Warn("Gmail tool execution failed", "tool", pending.call.Name, "error", err)
 			return model.Answer{Text: "L’accès Gmail a échoué. Vous pouvez relancer la demande.", Status: model.ActionUnavailable}, nil
 		}
 		messages = append(pending.messages, model.Content{Role: "user", Parts: []model.Part{{FunctionResponse: &model.ToolResponse{Name: pending.call.Name, Response: result}}}})

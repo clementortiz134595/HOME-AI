@@ -1,10 +1,21 @@
 name: home-ai
 
 services:
+  home-core-secrets-init:
+    image: alpine:3.20
+    user: "0:0"
+    command: ["sh", "-c", "mkdir -p /var/lib/home-core && chown 999:999 /var/lib/home-core && chmod 700 /var/lib/home-core"]
+    volumes:
+      - home-core-secrets:/var/lib/home-core
+    restart: "no"
+
   home-core:
     build:
       context: ./poles/technique/home-core
     image: home-ai/home-core:local
+    depends_on:
+      home-core-secrets-init:
+        condition: service_completed_successfully
     env_file:
       - ./poles/technique/home-core/.env
     environment:
