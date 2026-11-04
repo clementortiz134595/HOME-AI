@@ -129,6 +129,8 @@ func (client *Client) AuthorizationURL(state string) string {
 	return client.config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
 }
 
+func (client *Client) OAuthStatePath() string { return client.store.path + ".oauth-state" }
+
 func (client *Client) Exchange(ctx context.Context, code string) error {
 	token, err := client.config.Exchange(ctx, code)
 	if err != nil {

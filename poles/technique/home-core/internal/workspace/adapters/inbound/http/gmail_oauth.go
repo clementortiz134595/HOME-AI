@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"net/http"
+	"os"
 
 	"github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/outbound/gmail"
 )
@@ -15,9 +16,16 @@ type GmailOAuthHandler struct {
 }
 
 func NewGmailOAuthHandler(client *gmail.Client) *GmailOAuthHandler {
+	if data, err := os.ReadFile(client.OAuthStatePath()); err == nil && len(data) > 0 {
+		return &GmailOAuthHandler{client: client, state: string(data)}
+	}
 	stateBytes := make([]byte, 24)
 	_, _ = rand.Read(stateBytes)
-	return &GmailOAuthHandler{client: client, state: hex.EncodeToString(stateBytes)}
+	state := hex.EncodeToString(stateBytes)
+	if err := os.WriteFile(client.OAuthStatePath(), []byte(state), 0o600); err != nil {
+		slog.Warn("Gmail OAuth state could not be persisted", "error", err)
+	}
+	return &GmailOAuthHandler{client: client, state: state}
 }
 
 func (handler *GmailOAuthHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
