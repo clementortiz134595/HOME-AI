@@ -1,26 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  BriefcaseBusiness,
+  BedDouble,
   CalendarDays,
-  ChevronLeft,
-  ChevronRight,
   CloudSun,
+  CookingPot,
   Home,
   Lightbulb,
   Mic,
+  Monitor,
   MoreHorizontal,
   Settings,
+  Sofa,
   Sparkles,
   Plug,
+  Recycle,
+  RobotVacuum,
   Thermometer,
   ThermometerSun,
+  UtensilsCrossed,
   WalletCards,
   UserRound,
-  Utensils,
   X,
 } from "lucide-react";
 import { Orb } from "@yogesharc/thinking-orbs";
 import { Ascii } from "ascii.rest/react";
+import { DayPicker } from "react-day-picker";
+import "react-day-picker/style.css";
 import * as earthrise from "ascii.rest/pieces/earthrise";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,10 +36,10 @@ import { getDeviceState, getHomeDevices, setDeviceSwitch, type DeviceState, type
 import { getCalendarEvents, getCalendars, type CalendarEvent } from "@/lib/calendar";
 
 const rooms = [
-  { name: "Salon", detail: "2 lumières · 21°", icon: Home, active: true, tone: "bg-amber-100 text-amber-700" },
-  { name: "Cuisine", detail: "2 lumières · 20°", icon: Utensils, active: true, tone: "bg-rose-100 text-rose-700" },
-  { name: "Chambre", detail: "2 lumières · 19°", icon: Sparkles, active: false, tone: "bg-violet-100 text-violet-700" },
-  { name: "Bureau", detail: "1 lumière · 20°", icon: BriefcaseBusiness, active: false, tone: "bg-teal-100 text-teal-700" },
+  { name: "Salon", detail: "2 lumières · 21°", icon: Sofa, active: true, tone: "bg-sky-100 text-sky-700" },
+  { name: "Cuisine", detail: "2 lumières · 20°", icon: CookingPot, active: true, tone: "bg-amber-100 text-amber-700" },
+  { name: "Chambre", detail: "2 lumières · 19°", icon: BedDouble, active: false, tone: "bg-violet-100 text-violet-700" },
+  { name: "Bureau", detail: "1 lumière · 20°", icon: Monitor, active: false, tone: "bg-teal-100 text-teal-700" },
 ];
 
 type Profile = "Duo";
@@ -48,9 +53,9 @@ const agendaItems = [
 ];
 
 const weeklyChores = [
-  { date: "Lun. 3", objective: "Passer l’aspirateur", person: "Clément", tone: "bg-sky-400" },
-  { date: "Mer. 5", objective: "Sortir le recyclage", person: "Lise", tone: "bg-amber-400" },
-  { date: "Sam. 8", objective: "Nettoyer la cuisine", person: "Duo", tone: "bg-emerald-400" },
+  { date: "Lun. 3", objective: "Passer l’aspirateur", person: "Clément", icon: RobotVacuum, tone: "bg-sky-400" },
+  { date: "Mer. 5", objective: "Sortir le recyclage", person: "Lise", icon: Recycle, tone: "bg-amber-400" },
+  { date: "Sam. 8", objective: "Nettoyer la cuisine", person: "Duo", icon: UtensilsCrossed, tone: "bg-emerald-400" },
 ];
 
 function HomeView() {
@@ -77,7 +82,7 @@ function HomeView() {
     const roomDevices = devices.filter((device) => device.room === room);
     const roomLights = roomDevices.filter((device) => device.kind === "light");
     const temperature = roomDevices.find((device) => states[device.id]?.temperatureC);
-    return { name: room, detail: `${roomLights.length} lumière${roomLights.length > 1 ? "s" : ""}${temperature ? ` · ${Math.round(states[temperature.id].temperatureC!)}°` : ""}`, icon: room === "Cuisine" ? Utensils : room === "Chambre" ? Sparkles : room === "Bureau" ? BriefcaseBusiness : Home, active: roomLights.some((device) => states[device.id]?.switchOn), tone: room === "Cuisine" ? "bg-rose-100 text-rose-700" : room === "Chambre" ? "bg-violet-100 text-violet-700" : room === "Bureau" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700", roomDevices };
+    return { name: room, detail: `${roomLights.length} lumière${roomLights.length > 1 ? "s" : ""}${temperature ? ` · ${Math.round(states[temperature.id].temperatureC!)}°` : ""}`, icon: room === "Cuisine" ? CookingPot : room === "Chambre" ? BedDouble : room === "Bureau" ? Monitor : Sofa, active: roomLights.some((device) => states[device.id]?.switchOn), tone: room === "Cuisine" ? "bg-amber-100 text-amber-700" : room === "Chambre" ? "bg-violet-100 text-violet-700" : room === "Bureau" ? "bg-teal-100 text-teal-700" : "bg-sky-100 text-sky-700", roomDevices };
   });
 
   const toggleRoom = async (roomDevices: HomeDevice[], on: boolean) => {
@@ -120,18 +125,14 @@ function AgendaView({ profile }: { profile: Profile }) {
 
   const year = displayMonth.getFullYear();
   const month = displayMonth.getMonth();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const leadingDays = new Date(year, month, 1).getDay();
-  const calendarCells = [...Array<null>(leadingDays).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)];
-  const monthLabel = displayMonth.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  const eventByDay = Object.fromEntries(events.map((event) => [new Date(event.startsAt).getDate(), { title: event.title, tone: "bg-emerald-400" }]));
+  const eventDays = events.map((event) => new Date(event.startsAt));
   const visibleItems = events.slice().sort((a, b) => a.startsAt.localeCompare(b.startsAt)).slice(0, 6);
   const changeMonth = (offset: number) => setDisplayMonth(new Date(year, month + offset, 1));
 
   return (
     <div className="agenda-view cost-view mt-6">
       <div className="agenda-content grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.85fr)] xl:items-start">
-        <Card className="agenda-calendar" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const start = swipeStartX.current; const end = event.changedTouches[0]?.clientX; swipeStartX.current = null; if (start === null || end === undefined || Math.abs(end - start) < 48) return; changeMonth(end < start ? 1 : -1); }}><CardHeader><div><p className="text-lg font-semibold capitalize">{monthLabel}</p><p className="mt-1 text-sm text-slate-500">Vue calendrier · {profile === "Duo" ? "foyer partagé" : "agenda de " + profile}</p></div><div className="flex items-center gap-1"><span role="status" aria-label={syncState === "ready" ? "Synchronisation connectée" : syncState === "loading" ? "Synchronisation en cours" : "Synchronisation indisponible"} title={syncState === "ready" ? "Synchronisation connectée" : syncState === "loading" ? "Synchronisation en cours" : "Synchronisation indisponible"} className={"size-2.5 shrink-0 rounded-full " + (syncState === "ready" ? "bg-emerald-400" : "bg-rose-400")} /><Button variant="ghost" size="icon" aria-label="Mois précédent" onClick={() => changeMonth(-1)}><ChevronLeft /></Button><Button variant="ghost" size="icon" aria-label="Mois suivant" onClick={() => changeMonth(1)}><ChevronRight /></Button></div></CardHeader><CardContent className="p-3 sm:p-6"><div className="grid grid-cols-7 gap-1 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px] sm:tracking-[0.12em]">{["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => <span key={day} className="py-1.5 sm:py-2">{day}</span>)}</div><div className="grid grid-cols-7 gap-1">{calendarCells.map((day, index) => { if (day === null) return <div key={`empty-${index}`} aria-hidden="true" />; const event = eventByDay[day]; return <div key={day} className={"min-h-12 rounded-lg border p-1 text-left sm:min-h-16 sm:rounded-xl sm:p-2 " + (event ? "border-sky-400/50 bg-sky-400/10" : "border-white/[0.06] bg-white/[0.02]")}><p className={event ? "text-xs font-semibold text-sky-200 sm:text-sm" : "text-xs text-slate-300 sm:text-sm"}>{day}</p>{event && <div className="mt-1 flex items-start gap-1 sm:mt-2 sm:gap-1.5"><span className={"mt-1 size-1.5 shrink-0 rounded-full " + event.tone} /><p className="hidden line-clamp-2 text-[11px] leading-4 text-slate-400 sm:block">{event.title}</p></div>}</div>; })}</div></CardContent></Card>
+        <Card className="agenda-calendar" onTouchStart={(event) => { swipeStartX.current = event.touches[0]?.clientX ?? null; }} onTouchEnd={(event) => { const start = swipeStartX.current; const end = event.changedTouches[0]?.clientX; swipeStartX.current = null; if (start === null || end === undefined || Math.abs(end - start) < 48) return; changeMonth(end < start ? 1 : -1); }}><CardHeader><div><p className="text-lg font-semibold">Calendrier</p><p className="mt-1 text-sm text-slate-500">Vue foyer partagé</p></div><span role="status" aria-label={syncState === "ready" ? "Synchronisation connectée" : syncState === "loading" ? "Synchronisation en cours" : "Synchronisation indisponible"} className={"mt-1 size-2.5 shrink-0 rounded-full " + (syncState === "ready" ? "bg-emerald-400" : "bg-rose-400")} /></CardHeader><CardContent className="p-3 sm:p-6"><DayPicker mode="single" month={displayMonth} onMonthChange={setDisplayMonth} showOutsideDays={false} modifiers={{ event: eventDays }} modifiersClassNames={{ event: "agenda-event-day" }} className="agenda-day-picker" /></CardContent></Card>
         <Card className="max-sm:hidden"><CardHeader><div><p className="text-lg font-semibold">Prochains rendez-vous</p><p className="mt-1 text-sm text-slate-500">Vue {profile === "Duo" ? "partagée" : "de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{visibleItems.length === 0 && syncState === "ready" && <p className="py-4 text-sm text-slate-500">Aucun événement sur la période.</p>}{visibleItems.map((item) => <div key={item.id} className="flex items-center gap-3 rounded-2xl px-2 py-3 transition hover:bg-white/[0.04]"><span className="size-2 shrink-0 rounded-full bg-emerald-400" /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">{item.title || "Sans titre"}</p><Badge>Duo</Badge></div><p className="mt-1 text-sm text-slate-500">{item.allDay ? "Toute la journée" : new Date(item.startsAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p></div></div>)}</CardContent></Card>
       </div>
     </div>
@@ -513,7 +514,7 @@ function ReminderDetailDialog({ reminder, onClose }: { reminder: Reminder; onClo
 }
 
 function WeeklyChoresCard() {
-  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{weeklyChores.map((task) => <div key={task.objective} className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2"><span className={"size-2 shrink-0 rounded-full " + task.tone} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></div>)}</CardContent></Card>;
+  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{weeklyChores.map((task) => { const Icon = task.icon; return <div key={task.objective} className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2"><span className={"grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 " + task.tone}><Icon className="size-4 text-zinc-950" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></div>; })}</CardContent></Card>;
 }
 
 type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };

@@ -125,6 +125,12 @@ button { font: inherit; }
 }
 .agenda-content,
 .agenda-calendar { min-height: 0; overflow: hidden; }
+.agenda-day-picker { --rdp-accent-color: #7dd3fc; --rdp-accent-background-color: rgba(56, 189, 248, .16); --rdp-day-height: 2.7rem; --rdp-day-width: 2.7rem; margin: 0 auto; color: #e4e4e7; }
+.agenda-day-picker .rdp-caption_label { color: #f4f4f5; font-weight: 600; text-transform: capitalize; }
+.agenda-day-picker .rdp-weekday { color: #94a3b8; }
+.agenda-day-picker .rdp-button_previous,
+.agenda-day-picker .rdp-button_next { color: #cbd5e1; }
+.agenda-day-picker .agenda-event-day { border-radius: .65rem; background: rgba(56, 189, 248, .18); color: #e0f2fe; font-weight: 700; }
 
 .profile-view {
   display: grid;
@@ -271,6 +277,7 @@ button { font: inherit; }
   .home-view > section:last-child { display: none; }
   .agenda-calendar > div:last-child { padding: .75rem; }
   .agenda-calendar .min-h-12 { min-height: 2.5rem; }
+  .agenda-day-picker { --rdp-day-height: 2.15rem; --rdp-day-width: 2.15rem; }
   .cost-page { gap: .75rem; }
   .cost-page .cost-description { display: none; }
   .cost-page > section > div { padding: .875rem; }
