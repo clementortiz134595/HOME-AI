@@ -45,7 +45,16 @@ func NewToolConversation(provider ToolModel, mail MailReader, drives ...DriveRea
 	if len(drives) > 0 {
 		drive = drives[0]
 	}
-	return &ToolConversation{provider: provider, mail: mail, drive: drive, pending: map[string]pendingCall{}, trusted: map[string]bool{}}
+	trusted := map[string]bool{}
+	// Workspace access is an explicit product capability. OAuth already gates
+	// the account, so Gmail/Drive tool calls do not interrupt every request.
+	if mail != nil {
+		trusted["gmail_search"], trusted["gmail_read"] = true, true
+	}
+	if drive != nil {
+		trusted["drive_search"], trusted["drive_read"] = true, true
+	}
+	return &ToolConversation{provider: provider, mail: mail, drive: drive, pending: map[string]pendingCall{}, trusted: trusted}
 }
 func (agent *ToolConversation) definitions() []model.ToolDefinition {
 	if agent.mail == nil {
@@ -128,7 +137,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	agent.mu.Lock()
 	trusted := agent.trusted[calls[0].Name]
 	agent.mu.Unlock()
-	if trusted {
+	for trusted {
 		result, err := agent.execute(ctx, calls[0])
 		if err != nil {
 			return model.Answer{Text: "L’accès à cette source a échoué. Vous pouvez relancer la demande.", Status: model.ActionUnavailable}, nil
@@ -140,11 +149,27 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 		}
 		messages = append(messages, response)
 		answer.Reset()
+		calls = nil
 		for _, part := range response.Parts {
+			if part.FunctionCall != nil {
+				calls = append(calls, *part.FunctionCall)
+			}
 			if !part.Thought {
 				answer.WriteString(part.Text)
 			}
 		}
+		if len(calls) != 1 {
+			if len(calls) == 0 && strings.TrimSpace(answer.String()) != "" {
+				return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted}, nil
+			}
+			break
+		}
+		if agent.validate(calls[0], messages[:len(messages)-1]) != nil {
+			break
+		}
+		agent.mu.Lock()
+		trusted = agent.trusted[calls[0].Name]
+		agent.mu.Unlock()
 		if strings.TrimSpace(answer.String()) != "" {
 			return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted}, nil
 		}
