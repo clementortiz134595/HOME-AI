@@ -16,7 +16,7 @@ services:
       HOME_CORE_AI_MODEL: ${HOME_CORE_AI_MODEL:-gemini-3.8-flash}
       HOME_CORE_STT_BASE_URL: ${HOME_CORE_STT_BASE_URL:-https://eu-speech.googleapis.com/v2/projects}
       HOME_CORE_STT_API_KEY: ${HOME_CORE_STT_API_KEY:-}
-      HOME_CORE_STT_PROJECT: ${HOME_CORE_STT_PROJECT:-}
+      HOME_CORE_STT_PROJECT: ${HOME_CORE_STT_PROJECT:-home-ai-513620}
       HOME_CORE_STT_LOCATION: ${HOME_CORE_STT_LOCATION:-eu}
       HOME_CORE_STT_LANGUAGE: ${HOME_CORE_STT_LANGUAGE:-fr-FR}
       HOME_CORE_GMAIL_TOKEN_PATH: /var/lib/home-core/gmail-token.json
