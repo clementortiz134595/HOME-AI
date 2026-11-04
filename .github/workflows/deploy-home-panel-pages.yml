@@ -33,10 +33,12 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run check
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: poles/technique/home-panel/dist
+          path: ${{ github.workspace }}/poles/technique/home-panel/dist
 
   deploy:
     needs: build
