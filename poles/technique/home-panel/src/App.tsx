@@ -368,9 +368,9 @@ function AssistantOrb() {
   };
 
   return <Card className="dashboard-assistant-card overflow-hidden border-sky-400/25 bg-gradient-to-br from-sky-500/15 via-indigo-500/10 to-zinc-900">
-    <button type="button" onClick={activate} className="flex h-full w-full flex-col items-center justify-center gap-3 p-4 text-center outline-none transition hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-sky-300">
+    <button type="button" aria-label="Activer l’assistant vocal" onClick={activate} className="flex h-full w-full items-center justify-center p-4 outline-none transition hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-sky-300">
       <Orb state={listening ? "using" : "waiting"} size={96} dotSize={0.7} speed={listening ? 1 : 0.7} label="Assistant vocal" />
-      <div><p className="text-lg font-semibold">Bonjour Jarvis</p><p className="mt-1 text-xs text-slate-400">{listening ? status : "Touchez pour activer le micro"}</p></div>
+      <span className="sr-only">{status}</span>
     </button>
   </Card>;
 }
