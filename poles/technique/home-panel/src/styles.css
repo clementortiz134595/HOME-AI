@@ -338,7 +338,7 @@ button { font: inherit; }
 .dashboard-page {
   flex: 1 1 auto;
   min-height: 0;
-  padding-top: 1rem;
+  padding-top: .25rem;
 }
 .dashboard-page .dashboard-compact-grid {
   height: 100%;
@@ -346,5 +346,5 @@ button { font: inherit; }
 }
 
 @media (max-width: 639px), (min-width: 1024px) and (max-height: 700px) {
-  .dashboard-page { padding-top: .75rem; }
+  .dashboard-page { padding-top: .25rem; }
 }

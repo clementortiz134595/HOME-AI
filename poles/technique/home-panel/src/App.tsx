@@ -37,8 +37,7 @@ const rooms = [
   { name: "Bureau", detail: "1 lumière · 20°", icon: BriefcaseBusiness, active: false, tone: "bg-teal-100 text-teal-700" },
 ];
 
-const profiles = ["Duo", "Clément", "Lise"] as const;
-type Profile = (typeof profiles)[number];
+type Profile = "Duo";
 type View = "dashboard" | "home" | "agenda" | "profile" | "cost";
 
 const agendaItems = [
@@ -548,13 +547,11 @@ function VoiceOverlay({ status }: { status: VoiceStatus }) {
 
 function App() {
   const [view, setView] = useState<View>("dashboard");
-  const [profile, setProfile] = useState<Profile>("Duo");
-  const [profileOpen, setProfileOpen] = useState(false);
+  const profile: Profile = "Duo";
   const [navOpen, setNavOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<DashboardRoom | null>(null);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
-  const calendarLabel = profile === "Duo" ? "Partagé" : "Personnel";
-  const profileInitial = profile === "Duo" ? "D" : profile === "Clément" ? "C" : "L";
+  const calendarLabel = "Partagé";
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
   const lastVoiceUpdate = useRef<string | undefined>(undefined);
 
@@ -617,17 +614,7 @@ function App() {
         </aside>
 
         <section className="app-section flex min-h-0 flex-col overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
-          <header className="flex flex-wrap items-start justify-between gap-5">
-            <div><p className="text-sm text-slate-500">Lundi 3 novembre</p></div>
-            <div className="relative flex items-center gap-3">
-              <button type="button" aria-label="Changer de profil" aria-expanded={profileOpen} onClick={() => setProfileOpen(!profileOpen)} className="profile-orb grid size-11 place-items-center rounded-full text-sm font-semibold text-zinc-950 transition hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400">{profileInitial}</button>
-              {profileOpen && <div className="profile-menu absolute right-12 top-0 z-30 min-w-36 rounded-2xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl">
-                <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Profil</p>
-                {profiles.map((option) => <button key={option} type="button" onClick={() => { setProfile(option); setProfileOpen(false); }} className={profile === option ? "flex w-full items-center justify-between rounded-xl bg-white px-3 py-2 text-left text-sm font-medium text-zinc-950" : "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm font-medium text-zinc-300 hover:bg-white/10"}>{option}{profile === option && <span className="text-xs">✓</span>}</button>)}
-                <VoiceEnrollment profile={profile} />
-              </div>}
-            </div>
-          </header>
+          <header><p className="text-sm text-slate-500">Lundi 3 novembre</p></header>
 
           {view === "home" && <HomeView />}
           {view === "agenda" && <AgendaView profile={profile} />}
