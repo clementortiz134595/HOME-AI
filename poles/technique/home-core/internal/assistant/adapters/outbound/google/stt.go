@@ -38,7 +38,7 @@ func NewTranscriber(httpClient *http.Client, baseURL, apiKey, language, project,
 		language = "fr-FR"
 	}
 	if location == "" {
-		location = "eu"
+		location = "global"
 	}
 	var tokenSource oauth2.TokenSource
 	if credentials, err := googleauth.FindDefaultCredentials(context.Background(), "https://www.googleapis.com/auth/cloud-platform"); err == nil {
