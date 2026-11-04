@@ -22,6 +22,17 @@ func (m *scriptedModel) Generate(_ context.Context, messages []model.Content, _ 
 
 type fakeMail struct{ searches, reads int }
 
+type fakeDrive struct{ searches, reads int }
+
+func (d *fakeDrive) SearchDrive(context.Context, string) ([]workspace.DriveFile, error) {
+	d.searches++
+	return []workspace.DriveFile{{ID: "file-1", Name: "Assurance habitation"}}, nil
+}
+func (d *fakeDrive) ReadDriveFile(context.Context, string) (workspace.TextDocument, error) {
+	d.reads++
+	return workspace.TextDocument{Content: "Contrat habitation"}, nil
+}
+
 func (m *fakeMail) SearchMail(context.Context, string) ([]workspace.MailSummary, error) {
 	m.searches++
 	return []workspace.MailSummary{{ID: "abc", Subject: "Facture"}}, nil
@@ -76,6 +87,24 @@ func TestToolConfirmationExpires(t *testing.T) {
 	answer, _ = agent.AnswerQuestion(context.Background(), model.Question{ConfirmationID: answer.ConfirmationID})
 	if answer.Status != model.ActionRefused {
 		t.Fatal("expired accepted")
+	}
+}
+
+func TestToolConversationCanRememberWorkspaceApproval(t *testing.T) {
+	drive := &fakeDrive{}
+	provider := &scriptedModel{turns: []model.Content{call("drive_search", "query", "assurance"), {Parts: []model.Part{{Text: "Le document est trouvé."}}}, call("drive_search", "query", "habitation"), {Parts: []model.Part{{Text: "Le second document est trouvé."}}}}}
+	agent := NewToolConversation(provider, nil, drive)
+	first, err := agent.AnswerQuestion(context.Background(), model.Question{Text: "Trouve mon assurance"})
+	if err != nil || first.Status != model.ActionConfirmation {
+		t.Fatalf("first=%+v err=%v", first, err)
+	}
+	second, err := agent.AnswerQuestion(context.Background(), model.Question{ConfirmationID: first.ConfirmationID, RememberSession: true})
+	if err != nil || second.Text != "Le document est trouvé." || drive.searches != 1 {
+		t.Fatalf("second=%+v err=%v searches=%d", second, err, drive.searches)
+	}
+	third, err := agent.AnswerQuestion(context.Background(), model.Question{Text: "Trouve aussi habitation"})
+	if err != nil || third.Text != "Le second document est trouvé." || drive.searches != 2 {
+		t.Fatalf("third=%+v err=%v searches=%d", third, err, drive.searches)
 	}
 }
 

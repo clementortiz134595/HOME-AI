@@ -20,11 +20,11 @@ import (
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
 	choreshttp "github.com/clementortiz/home-ai/home-core/internal/chores/adapters/inbound/http"
 	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
-	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
+	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
@@ -61,6 +61,7 @@ func main() {
 	mux.Handle("/v1/insights/", insightshttp.NewHandler())
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	var mailReader assistantapp.MailReader
+	var driveReader assistantapp.DriveReader
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
 	tools := map[string]assistantapp.ActionExecutor{}
 	choresService := choresapp.NewService()
@@ -76,11 +77,12 @@ func main() {
 	}
 	if gmailProvider, gmailErr := gmail.NewClient(&http.Client{Timeout: 20 * time.Second}, os.Getenv("HOME_CORE_GMAIL_CLIENT_ID"), os.Getenv("HOME_CORE_GMAIL_CLIENT_SECRET"), os.Getenv("HOME_CORE_GMAIL_REDIRECT_URL"), os.Getenv("HOME_CORE_GMAIL_TOKEN_PATH")); gmailErr == nil {
 		mailReader = gmailProvider
+		driveReader = gmailProvider
 		mux.Handle("/v1/workspace/google/gmail/oauth/", workspacehttp.NewGmailOAuthHandler(gmailProvider))
 	} else {
 		logger.Warn("Gmail is not configured", "error", gmailErr)
 	}
-	conversation := assistantapp.NewToolConversation(aiProvider, mailReader)
+	conversation := assistantapp.NewToolConversation(aiProvider, mailReader, driveReader)
 	assistantService := assistantapp.NewAskQuestion(conversation)
 	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
 	voiceAgent := assistantapp.NewAgent(conversation, aiProvider, tools, sttProvider)

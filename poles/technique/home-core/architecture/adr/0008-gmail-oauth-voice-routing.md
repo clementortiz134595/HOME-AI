@@ -3,19 +3,18 @@
 - Statut : accepté pour le premier incrément
 - Date : 2026-11-04
 
-Home Core utilise OAuth 2.0 Authorization Code avec le scope `gmail.readonly`. Le refresh token est stocké dans le volume local dédié avec permissions `0600`. L’intention vocale `gmail.search` passe par une confirmation avant l’appel Gmail API. Aucun jeton ni contenu de mail ne transite par Home Panel ou les journaux.
+Home Core utilise OAuth 2.0 Authorization Code avec les scopes `gmail.readonly` et `drive.readonly`. Le refresh token est stocké dans le volume local dédié avec permissions `0600`. Les intentions Gmail et Drive passent par une confirmation avant le premier appel de la session ; l’utilisateur peut explicitement mémoriser cette autorisation pour les appels suivants. Aucun jeton ni contenu de mail ou Drive ne transite par Home Panel ou les journaux.
 
 La façade MCP éventuelle devra déléguer au même port applicatif et ne pourra pas contourner les permissions.
 
 ## Extension — sélection des outils par Gemini
 
-Gemini reçoit uniquement les déclarations des outils Gmail configurés et propose
-`gmail_search` ou `gmail_read`. Home Core valide chaque appel et conserve la
+Gemini reçoit uniquement les déclarations des outils Gmail et Drive configurés et propose
+`gmail_search`, `gmail_read`, `drive_search` ou `drive_read`. Home Core valide chaque appel et conserve la
 conversation en mémoire pendant cinq minutes avec un identifiant aléatoire à usage
-unique. Avant chaque accès Gmail, la réponse demande une confirmation explicite
+unique. Avant le premier accès Gmail ou Drive, la réponse demande une confirmation explicite
 et annonce que le résultat sera envoyé à Gemini. Le client confirme via
-`POST /v1/assistant/questions` avec `confirmationId` ; une confirmation ne couvre
-qu'un appel. Les résultats structurés sont retournés à Gemini pour la synthèse ou
+`POST /v1/assistant/questions` avec `confirmationId` ; l’option `rememberSession` étend l’accord aux outils de la source pendant la session. Les résultats structurés sont retournés à Gemini pour la synthèse ou
 la proposition suivante. Les contenus de mails sont des données non fiables,
 jamais des instructions. La boucle est bornée et aucun outil d'écriture n'est exposé.
 

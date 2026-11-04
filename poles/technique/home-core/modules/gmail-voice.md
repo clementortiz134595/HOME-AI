@@ -14,9 +14,9 @@ Variables requises :
 - `HOME_CORE_GMAIL_REDIRECT_URL` — par défaut `http://localhost:8080/v1/workspace/google/gmail/oauth/callback`
 - `HOME_CORE_GMAIL_TOKEN_PATH` — par défaut `/var/lib/home-core/gmail-token.json`
 
-Le premier accès se fait en ouvrant `/v1/workspace/google/gmail/oauth/connect` depuis un navigateur autorisé. Le refresh token est écrit dans le volume Docker `home-core-secrets` avec le mode `0600`. Le scope utilisé est uniquement `https://www.googleapis.com/auth/gmail.readonly`.
+Le premier accès se fait en ouvrant `/v1/workspace/google/gmail/oauth/connect` depuis un navigateur autorisé. Le refresh token est écrit dans le volume Docker `home-core-secrets` avec le mode `0600`. Les scopes utilisés sont `https://www.googleapis.com/auth/gmail.readonly` et `https://www.googleapis.com/auth/drive.readonly`; un nouveau consentement est nécessaire si le jeton existant n'accorde pas encore Drive.
 
-Une phrase vocale contenant « mail », « mails », « email » ou « Gmail » est routée vers `gmail.search`. La lecture est précédée par la politique de confirmation de Home Core afin de protéger les données personnelles sur un écran partagé.
+Une phrase vocale contenant « mail », « mails », « email » ou « Gmail » est routée vers `gmail.search`; une demande de document ou de fichier vers `drive_search`. La première confirmation peut être mémorisée pour la session courante afin d'éviter de répéter l'accord pour les appels Gmail/Drive suivants.
 
 ### Appels d’outils Gemini
 

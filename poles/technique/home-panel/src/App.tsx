@@ -307,15 +307,16 @@ type AssistantAnswer = { text: string; confirmationId?: string };
 function MailConfirmation({ id, onAnswer }: { id: string; onAnswer: (answer: AssistantAnswer) => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  return <div className="mt-4"><Button disabled={busy} onClick={async () => {
+  const [rememberSession, setRememberSession] = useState(true);
+  return <div className="workspace-confirmation"><label className="flex cursor-pointer items-center gap-3 text-left text-sm text-zinc-300"><input type="checkbox" checked={rememberSession} onChange={(event) => setRememberSession(event.target.checked)} className="size-4 accent-zinc-200" />Autoriser Gmail et Drive pour cette session</label><Button disabled={busy} onClick={async () => {
     setBusy(true); setError("");
     try {
-      const response = await fetch("/v1/assistant/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmationId: id }) });
+      const response = await fetch("/v1/assistant/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmationId: id, rememberSession }) });
       if (!response.ok) throw new Error("unavailable");
       onAnswer(await response.json() as AssistantAnswer);
-    } catch { setError("Confirmation indisponible. Relancez votre demande."); }
+    } catch { setError("Autorisation indisponible. Relancez votre demande."); }
     finally { setBusy(false); }
-  }}>{busy ? "Consultation…" : "Confirmer l’accès Gmail et l’envoi à Gemini"}</Button>{error && <p role="alert">{error}</p>}</div>;
+  }}>{busy ? "Consultation…" : "Autoriser et continuer"}</Button>{error && <p role="alert">{error}</p>}</div>;
 }
 
 function AssistantOrb({ compact = false }: { compact?: boolean }) {
@@ -608,10 +609,10 @@ function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (an
   const listening = status.state === "listening";
   const orb = listening ? <Orb state="using" variant="record" size={180} speed={1} label="Écoute en cours" /> : <Orb state="reasoning" size={180} speed={1} label="Réflexion en cours" />;
   return <div className="voice-overlay fixed inset-0 z-50 grid place-items-center p-6 text-zinc-100">
-    <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="voice-overlay-content relative flex w-full max-w-2xl flex-col items-center text-center">
-      <div className="voice-orb-stage text-zinc-300">{orb}</div>
-      <div className="mt-6 w-full"><AgentPipeline status={status} /></div>
-      {status.state === "answered" && status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} />}
+    <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="voice-overlay-content relative grid w-full max-w-7xl gap-5 text-center lg:grid-cols-[minmax(220px,.8fr)_minmax(280px,1.2fr)_minmax(260px,.9fr)] lg:items-center">
+      <section className="workspace-column workspace-list text-left"><p className="workspace-eyebrow">Sources</p><div className="workspace-list-item workspace-list-item-active"><span className="workspace-source-mark">G</span><span><strong>Gmail</strong><small>Recherche et lecture</small></span></div><div className="workspace-list-item"><span className="workspace-source-mark">D</span><span><strong>Drive</strong><small>Fichiers et documents</small></span></div><div className="workspace-list-item workspace-list-item-muted"><span className="workspace-source-mark">⌁</span><span><strong>Maison</strong><small>Commandes locales</small></span></div></section>
+      <section className="workspace-column workspace-interaction"><p className="workspace-eyebrow">Interaction</p><div className="voice-orb-stage text-zinc-300">{orb}</div><p className="mt-2 text-sm text-zinc-400">{status.state === "listening" ? "Je vous écoute" : status.state === "answered" ? "Réponse prête" : "Je traite votre demande"}</p>{status.transcript && <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left text-sm text-zinc-300">« {status.transcript} »</p>}</section>
+      <section className="workspace-column workspace-questions text-left"><p className="workspace-eyebrow">Questions et validation</p><AgentPipeline status={status} />{status.state === "answered" && status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} />}{status.state === "answered" && !status.confirmationId && status.answer && <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-zinc-200">{status.answer}</div>}</section>
     </div>
   </div>;
 }

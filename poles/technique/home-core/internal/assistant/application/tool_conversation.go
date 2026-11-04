@@ -21,6 +21,10 @@ type MailReader interface {
 	MailSearcher
 	ReadMail(context.Context, string) (workspace.MailMessage, error)
 }
+type DriveReader interface {
+	SearchDrive(context.Context, string) ([]workspace.DriveFile, error)
+	ReadDriveFile(context.Context, string) (workspace.TextDocument, error)
+}
 type pendingCall struct {
 	messages []model.Content
 	call     model.ToolCall
@@ -30,24 +34,36 @@ type pendingCall struct {
 type ToolConversation struct {
 	provider ToolModel
 	mail     MailReader
+	drive    DriveReader
 	mu       sync.Mutex
 	pending  map[string]pendingCall
+	trusted  map[string]bool
 }
 
-func NewToolConversation(provider ToolModel, mail MailReader) *ToolConversation {
-	return &ToolConversation{provider: provider, mail: mail, pending: map[string]pendingCall{}}
+func NewToolConversation(provider ToolModel, mail MailReader, drives ...DriveReader) *ToolConversation {
+	var drive DriveReader
+	if len(drives) > 0 {
+		drive = drives[0]
+	}
+	return &ToolConversation{provider: provider, mail: mail, drive: drive, pending: map[string]pendingCall{}, trusted: map[string]bool{}}
 }
 func (agent *ToolConversation) definitions() []model.ToolDefinition {
 	if agent.mail == nil {
-		return nil
+		if agent.drive == nil {
+			return nil
+		}
 	}
 	schema := func(key string) map[string]any {
 		return map[string]any{"type": "OBJECT", "properties": map[string]any{key: map[string]any{"type": "STRING"}}, "required": []string{key}}
 	}
-	return []model.ToolDefinition{
+	definitions := []model.ToolDefinition{
 		{Name: "gmail_search", Description: "Recherche les mails avec une requête Gmail. Renvoie les identifiants, expéditeurs et objets.", Parameters: schema("query")},
 		{Name: "gmail_read", Description: "Lit le contenu d’un mail à partir d’un identifiant retourné par gmail_search.", Parameters: schema("id")},
 	}
+	if agent.drive != nil {
+		definitions = append(definitions, model.ToolDefinition{Name: "drive_search", Description: "Recherche les fichiers Google Drive par nom.", Parameters: schema("query")}, model.ToolDefinition{Name: "drive_read", Description: "Lit le contenu texte d’un fichier Google Drive trouvé précédemment.", Parameters: schema("id")})
+	}
+	return definitions
 }
 func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question model.Question) (model.Answer, error) {
 	messages := []model.Content{{Role: "user", Parts: []model.Part{{Text: question.Text}}}}
@@ -62,8 +78,21 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 		}
 		result, err := agent.execute(ctx, pending.call)
 		if err != nil {
-			slog.Warn("Gmail tool execution failed", "tool", pending.call.Name, "error", err)
-			return model.Answer{Text: "L’accès Gmail a échoué. Vous pouvez relancer la demande.", Status: model.ActionUnavailable}, nil
+			slog.Warn("workspace tool execution failed", "tool", pending.call.Name, "error", err)
+			return model.Answer{Text: "L’accès à la source demandée a échoué. Vous pouvez relancer la demande.", Status: model.ActionUnavailable}, nil
+		}
+		if question.RememberSession {
+			agent.mu.Lock()
+			agent.trusted[pending.call.Name] = true
+			if strings.HasPrefix(pending.call.Name, "gmail_") {
+				agent.trusted["gmail_search"] = true
+				agent.trusted["gmail_read"] = true
+			}
+			if strings.HasPrefix(pending.call.Name, "drive_") {
+				agent.trusted["drive_search"] = true
+				agent.trusted["drive_read"] = true
+			}
+			agent.mu.Unlock()
 		}
 		messages = append(pending.messages, model.Content{Role: "user", Parts: []model.Part{{FunctionResponse: &model.ToolResponse{Name: pending.call.Name, Response: result}}}})
 		steps = pending.steps
@@ -96,6 +125,30 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	if steps >= 6 || len(calls) != 1 || agent.validate(calls[0], messages[:len(messages)-1]) != nil {
 		return model.Answer{Text: "L’appel proposé n’est pas autorisé. Reformulez votre demande.", Status: model.ActionRefused}, nil
 	}
+	agent.mu.Lock()
+	trusted := agent.trusted[calls[0].Name]
+	agent.mu.Unlock()
+	if trusted {
+		result, err := agent.execute(ctx, calls[0])
+		if err != nil {
+			return model.Answer{Text: "L’accès à cette source a échoué. Vous pouvez relancer la demande.", Status: model.ActionUnavailable}, nil
+		}
+		messages = append(messages, model.Content{Role: "user", Parts: []model.Part{{FunctionResponse: &model.ToolResponse{Name: calls[0].Name, Response: result}}}})
+		response, err = agent.provider.Generate(ctx, messages, agent.definitions())
+		if err != nil {
+			return model.Answer{}, err
+		}
+		messages = append(messages, response)
+		answer.Reset()
+		for _, part := range response.Parts {
+			if !part.Thought {
+				answer.WriteString(part.Text)
+			}
+		}
+		if strings.TrimSpace(answer.String()) != "" {
+			return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted}, nil
+		}
+	}
 	token := make([]byte, 32)
 	if _, err := rand.Read(token); err != nil {
 		return model.Answer{}, err
@@ -118,19 +171,30 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 		agent.mu.Unlock()
 	})
 	description := fmt.Sprintf("la recherche de mails « %s »", calls[0].Args["query"])
+	if strings.HasPrefix(calls[0].Name, "drive_") {
+		description = fmt.Sprintf("la recherche de fichiers Drive « %s »", calls[0].Args["query"])
+	}
 	if calls[0].Name == "gmail_read" {
 		description = "la lecture du mail sélectionné"
+	}
+	if calls[0].Name == "drive_read" {
+		description = "la lecture du fichier Drive sélectionné"
 	}
 	return model.Answer{Text: fmt.Sprintf("Confirmez %s. Le résultat Gmail sera envoyé à Gemini pour répondre à votre demande.", description), Status: model.ActionConfirmation, ConfirmationID: id, Provider: "home-core"}, nil
 }
 func (agent *ToolConversation) validate(call model.ToolCall, history []model.Content) error {
-	if agent.mail == nil || len(call.Args) != 1 {
+	if (agent.mail == nil && agent.drive == nil) || len(call.Args) != 1 {
 		return ErrUnsupportedIntent
 	}
 	key := "query"
 	if call.Name == "gmail_read" {
 		key = "id"
-	} else if call.Name != "gmail_search" {
+	} else if call.Name == "drive_read" {
+		key = "id"
+	} else if call.Name != "gmail_search" && call.Name != "drive_search" {
+		return ErrUnsupportedIntent
+	}
+	if strings.HasPrefix(call.Name, "gmail_") && agent.mail == nil || strings.HasPrefix(call.Name, "drive_") && agent.drive == nil {
 		return ErrUnsupportedIntent
 	}
 	value, ok := call.Args[key].(string)
@@ -146,6 +210,15 @@ func (agent *ToolConversation) validate(call model.ToolCall, history []model.Con
 						for _, mail := range mails {
 							if mail.ID == value {
 								found = true
+							}
+						}
+					}
+					if p.FunctionResponse != nil && p.FunctionResponse.Name == "drive_search" {
+						if files, ok := p.FunctionResponse.Response["files"].([]workspace.DriveFile); ok {
+							for _, file := range files {
+								if file.ID == value {
+									found = true
+								}
 							}
 						}
 					}
@@ -172,6 +245,18 @@ func (agent *ToolConversation) execute(ctx context.Context, call model.ToolCall)
 			mail.Body = string([]rune(mail.Body)[:min(8000, len([]rune(mail.Body)))])
 		}
 		return map[string]any{"mail": mail}, err
+	case "drive_search":
+		files, err := agent.drive.SearchDrive(ctx, call.Args["query"].(string))
+		if len(files) > 10 {
+			files = files[:10]
+		}
+		return map[string]any{"files": files}, err
+	case "drive_read":
+		file, err := agent.drive.ReadDriveFile(ctx, call.Args["id"].(string))
+		if len(file.Content) > 32000 {
+			file.Content = string([]rune(file.Content)[:8000])
+		}
+		return map[string]any{"file": file}, err
 	}
 	return nil, ErrUnsupportedIntent
 }

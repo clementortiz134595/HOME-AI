@@ -2,8 +2,9 @@ package model
 
 // Question is the user input accepted by the assistant module.
 type Question struct {
-	Text           string `json:"text"`
-	ConfirmationID string `json:"confirmationId,omitempty"`
+	Text            string `json:"text"`
+	ConfirmationID  string `json:"confirmationId,omitempty"`
+	RememberSession bool   `json:"rememberSession,omitempty"`
 }
 
 type VoiceInput struct {

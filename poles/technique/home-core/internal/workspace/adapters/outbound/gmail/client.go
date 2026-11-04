@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -21,6 +22,7 @@ import (
 )
 
 const scope = "https://www.googleapis.com/auth/gmail.readonly"
+const driveScope = "https://www.googleapis.com/auth/drive.readonly"
 
 type Client struct {
 	config *oauth2.Config
@@ -41,7 +43,86 @@ func NewClient(httpClient *http.Client, clientID, clientSecret, redirectURL, tok
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &Client{config: &oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, Endpoint: google.Endpoint, RedirectURL: redirectURL, Scopes: []string{scope}}, store: &fileTokenStore{path: tokenPath}, http: httpClient}, nil
+	return &Client{config: &oauth2.Config{ClientID: clientID, ClientSecret: clientSecret, Endpoint: google.Endpoint, RedirectURL: redirectURL, Scopes: []string{scope, driveScope}}, store: &fileTokenStore{path: tokenPath}, http: httpClient}, nil
+}
+
+func (client *Client) SearchDrive(ctx context.Context, query string) ([]model.DriveFile, error) {
+	token, err := client.token(ctx)
+	if err != nil {
+		return nil, err
+	}
+	q := "trashed = false"
+	if strings.TrimSpace(query) != "" {
+		q += " and name contains '" + strings.ReplaceAll(strings.ReplaceAll(query, "'", "\\'"), "\\", "\\\\") + "'"
+	}
+	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/drive/v3/files?"+url.Values{"q": []string{q}, "pageSize": []string{"10"}, "orderBy": []string{"modifiedTime desc"}, "fields": []string{"files(id,name,mimeType,modifiedTime,webViewLink)"}}.Encode(), nil)
+	response, err := client.httpClient(token).Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("Drive search returned status %d", response.StatusCode)
+	}
+	var listed struct {
+		Files []struct{ ID, Name, MimeType, ModifiedTime, WebViewLink string } `json:"files"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&listed); err != nil {
+		return nil, err
+	}
+	files := make([]model.DriveFile, 0, len(listed.Files))
+	for _, file := range listed.Files {
+		modified, _ := time.Parse(time.RFC3339, file.ModifiedTime)
+		files = append(files, model.DriveFile{ID: file.ID, Name: file.Name, MimeType: file.MimeType, ModifiedAt: modified, WebViewLink: file.WebViewLink})
+	}
+	return files, nil
+}
+
+func (client *Client) ReadDriveFile(ctx context.Context, id string) (model.TextDocument, error) {
+	token, err := client.token(ctx)
+	if err != nil {
+		return model.TextDocument{}, err
+	}
+	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.googleapis.com/drive/v3/files/"+url.PathEscape(id)+"?fields=id,name,mimeType,modifiedTime,webViewLink", nil)
+	response, err := client.httpClient(token).Do(request)
+	if err != nil {
+		return model.TextDocument{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode/100 != 2 {
+		return model.TextDocument{}, fmt.Errorf("Drive file metadata returned status %d", response.StatusCode)
+	}
+	var raw struct{ ID, Name, MimeType, ModifiedTime, WebViewLink string }
+	if err := json.NewDecoder(response.Body).Decode(&raw); err != nil {
+		return model.TextDocument{}, err
+	}
+	modified, _ := time.Parse(time.RFC3339, raw.ModifiedTime)
+	file := model.DriveFile{ID: raw.ID, Name: raw.Name, MimeType: raw.MimeType, ModifiedAt: modified, WebViewLink: raw.WebViewLink}
+	if file.MimeType == "application/vnd.google-apps.document" {
+		return client.readDriveContent(ctx, file, "https://www.googleapis.com/drive/v3/files/"+url.PathEscape(id)+"/export?mimeType=text/plain")
+	}
+	return client.readDriveContent(ctx, file, "https://www.googleapis.com/drive/v3/files/"+url.PathEscape(id)+"?alt=media")
+}
+
+func (client *Client) readDriveContent(ctx context.Context, file model.DriveFile, endpoint string) (model.TextDocument, error) {
+	token, err := client.token(ctx)
+	if err != nil {
+		return model.TextDocument{}, err
+	}
+	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	response, err := client.httpClient(token).Do(request)
+	if err != nil {
+		return model.TextDocument{}, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode/100 != 2 {
+		return model.TextDocument{}, fmt.Errorf("Drive file read returned status %d", response.StatusCode)
+	}
+	data, err := io.ReadAll(io.LimitReader(response.Body, 1<<20))
+	if err != nil {
+		return model.TextDocument{}, err
+	}
+	return model.TextDocument{DriveFile: file, Content: string(data)}, nil
 }
 
 func (client *Client) AuthorizationURL(state string) string {

@@ -82,6 +82,19 @@ button { font: inherit; }
 .voice-overlay::before { width: 34rem; height: 34rem; left: -8rem; top: -10rem; background: rgba(113, 113, 122, .2); }
 .voice-overlay::after { width: 30rem; height: 30rem; right: -8rem; bottom: -9rem; background: rgba(39, 39, 42, .35); }
 .voice-overlay-content { min-height: 100%; justify-content: center; padding: 2rem 0; }
+.workspace-column { min-width: 0; border: 1px solid rgba(161,161,170,.16); border-radius: 1.5rem; background: rgba(24,24,27,.78); padding: 1rem; box-shadow: 0 24px 70px rgba(0,0,0,.22); backdrop-filter: blur(18px); }
+.workspace-eyebrow { margin: 0 0 .85rem; color: #a1a1aa; font-size: .7rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+.workspace-list { display: grid; gap: .5rem; align-content: start; }
+.workspace-list-item { display: flex; align-items: center; gap: .75rem; border: 1px solid transparent; border-radius: 1rem; padding: .75rem; color: #d4d4d8; }
+.workspace-list-item-active { border-color: rgba(228,228,231,.2); background: rgba(255,255,255,.08); color: #fafafa; }
+.workspace-list-item-muted { color: #71717a; }
+.workspace-list-item strong, .workspace-list-item small { display: block; }
+.workspace-list-item small { margin-top: .2rem; color: #a1a1aa; font-size: .72rem; }
+.workspace-source-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: .7rem; background: rgba(255,255,255,.08); color: #e4e4e7; font-weight: 700; }
+.workspace-interaction { display: grid; min-height: 24rem; place-items: center; align-content: center; }
+.workspace-questions { min-height: 24rem; }
+.workspace-confirmation { display: grid; gap: .9rem; margin-top: 1rem; }
+.workspace-confirmation button { width: 100%; }
 .pipeline-trace { width: 100%; border: 1px solid rgba(161,161,170,.2); border-radius: 1.5rem; background: rgba(39,39,42,.82); padding: .6rem; color: #e4e4e7; box-shadow: 0 24px 70px rgba(0,0,0,.28); backdrop-filter: blur(18px); }
 .pipeline-steps { margin: 0 .4rem .35rem 1.25rem; border-left: 1px solid rgba(148,163,184,.24); padding: .4rem 0 0 1.25rem; }
 .trace-line { display: flex; min-height: 2.8rem; align-items: center; gap: .75rem; border-radius: 1rem; padding: .65rem .8rem; }
@@ -303,6 +316,7 @@ button { font: inherit; }
   .voice-orb-stage { width: 8rem; min-height: 8rem; }
   .voice-orb-stage .orb { transform: scale(.58); }
   .pipeline-trace { border-radius: 1.25rem; }
+  .workspace-column { border-radius: 1.25rem; }
   .trace-line { min-height: 2.5rem; padding: .5rem .6rem; }
   .trace-title { font-size: .8rem; }
   .trace-description { font-size: .68rem; }

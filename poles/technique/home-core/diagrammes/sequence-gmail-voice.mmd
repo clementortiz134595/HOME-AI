@@ -3,15 +3,24 @@ sequenceDiagram
     participant C as Home Core
     participant AI as Gemini
     participant G as Gmail API
+    participant D as Drive API
     U->>C: Question texte ou transcription vocale
     C->>AI: Question et déclarations des outils configurés
-    AI-->>C: Appel gmail_search ou gmail_read
+    AI-->>C: Appel Gmail ou Drive
     C->>C: Validation, conservation éphémère, identifiant unique
     C-->>U: Confirmation requise, envoi à Gemini annoncé
     U->>C: POST questions avec confirmationId
     C->>C: Consomme la confirmation, vérifie expiration
-    C->>G: Recherche ou lecture, scope readonly
-    G-->>C: Résultat structuré
+    opt Autorisation mémorisée pour la session
+        C->>C: Autorise les appels Gmail/Drive suivants
+    end
+    alt Gmail
+        C->>G: Recherche ou lecture, scope readonly
+        G-->>C: Résultat structuré
+    else Drive
+        C->>D: Recherche ou lecture, scope readonly
+        D-->>C: Résultat structuré
+    end
     C->>AI: functionResponse
     AI-->>C: Synthèse ou prochain appel soumis à confirmation
     C-->>U: Réponse ou nouvelle confirmation
