@@ -1,6 +1,7 @@
 package agendahttp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -8,13 +9,19 @@ import (
 	"time"
 
 	agendaapp "github.com/clementortiz/home-ai/home-core/internal/agenda/application"
+	"github.com/clementortiz/home-ai/home-core/internal/agenda/model"
 )
 
 type Handler struct {
-	registry agendaapp.Registry
+	registry calendarReader
 }
 
-func NewHandler(registry agendaapp.Registry) *Handler {
+type calendarReader interface {
+	ListCalendars(context.Context, string) ([]model.Calendar, error)
+	ListEvents(context.Context, string, string, time.Time, time.Time) ([]model.Event, error)
+}
+
+func NewHandler(registry calendarReader) *Handler {
 	return &Handler{registry: registry}
 }
 

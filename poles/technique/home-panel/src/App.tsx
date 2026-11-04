@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getWeather, type WeatherReport } from "@/lib/weather";
 import { getDeviceState, getHomeDevices, setDeviceSwitch, type DeviceState, type HomeDevice } from "@/lib/homeControl";
+import { getCalendarEvents, getCalendars, type CalendarEvent } from "@/lib/calendar";
 
 const rooms = [
   { name: "Salon", detail: "2 lumières · 21°", icon: Home, active: true, tone: "bg-amber-100 text-amber-700" },
@@ -96,16 +97,34 @@ function HomeView() {
 }
 
 function AgendaView({ profile }: { profile: Profile }) {
-  const visibleItems = agendaItems.filter((item) => profile === "Duo" || item.owner === "Duo" || item.owner === profile);
-  const visibleCalendarEvents = Object.entries(calendarEvents).filter(([, item]) => profile === "Duo" || item.owner === "Duo" || item.owner === profile);
-  const eventByDay = Object.fromEntries(visibleCalendarEvents);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [syncState, setSyncState] = useState<"loading" | "ready" | "unavailable">("loading");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1);
+    const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    getCalendars("personal", controller.signal)
+      .then((calendars) => Promise.all(calendars.map((calendar) => getCalendarEvents("personal", calendar.id, from, to, controller.signal))))
+      .then((calendarEvents) => { setEvents(calendarEvents.flat()); setSyncState("ready"); })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) setSyncState("unavailable");
+      });
+    return () => controller.abort();
+  }, []);
+
+  const eventByDay = Object.fromEntries(events.map((event) => [new Date(event.startsAt).getDate(), { title: event.title, owner: "Duo", tone: "bg-emerald-400" }]));
+  const visibleItems = events.slice().sort((a, b) => a.startsAt.localeCompare(b.startsAt)).slice(0, 6);
 
   return (
     <div className="cost-view mt-6 space-y-4">
       <div><h2 className="text-3xl font-semibold tracking-[-0.04em]">Agenda</h2></div>
-      <div className="grid gap-4 sm:grid-cols-3"><Card className="border-sky-400/30 bg-sky-400/10"><CardContent className="p-5"><p className="text-sm text-slate-400">Aujourd’hui</p><p className="mt-2 text-3xl font-semibold">1</p><p className="mt-1 text-sm text-slate-500">événement partagé</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Cette semaine</p><p className="mt-2 text-3xl font-semibold">4</p><p className="mt-1 text-sm text-slate-500">rendez-vous</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Synchronisation</p><p className="mt-2 text-lg font-semibold text-amber-300">Bientôt</p><p className="mt-1 text-sm text-slate-500">iCloud Calendar</p></CardContent></Card></div>
-      <Card><CardHeader><div><p className="text-lg font-semibold">Novembre 2026</p><p className="mt-1 text-sm text-slate-500">Vue calendrier · {profile === "Duo" ? "foyer partagé" : "agenda de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="p-3 sm:p-6"><div className="grid grid-cols-7 gap-1 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px] sm:tracking-[0.12em]">{["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => <span key={day} className="py-1.5 sm:py-2">{day}</span>)}</div><div className="grid grid-cols-7 gap-1">{calendarDays.map((day) => { const event = eventByDay[day] as (typeof calendarEvents)[number] | undefined; return <div key={day} className={"min-h-12 rounded-lg border p-1 text-left sm:min-h-16 sm:rounded-xl sm:p-2 " + (day === 3 ? "border-sky-400/50 bg-sky-400/10" : "border-white/[0.06] bg-white/[0.02]")}><p className={day === 3 ? "text-xs font-semibold text-sky-200 sm:text-sm" : "text-xs text-slate-300 sm:text-sm"}>{day}</p>{event && <div className="mt-1 flex items-start gap-1 sm:mt-2 sm:gap-1.5"><span className={"mt-1 size-1.5 shrink-0 rounded-full " + event.tone} /><p className="hidden line-clamp-2 text-[11px] leading-4 text-slate-400 sm:block">{event.title}</p></div>}</div>; })}</div></CardContent></Card>
-      <Card><CardHeader><div><p className="text-lg font-semibold">Prochains rendez-vous</p><p className="mt-1 text-sm text-slate-500">Vue {profile === "Duo" ? "partagée" : "de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{visibleItems.map((item) => <div key={item.title} className="flex items-center gap-4 rounded-2xl px-3 py-4 transition hover:bg-white/[0.04]"><span className={"size-2 shrink-0 rounded-full " + item.tone} /><div className="w-28 shrink-0 text-sm text-slate-400">{item.time}</div><div className="min-w-0 flex-1"><p className="font-medium">{item.title}</p><p className="mt-1 text-sm text-slate-500">{item.detail}</p></div><Badge>{item.owner}</Badge></div>)}</CardContent></Card>
+      <div className="grid gap-4 sm:grid-cols-3"><Card className="border-sky-400/30 bg-sky-400/10"><CardContent className="p-5"><p className="text-sm text-slate-400">Ce mois-ci</p><p className="mt-2 text-3xl font-semibold">{events.length}</p><p className="mt-1 text-sm text-slate-500">événement{events.length > 1 ? "s" : ""}</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Profil</p><p className="mt-2 text-lg font-semibold">{profile === "Duo" ? "Foyer partagé" : profile}</p><p className="mt-1 text-sm text-slate-500">Filtrage local du panneau</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Synchronisation</p><p className={"mt-2 text-lg font-semibold " + (syncState === "ready" ? "text-emerald-300" : syncState === "loading" ? "text-amber-300" : "text-rose-300")}>{syncState === "ready" ? "Connecté" : syncState === "loading" ? "Chargement…" : "Indisponible"}</p><p className="mt-1 text-sm text-slate-500">iCloud Calendar</p></CardContent></Card></div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(280px,0.85fr)] xl:items-start">
+        <Card><CardHeader><div><p className="text-lg font-semibold">Novembre 2026</p><p className="mt-1 text-sm text-slate-500">Vue calendrier · {profile === "Duo" ? "foyer partagé" : "agenda de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="p-3 sm:p-6"><div className="grid grid-cols-7 gap-1 text-center text-[9px] font-medium uppercase tracking-[0.08em] text-slate-500 sm:text-[11px] sm:tracking-[0.12em]">{["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"].map((day) => <span key={day} className="py-1.5 sm:py-2">{day}</span>)}</div><div className="grid grid-cols-7 gap-1">{calendarDays.map((day) => { const event = eventByDay[day] as (typeof calendarEvents)[number] | undefined; return <div key={day} className={"min-h-12 rounded-lg border p-1 text-left sm:min-h-16 sm:rounded-xl sm:p-2 " + (day === 3 ? "border-sky-400/50 bg-sky-400/10" : "border-white/[0.06] bg-white/[0.02]")}><p className={day === 3 ? "text-xs font-semibold text-sky-200 sm:text-sm" : "text-xs text-slate-300 sm:text-sm"}>{day}</p>{event && <div className="mt-1 flex items-start gap-1 sm:mt-2 sm:gap-1.5"><span className={"mt-1 size-1.5 shrink-0 rounded-full " + event.tone} /><p className="hidden line-clamp-2 text-[11px] leading-4 text-slate-400 sm:block">{event.title}</p></div>}</div>; })}</div></CardContent></Card>
+        <Card><CardHeader><div><p className="text-lg font-semibold">Prochains rendez-vous</p><p className="mt-1 text-sm text-slate-500">Vue {profile === "Duo" ? "partagée" : "de " + profile}</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{visibleItems.length === 0 && syncState === "ready" && <p className="py-4 text-sm text-slate-500">Aucun événement sur la période.</p>}{visibleItems.map((item) => <div key={item.id} className="flex items-center gap-3 rounded-2xl px-2 py-3 transition hover:bg-white/[0.04]"><span className="size-2 shrink-0 rounded-full bg-emerald-400" /><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">{item.title || "Sans titre"}</p><Badge>Duo</Badge></div><p className="mt-1 text-sm text-slate-500">{item.allDay ? "Toute la journée" : new Date(item.startsAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p></div></div>)}</CardContent></Card>
+      </div>
     </div>
   );
 }
