@@ -331,8 +331,6 @@ button { font: inherit; }
   .home-rooms > section .mt-4 { margin-top: .5rem; }
   .home-rooms > section .sm\:mt-8 { margin-top: .5rem; }
   .agenda-view { grid-template-rows: minmax(0, 1fr); }
-  .agenda-view > section:nth-child(2),
-  .agenda-content > section:last-child { display: none; }
   .agenda-calendar > div:first-child { padding: .75rem .875rem .25rem; }
   .agenda-calendar > div:first-child p:last-child { display: none; }
   .agenda-calendar > div:last-child { padding: .5rem .75rem .75rem; }
