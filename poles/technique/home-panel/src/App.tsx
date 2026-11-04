@@ -369,7 +369,7 @@ function AssistantOrb() {
 
   return <Card className="dashboard-assistant-card overflow-hidden border-sky-400/25 bg-black">
     <button type="button" aria-label="Activer l’assistant vocal" onClick={activate} className="flex h-full w-full items-center justify-center p-4 outline-none transition hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-sky-300">
-      <Orb state={listening ? "using" : "waiting"} size={240} dotSize={0.8} speed={listening ? 1 : 0.7} label="Assistant vocal" />
+      <Orb state={listening ? "using" : "waiting"} size={240} dotSize={0.45} speed={listening ? 1 : 0.7} label="Assistant vocal" />
       <span className="sr-only">{status}</span>
     </button>
   </Card>;
