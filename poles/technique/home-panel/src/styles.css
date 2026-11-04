@@ -158,7 +158,6 @@ button { font: inherit; }
   .dashboard-compact-grid .weather-content { padding: .75rem; }
   .dashboard-compact-grid .weather-detail,
   .dashboard-compact-grid .weather-content span,
-  .dashboard-compact-grid .dashboard-reminder-card span:not(.rounded-full),
   .dashboard-assistant-card .orb { transform: scale(.55); }
   .dashboard-compact-grid .weather-content .text-5xl { font-size: 2rem; }
   .dashboard-compact-grid .dashboard-rooms-card button { min-height: 2.5rem; padding: .25rem; }

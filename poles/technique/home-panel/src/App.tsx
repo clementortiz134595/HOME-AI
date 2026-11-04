@@ -436,6 +436,7 @@ function WeatherCard() {
 }
 
 type DashboardRoom = (typeof rooms)[number];
+type Reminder = (typeof agendaItems)[number];
 
 function RoomDetailDialog({ room, onClose }: { room: DashboardRoom; onClose: () => void }) {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
@@ -488,6 +489,23 @@ function RoomDetailDialog({ room, onClose }: { room: DashboardRoom; onClose: () 
   </div>;
 }
 
+function ReminderDetailDialog({ reminder, onClose }: { reminder: Reminder; onClose: () => void }) {
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={onClose}>
+    <section role="dialog" aria-modal="true" aria-labelledby="reminder-dialog-title" className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+      <div className="flex items-start justify-between gap-4"><div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-sky-400/15 text-sky-200"><CalendarDays className="size-6" /></span><div><p className="text-sm text-slate-400">Détail du rappel</p><h2 id="reminder-dialog-title" className="text-xl font-semibold">{reminder.title}</h2></div></div><Button variant="ghost" size="icon" aria-label="Fermer" onClick={onClose}><X /></Button></div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white/[0.05] p-4"><p className="text-xs text-slate-500">Quand</p><p className="mt-1 font-medium">{reminder.time}</p></div><div className="rounded-2xl bg-white/[0.05] p-4"><p className="text-xs text-slate-500">Agenda</p><p className="mt-1 font-medium">{reminder.owner}</p></div></div>
+      <div className="mt-3 rounded-2xl bg-white/[0.05] p-4"><p className="text-xs text-slate-500">Lieu / précision</p><p className="mt-1 font-medium">{reminder.detail}</p></div>
+      <div className="mt-5 flex justify-end"><Button onClick={onClose}>Fermer</Button></div>
+    </section>
+  </div>;
+}
+
 type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
 
 function VoiceOverlay({ status }: { status: VoiceStatus }) {
@@ -531,6 +549,7 @@ function App() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<DashboardRoom | null>(null);
+  const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const calendarLabel = profile === "Duo" ? "Partagé" : "Personnel";
   const profileInitial = profile === "Duo" ? "D" : profile === "Clément" ? "C" : "L";
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
@@ -622,7 +641,7 @@ function App() {
           <div className="dashboard-compact-grid grid">
             <WeatherCard />
             <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map((room) => { const Icon = room.icon; return <button key={room.name} type="button" onClick={() => setSelectedRoom(room)} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + room.tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={room.active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{room.name}</span><span className="block truncate text-xs text-slate-500">{room.detail}</span></span></button>; })}</CardContent></Card>
-            <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappel</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-xl font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-4 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="text-xs text-slate-400">Prochain événement</span></div></CardContent></Card>
+            <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappels</p><p className="mt-1 text-sm text-slate-400">À venir</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{agendaItems.slice(0, 3).map((reminder) => <button key={reminder.title} type="button" onClick={() => setSelectedReminder(reminder)} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"size-2 shrink-0 rounded-full " + reminder.tone} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reminder.title}</span><span className="block text-xs text-slate-500">{reminder.time}</span></span></button>)}</CardContent></Card>
             <AssistantOrb />
           </div>
 
@@ -635,6 +654,7 @@ function App() {
       </div>
       <WakeWordListener />
       {selectedRoom && <RoomDetailDialog room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
+      {selectedReminder && <ReminderDetailDialog reminder={selectedReminder} onClose={() => setSelectedReminder(null)} />}
       <VoiceOverlay status={voiceStatus} />
     </main>
   );
