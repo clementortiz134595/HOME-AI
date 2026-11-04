@@ -44,3 +44,15 @@ func TestServiceRejectsIncompleteReminder(t *testing.T) {
 		t.Fatalf("Update() error = %v, want ErrNotFound", err)
 	}
 }
+
+func TestServiceResolvesReminderByTitleAndDate(t *testing.T) {
+	service := NewService()
+	created, err := service.Create(model.Reminder{Title: "Sortir les bacs", Date: "2026-11-05"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := service.Update("", model.Reminder{Title: "sortir les bacs", Date: created.Date, Details: "Avant 8h"})
+	if err != nil || updated.ID != created.ID || updated.Details != "Avant 8h" {
+		t.Fatalf("updated=%+v err=%v", updated, err)
+	}
+}

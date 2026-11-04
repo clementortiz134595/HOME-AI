@@ -118,7 +118,9 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	var answer strings.Builder
 	for _, part := range response.Parts {
 		if part.FunctionCall != nil {
-			calls = append(calls, *part.FunctionCall)
+			call := *part.FunctionCall
+			call.Name = normalizeToolName(call.Name)
+			calls = append(calls, call)
 		}
 		if !part.Thought {
 			answer.WriteString(part.Text)
@@ -132,6 +134,11 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	}
 	// A single approval never authorizes additional parallel calls.
 	if steps >= 6 || len(calls) != 1 || agent.validate(calls[0], messages[:len(messages)-1]) != nil {
+		if len(calls) == 1 {
+			slog.Warn("assistant tool call rejected", "tool", calls[0].Name, "argument_count", len(calls[0].Args), "argument_names", toolArgumentNames(calls[0]))
+		} else {
+			slog.Warn("assistant tool calls rejected", "call_count", len(calls), "step", steps)
+		}
 		return model.Answer{Text: "L’appel proposé n’est pas autorisé. Reformulez votre demande.", Status: model.ActionRefused}, nil
 	}
 	agent.mu.Lock()
@@ -207,6 +214,30 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	}
 	return model.Answer{Text: fmt.Sprintf("Confirmez %s. Le résultat sera envoyé à Gemini pour répondre à votre demande.", description), Status: model.ActionConfirmation, ConfirmationID: id, Provider: "home-core"}, nil
 }
+
+func toolArgumentNames(call model.ToolCall) []string {
+	names := make([]string, 0, len(call.Args))
+	for name := range call.Args {
+		names = append(names, name)
+	}
+	return names
+}
+
+func normalizeToolName(name string) string {
+	switch name {
+	case "gmail.search":
+		return "gmail_search"
+	case "gmail.read":
+		return "gmail_read"
+	case "drive.search":
+		return "drive_search"
+	case "drive.read":
+		return "drive_read"
+	default:
+		return name
+	}
+}
+
 func (agent *ToolConversation) validate(call model.ToolCall, history []model.Content) error {
 	if (agent.mail == nil && agent.drive == nil) || len(call.Args) != 1 {
 		return ErrUnsupportedIntent

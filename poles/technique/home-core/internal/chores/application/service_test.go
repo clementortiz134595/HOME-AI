@@ -48,3 +48,21 @@ func TestServiceRejectsInvalidChore(t *testing.T) {
 		}
 	}
 }
+
+func TestServiceResolvesChoreByObjectiveAndRejectsAmbiguity(t *testing.T) {
+	service := NewService()
+	first, err := service.Create(model.Chore{Objective: "Nettoyer la cuisine", Assignees: []string{"clement"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err := service.Update("", model.Chore{Objective: "nettoyer la cuisine", Date: first.Date})
+	if err != nil || updated.ID != first.ID {
+		t.Fatalf("updated=%+v err=%v", updated, err)
+	}
+	if _, err := service.Create(model.Chore{Objective: "Nettoyer la cuisine", Assignees: []string{"lise"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Update("", model.Chore{Objective: "Nettoyer la cuisine"}); !errors.Is(err, ErrAmbiguous) {
+		t.Fatalf("Update() error=%v, want ErrAmbiguous", err)
+	}
+}

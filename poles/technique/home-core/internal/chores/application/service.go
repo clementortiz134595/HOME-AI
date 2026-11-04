@@ -10,6 +10,7 @@ import (
 )
 
 var ErrNotFound = errors.New("chore not found")
+var ErrAmbiguous = errors.New("chore selector is ambiguous")
 
 type Service struct {
 	mu         sync.RWMutex
@@ -66,6 +67,15 @@ func (s *Service) Create(chore model.Chore) (model.Chore, error) {
 func (s *Service) Update(id string, patch model.Chore) (model.Chore, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if id == "" {
+		id = s.resolveID(patch.Objective, patch.Date)
+		if id == "" {
+			return model.Chore{}, ErrNotFound
+		}
+		if id == "ambiguous" {
+			return model.Chore{}, ErrAmbiguous
+		}
+	}
 	current, ok := s.chores[id]
 	if !ok {
 		return model.Chore{}, ErrNotFound
@@ -98,6 +108,25 @@ func (s *Service) Update(id string, patch model.Chore) (model.Chore, error) {
 		}
 	}
 	return current, nil
+}
+
+func (s *Service) ResolveID(objective, date string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.resolveID(objective, date)
+}
+
+func (s *Service) resolveID(objective, date string) string {
+	match := ""
+	for id, value := range s.chores {
+		if strings.EqualFold(strings.TrimSpace(value.Objective), strings.TrimSpace(objective)) && (date == "" || value.Date == date) {
+			if match != "" {
+				return "ambiguous"
+			}
+			match = id
+		}
+	}
+	return match
 }
 
 func (s *Service) Delete(id string) error {

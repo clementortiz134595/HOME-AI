@@ -167,7 +167,7 @@ func (router modelToolInterpreter) Interpret(ctx context.Context, interaction mo
 	if err != nil {
 		return model.Intent{}, err
 	}
-	if strings.HasPrefix(intent.Name, "gmail.") {
+	if strings.HasPrefix(intent.Name, "gmail.") || strings.HasPrefix(intent.Name, "drive.") {
 		return model.Intent{Name: "assistant.question", Parameters: map[string]any{"text": interaction.Text}}, nil
 	}
 	return intent, nil

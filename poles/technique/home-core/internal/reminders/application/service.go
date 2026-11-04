@@ -9,6 +9,7 @@ import (
 )
 
 var ErrNotFound = errors.New("reminder not found")
+var ErrAmbiguous = errors.New("reminder selector is ambiguous")
 
 type Repository interface {
 	ListReminders() ([]model.Reminder, error)
@@ -63,6 +64,15 @@ func (s *Service) Create(value model.Reminder) (model.Reminder, error) {
 func (s *Service) Update(id string, patch model.Reminder) (model.Reminder, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if id == "" {
+		id = s.resolveID(patch.Title, patch.Date)
+		if id == "" {
+			return model.Reminder{}, ErrNotFound
+		}
+		if id == "ambiguous" {
+			return model.Reminder{}, ErrAmbiguous
+		}
+	}
 	value, ok := s.reminders[id]
 	if !ok {
 		return model.Reminder{}, ErrNotFound
@@ -83,6 +93,25 @@ func (s *Service) Update(id string, patch model.Reminder) (model.Reminder, error
 		}
 	}
 	return value, nil
+}
+
+func (s *Service) ResolveID(title, date string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.resolveID(title, date)
+}
+
+func (s *Service) resolveID(title, date string) string {
+	match := ""
+	for id, value := range s.reminders {
+		if strings.EqualFold(strings.TrimSpace(value.Title), strings.TrimSpace(title)) && (date == "" || value.Date == date) {
+			if match != "" {
+				return "ambiguous"
+			}
+			match = id
+		}
+	}
+	return match
 }
 func (s *Service) Delete(id string) error {
 	s.mu.Lock()

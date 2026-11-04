@@ -91,3 +91,25 @@ func TestMergedRouterKeepsHouseholdToolsAndDelegatesGmail(t *testing.T) {
 		}
 	}
 }
+
+func TestMergedRouterDelegatesDrive(t *testing.T) {
+	router := modelToolInterpreter{fallback: fakeInterpreter{intent: model.Intent{Name: "drive.search"}}}
+	intent, err := router.Interpret(context.Background(), model.Interaction{Text: "ma demande"})
+	if err != nil || intent.Name != "assistant.question" || intent.Parameters["text"] != "ma demande" {
+		t.Fatalf("drive intent was not delegated: %+v err=%v", intent, err)
+	}
+}
+
+func TestNormalizeToolNameAcceptsIntentAliases(t *testing.T) {
+	for input, expected := range map[string]string{
+		"gmail.search": "gmail_search",
+		"gmail.read":   "gmail_read",
+		"drive.search": "drive_search",
+		"drive.read":   "drive_read",
+		"drive_search": "drive_search",
+	} {
+		if got := normalizeToolName(input); got != expected {
+			t.Fatalf("%s normalized to %s, expected %s", input, got, expected)
+		}
+	}
+}

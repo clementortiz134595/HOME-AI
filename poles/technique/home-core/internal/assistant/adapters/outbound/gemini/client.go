@@ -20,7 +20,7 @@ var ErrUnavailable = errors.New("assistant provider unavailable")
 const intentSystemInstruction = `Tu es le routeur d'intentions de Home Core. Réponds uniquement avec un objet JSON valide, sans Markdown.
 Intentions autorisées : home.turn_on, home.turn_off, gmail.search, drive.search, agenda.list, chores.create, chores.update, chores.delete, reminders.create, reminders.update, reminders.delete, assistant.question.
 Retourne exactement les champs name, parameters et sensitive. Les paramètres doivent être un objet JSON.
-Pour chores.create, retourne objective, date (YYYY-MM-DD si connue), assignees (tableau), frequency:"weekly" pour une récurrence hebdomadaire, intervalWeeks et alternating. Exemple alterné : {"name":"chores.create","parameters":{"objective":"faire les poussières du salon","assignees":["Lise","Clément"],"frequency":"weekly","intervalWeeks":1,"alternating":true},"sensitive":false}. Pour modifier/supprimer, retourne l'id de la tâche demandé. Pour reminders.create, retourne title, date (YYYY-MM-DD) et details; pour modifier/supprimer, retourne l'id du rappel.
+Pour chores.create, retourne objective, date (YYYY-MM-DD si connue), assignees (tableau), frequency:"weekly" pour une récurrence hebdomadaire, intervalWeeks et alternating. Exemple alterné : {"name":"chores.create","parameters":{"objective":"faire les poussières du salon","assignees":["Lise","Clément"],"frequency":"weekly","intervalWeeks":1,"alternating":true},"sensitive":false}. Pour modifier/supprimer, retourne id si connu, sinon objective et date pour sélectionner une seule tâche. Pour reminders.create, retourne title, date (YYYY-MM-DD) et details; pour modifier/supprimer, retourne id si connu, sinon title et date pour sélectionner un seul rappel.
 Utilise assistant.question pour toute demande qui ne correspond pas clairement à un outil.
 Marque sensitive à true pour Gmail, Drive et agenda. Ne déclenche jamais d'action et n'invente aucun résultat.`
 
@@ -158,9 +158,14 @@ func validateIntent(intent *model.Intent, transcript string) error {
 			return errors.New("chore assignees are required")
 		}
 	}
-	if intent.Name == "chores.update" || intent.Name == "chores.delete" || intent.Name == "reminders.update" || intent.Name == "reminders.delete" {
-		if value, ok := intent.Parameters["id"].(string); !ok || strings.TrimSpace(value) == "" {
-			return errors.New("resource id is required")
+	if intent.Name == "chores.update" || intent.Name == "chores.delete" {
+		if !nonEmptyString(intent.Parameters, "id") && !nonEmptyString(intent.Parameters, "objective") {
+			return errors.New("chore id or objective is required")
+		}
+	}
+	if intent.Name == "reminders.update" || intent.Name == "reminders.delete" {
+		if !nonEmptyString(intent.Parameters, "id") && !nonEmptyString(intent.Parameters, "title") {
+			return errors.New("reminder id or title is required")
 		}
 	}
 	if intent.Name == "reminders.create" {
@@ -174,6 +179,11 @@ func validateIntent(intent *model.Intent, transcript string) error {
 		intent.Sensitive = true
 	}
 	return nil
+}
+
+func nonEmptyString(parameters map[string]any, key string) bool {
+	value, ok := parameters[key].(string)
+	return ok && strings.TrimSpace(value) != ""
 }
 
 type generateRequest struct {
