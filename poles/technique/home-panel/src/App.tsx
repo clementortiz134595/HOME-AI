@@ -9,6 +9,8 @@ import {
   MoreHorizontal,
   Settings,
   Sparkles,
+  Plug,
+  Thermometer,
   ThermometerSun,
   WalletCards,
   UserRound,
@@ -436,20 +438,51 @@ function WeatherCard() {
 type DashboardRoom = (typeof rooms)[number];
 
 function RoomDetailDialog({ room, onClose }: { room: DashboardRoom; onClose: () => void }) {
+  const [devices, setDevices] = useState<HomeDevice[]>([]);
+  const [states, setStates] = useState<Record<string, DeviceState>>({});
+  const [unavailable, setUnavailable] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [onClose]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    getHomeDevices(controller.signal).then(async (allDevices) => {
+      const roomDevices = allDevices.filter((device) => device.room.toLocaleLowerCase("fr-FR") === room.name.toLocaleLowerCase("fr-FR"));
+      setDevices(roomDevices);
+      const entries = await Promise.all(roomDevices.map(async (device) => [device.id, await getDeviceState(device.id, controller.signal)] as const));
+      setStates(Object.fromEntries(entries));
+    }).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setUnavailable(true);
+    });
+    return () => controller.abort();
+  }, [room.name]);
+
+  const switchableDevices = devices.filter((device) => device.capabilities.includes("switch"));
+  const lights = switchableDevices.filter((device) => device.kind === "light");
+  const plugs = switchableDevices.filter((device) => device.kind === "plug");
+  const temperature = devices.map((device) => states[device.id]?.temperatureC).find((value): value is number => value !== undefined);
+  const setSwitch = async (device: HomeDevice, on: boolean) => {
+    setPending(device.id);
+    try {
+      const state = await setDeviceSwitch(device.id, on);
+      setStates((current) => ({ ...current, [device.id]: state }));
+    } catch { setUnavailable(true); } finally { setPending(null); }
+  };
+
   const Icon = room.icon;
   return <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={onClose}>
-    <section role="dialog" aria-modal="true" aria-labelledby="room-dialog-title" className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+    <section role="dialog" aria-modal="true" aria-labelledby="room-dialog-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3"><span className={"grid size-12 place-items-center rounded-2xl " + room.tone}><Icon className="size-6" /></span><div><p className="text-sm text-slate-400">Détail de la pièce</p><h2 id="room-dialog-title" className="text-xl font-semibold">{room.name}</h2></div></div>
         <Button variant="ghost" size="icon" aria-label="Fermer" onClick={onClose}><X /></Button>
       </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white/[0.05] p-4"><p className="text-xs text-slate-500">État</p><p className="mt-1 font-medium">{room.active ? "Éclairage actif" : "Tout est éteint"}</p></div><div className="rounded-2xl bg-white/[0.05] p-4"><p className="text-xs text-slate-500">Équipements</p><p className="mt-1 font-medium">{room.detail}</p></div></div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white/[0.05] p-4"><div className="flex items-center gap-2 text-slate-500"><Thermometer className="size-4" /><p className="text-xs">Température</p></div><p className="mt-1 text-xl font-semibold">{temperature === undefined ? "—" : `${Math.round(temperature)}°`}</p></div><div className="rounded-2xl bg-white/[0.05] p-4"><p className="text-xs text-slate-500">État de connexion</p><p className="mt-1 font-medium">{unavailable ? "Indisponible" : devices.length === 0 ? "Aucun équipement" : "Connecté"}</p></div></div>
+      {([ ["Lumières", lights, Lightbulb], ["Prises", plugs, Plug] ] as const).map(([label, group, DeviceIcon]) => <div key={label} className="mt-5"><div className="mb-2 flex items-center gap-2"><DeviceIcon className="size-4 text-slate-400" /><p className="text-sm font-semibold">{label}</p></div>{group.length === 0 ? <p className="rounded-xl bg-white/[0.03] px-3 py-2 text-sm text-slate-500">Aucun équipement détecté.</p> : <div className="space-y-2">{group.map((device) => { const isOn = states[device.id]?.switchOn ?? false; return <div key={device.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.05] p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{device.name}</p><p className={isOn ? "mt-0.5 text-xs text-emerald-400" : "mt-0.5 text-xs text-slate-500"}>{isOn ? "Allumée" : "Éteinte"}</p></div><Button variant={isOn ? "secondary" : "default"} className="h-9 shrink-0 px-3 text-xs" disabled={pending === device.id} onClick={() => void setSwitch(device, !isOn)}>{isOn ? "Éteindre" : "Allumer"}</Button></div>; })}</div>}</div>)}
       <div className="mt-5 flex justify-end"><Button onClick={onClose}>Fermer</Button></div>
     </section>
   </div>;
