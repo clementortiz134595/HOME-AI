@@ -9,13 +9,14 @@ import {
   MoreHorizontal,
   Settings,
   Sparkles,
+  ThermometerSun,
   WalletCards,
   UserRound,
   Utensils,
 } from "lucide-react";
 import { Orb } from "@yogesharc/thinking-orbs";
 import { Ascii } from "ascii.rest/react";
-import * as landscape from "ascii.rest/pieces/landscape";
+import * as earthrise from "ascii.rest/pieces/earthrise";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -414,13 +415,13 @@ function WeatherCard() {
   }, []);
 
   return (
-    <Card className="dashboard-weather relative overflow-hidden border-sky-400/30 bg-gradient-to-br from-sky-300 via-cyan-200 to-violet-300 text-zinc-950">
+    <Card className="dashboard-weather relative overflow-hidden border-sky-400/20 bg-zinc-950 text-sky-50">
       <div className="weather-landscape" aria-hidden="true">
-        <Ascii piece={landscape} options={{ fps: 8 }} className="weather-landscape-art" />
+        <Ascii piece={earthrise} options={{ fps: 8 }} className="weather-landscape-art" style={{ width: "max(100%, 360px)" }} />
       </div>
       <CardContent className="weather-content relative flex min-h-[220px] flex-col justify-between p-6">
-        <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-zinc-700">{weather?.location.name ?? "Météo locale"}</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">{weather ? `${Math.round(weather.current.temperatureCelsius)}°` : "—"}</p></div><CloudSun className="size-12 text-sky-700/80" /></div>
-        <div className="flex items-end justify-between gap-4"><p className="weather-detail max-w-64 text-sm leading-5 text-zinc-700">{weather?.current.summary ?? (unavailable ? "La météo est momentanément indisponible." : "Chargement de la météo…")}</p><span className="shrink-0 rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-zinc-700">{weather ? `Ressenti ${Math.round(weather.current.apparentCelsius)}°` : "Home Core"}</span></div>
+        <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-sky-50">{weather?.location.name ?? "Météo locale"}</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">{weather ? `${Math.round(weather.current.temperatureCelsius)}°` : "—"}</p></div><CloudSun className="size-12 text-sky-100/80" /></div>
+        <div className="flex items-end justify-between gap-4"><p className="weather-detail max-w-64 text-sm leading-5 text-sky-50">{weather?.current.summary ?? (unavailable ? "La météo est momentanément indisponible." : "Chargement de la météo…")}</p><span className="shrink-0 rounded-full bg-white/15 px-3 py-2 text-xs font-medium text-sky-50">{weather ? `Ressenti ${Math.round(weather.current.apparentCelsius)}°` : "Home Core"}</span></div>
       </CardContent>
     </Card>
   );
@@ -567,6 +568,7 @@ function App() {
           <div className="hidden"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>
           <div className="hidden">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <Card key={name} className="transition-shadow hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]"><CardContent className="p-5"><div className="flex items-start justify-between"><div className={"grid size-10 place-items-center rounded-2xl " + tone}><Icon className="size-5" /></div><div className={active ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-slate-200"} /></div><p className="mt-8 text-base font-medium">{name}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></CardContent></Card>)}</div>
 
+          <div className="hidden"><Card><CardHeader><div><p className="text-lg font-semibold">Routines</p></div><MoreHorizontal className="size-5 text-slate-400" /></CardHeader></Card></div>
           </div>
         </section>
       </div>
