@@ -94,7 +94,7 @@ func (c *Client) History(ctx context.Context, symbol, period string) (model.Mark
 		history.Points = history.Points[len(history.Points)-limit:]
 	}
 	c.mu.Lock()
-	c.cache[key] = cachedHistory{history: history, expiresAt: time.Now().Add(6 * time.Hour)}
+	c.cache[key] = cachedHistory{history: history, expiresAt: time.Now().Add(24 * time.Hour)}
 	c.mu.Unlock()
 	return history, nil
 }

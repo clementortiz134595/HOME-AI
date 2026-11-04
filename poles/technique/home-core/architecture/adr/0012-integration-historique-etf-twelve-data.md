@@ -10,7 +10,7 @@ Le module `insights` expose six ETF suivis par Home Panel, mais son historique �
 
 ## Décision
 
-Home Core utilise l’API EODHD via un adaptateur sortant dédié. L’API key reste uniquement dans la configuration du serveur. Les données sont normalisées par le cas d’usage `GetMarketHistory`, mises en cache six heures et exposées avec un statut `live`, `cached` ou `unavailable`.
+Home Core utilise l’API EODHD via un adaptateur sortant dédié. L’API key reste uniquement dans la configuration du serveur. Les données sont normalisées par le cas d’usage `GetMarketHistory`, mises en cache vingt-quatre heures et exposées avec un statut `live`, `cached` ou `unavailable`.
 
 Les appels utilisent les tickers de marché configurés dans l’adaptateur (actuellement les symboles Paris sous la forme `SYMBOL.PA`) et la valeur `adjusted_close`. La source est remplaçable par un autre adaptateur sans modifier le contrat du module.
 

@@ -13,7 +13,7 @@ sequenceDiagram
         Core->>TD: GET /time_series (ticker, 1day, outputsize)
         alt réponse valide
             TD-->>Core: Valeurs datées
-            Core->>Cache: Stocke 6 heures
+            Core->>Cache: Stocke 24 heures
             Core-->>Panel: history + dataStatus=live
         else fournisseur indisponible
             TD-->>Core: Erreur ou réponse vide
