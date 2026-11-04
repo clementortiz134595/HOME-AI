@@ -561,7 +561,7 @@ function App() {
           <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:mt-10 lg:flex"><Settings /> Réglages</Button>
         </aside>
 
-        <section className="app-section min-h-0 overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
+        <section className="app-section flex min-h-0 flex-col overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
           <header className="flex flex-wrap items-start justify-between gap-5">
             <div><p className="text-sm text-slate-500">Lundi 3 novembre</p></div>
             <div className="relative flex items-center gap-3">
@@ -578,7 +578,7 @@ function App() {
           {view === "agenda" && <AgendaView profile={profile} />}
           {view === "profile" && <ProfileView profile={profile} />}
           {view === "cost" && <CostView />}
-          <div className={view === "dashboard" ? "block" : "hidden"}>
+          <div className={view === "dashboard" ? "dashboard-page block" : "hidden"}>
           <div className="dashboard-overview hidden">
             <WeatherCard />
             <Card className="dashboard-next"><CardHeader><div><p className="text-sm font-medium">Rappel</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-lg font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-5 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="next-detail text-xs text-slate-400">Connecté bientôt à iCloud</span></div></CardContent></Card>
