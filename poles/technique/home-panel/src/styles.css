@@ -12,6 +12,33 @@ button { font: inherit; }
   background-size: 12px 12px;
 }
 
+.weather-landscape {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  container-type: inline-size;
+  color: rgba(12, 74, 110, .46);
+  mask-image: linear-gradient(to right, transparent 8%, rgba(0, 0, 0, .2) 32%, #000 66%);
+}
+
+.weather-landscape-art {
+  position: absolute;
+  right: -3%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: clamp(8px, 2.35cqw, 15px);
+  line-height: 1.2;
+  letter-spacing: 0;
+  white-space: pre;
+  font-variant-ligatures: none;
+}
+
+.dashboard-weather .weather-content { text-shadow: 0 1px 8px rgba(207, 250, 254, .8); }
+
 .orb {
   display: grid;
   width: 3rem;
