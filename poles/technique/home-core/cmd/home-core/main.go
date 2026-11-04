@@ -18,6 +18,7 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/google"
 	sherpakws "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/sherpa"
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
+	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
@@ -25,6 +26,7 @@ import (
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
+	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	workspacehttp "github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/inbound/http"
 	gmail "github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/outbound/gmail"
 )
@@ -59,6 +61,12 @@ func main() {
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
 	mux.Handle("/v1/assistant/", assistanthttp.NewHandler(assistantService))
 	tools := map[string]assistantapp.ActionExecutor{}
+	choresService := choresapp.NewService()
+	remindersService := remindersapp.NewService()
+	choreTool := assistantapp.NewChoreTool(choresService)
+	reminderTool := assistantapp.NewReminderTool(remindersService)
+	for _, name := range []string{"chores.create", "chores.update", "chores.delete"} { tools[name] = choreTool }
+	for _, name := range []string{"reminders.create", "reminders.update", "reminders.delete"} { tools[name] = reminderTool }
 	if gmailProvider, gmailErr := gmail.NewClient(&http.Client{Timeout: 20 * time.Second}, os.Getenv("HOME_CORE_GMAIL_CLIENT_ID"), os.Getenv("HOME_CORE_GMAIL_CLIENT_SECRET"), os.Getenv("HOME_CORE_GMAIL_REDIRECT_URL"), os.Getenv("HOME_CORE_GMAIL_TOKEN_PATH")); gmailErr == nil {
 		tools["gmail.search"] = assistantapp.NewGmailSearchTool(gmailProvider)
 		mux.Handle("/v1/workspace/google/gmail/oauth/", workspacehttp.NewGmailOAuthHandler(gmailProvider))
