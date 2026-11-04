@@ -24,7 +24,7 @@ export function AgentPipeline({ status }: { status: AgentStatus }) {
           <TraceLine status={status.state === "error" ? "pending" : active >= 0 ? "running" : "pending"}>
             <TraceIcon><Route className="size-4" /></TraceIcon>
             <span className="min-w-0 flex-1"><TraceTitle>Pipeline vocale</TraceTitle><TraceDescription>{completed} sur {steps.length} étapes</TraceDescription></span>
-            <Bot className="size-5 text-sky-300" />
+            <Bot className="size-5 text-zinc-400" />
           </TraceLine>
         </TraceCollapsibleTrigger>
         <TraceCollapsibleContent>
@@ -35,7 +35,7 @@ export function AgentPipeline({ status }: { status: AgentStatus }) {
       </TraceCollapsible>
     </Trace>
     {status.transcript && <div className="rounded-3xl border border-white/10 bg-zinc-900/70 p-4"><p className="text-xs font-medium uppercase tracking-[.14em] text-slate-500">Vous</p><p className="mt-2 text-sm leading-6 text-zinc-200">{status.transcript}</p></div>}
-    {status.answer && <div className="rounded-3xl border border-sky-400/20 bg-sky-400/10 p-4"><p className="text-xs font-medium uppercase tracking-[.14em] text-sky-200">Assistant</p><p className="mt-2 text-sm leading-6 text-sky-50">{status.answer}</p></div>}
+    {status.answer && <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-4"><p className="text-xs font-medium uppercase tracking-[.14em] text-zinc-400">Assistant</p><p className="mt-2 text-sm leading-6 text-zinc-200">{status.answer}</p></div>}
     {status.state === "error" && <div className="flex items-center gap-2 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-100"><XCircle className="size-4" />La pipeline vocale est indisponible.</div>}
   </div>;
 }
