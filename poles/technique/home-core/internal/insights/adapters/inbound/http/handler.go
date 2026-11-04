@@ -3,6 +3,7 @@ package insightshttp
 import (
 	"encoding/json"
 	"github.com/clementortiz/home-ai/home-core/internal/insights/application"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -24,6 +25,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/v1/insights/trains" {
 		trains, err := h.trains.Execute(r.Context())
 		if err != nil {
+			log.Printf("train provider unavailable: %v", err)
 			http.Error(w, `{"error":"train_service_unavailable"}`, http.StatusServiceUnavailable)
 			return
 		}

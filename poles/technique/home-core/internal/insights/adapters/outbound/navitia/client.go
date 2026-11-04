@@ -28,7 +28,7 @@ type response struct {
 		Platform    string `json:"v"`
 		Destination string `json:"de"`
 		Cancelled   bool   `json:"x"`
-		Passed      bool   `json:"p"`
+		Passed      int    `json:"p"`
 		Category    string `json:"pr"`
 	} `json:"passages"`
 	Names map[string]string `json:"noms"`
@@ -57,7 +57,7 @@ func (c *Client) Departures(ctx context.Context) ([]model.Train, error) {
 	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
 	trains := make([]model.Train, 0, len(p.Passages))
 	for _, d := range p.Passages {
-		if d.Departure == 0 || d.Passed {
+		if d.Departure == 0 || d.Passed != 0 {
 			continue
 		}
 		scheduled := midnight.Add(time.Duration(d.Departure) * time.Second)
@@ -71,7 +71,9 @@ func (c *Client) Departures(ctx context.Context) ([]model.Train, error) {
 			disruption = &model.Disruption{Title: "Train supprimé", Effect: "CANCELLED"}
 		}
 		destination := p.Names[d.Destination]
-		if !strings.Contains(strings.ToLower(destination), "marseille") { continue }
+		if !strings.Contains(strings.ToLower(destination), "marseille") {
+			continue
+		}
 		trains = append(trains, model.Train{ID: d.Number, Departure: departure, ScheduledDeparture: scheduled, Destination: destination, TrainNumber: d.Number, CommercialMode: d.Category, Platform: d.Platform, Status: status, DelayMinutes: d.Delay / 60, Disruption: disruption})
 	}
 	return trains, nil
