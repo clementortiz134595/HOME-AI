@@ -47,6 +47,12 @@ const agendaItems = [
   { time: "Jeudi · 19:00", title: "Cours de yoga", detail: "Agenda de Lise", owner: "Lise", tone: "bg-violet-400" },
 ];
 
+const weeklyChores = [
+  { date: "Lun. 3", objective: "Passer l’aspirateur", person: "Clément", tone: "bg-sky-400" },
+  { date: "Mer. 5", objective: "Sortir le recyclage", person: "Lise", tone: "bg-amber-400" },
+  { date: "Sam. 8", objective: "Nettoyer la cuisine", person: "Duo", tone: "bg-emerald-400" },
+];
+
 function HomeView() {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [states, setStates] = useState<Record<string, DeviceState>>({});
@@ -274,7 +280,7 @@ function WakeWordListener() {
   return null;
 }
 
-function AssistantOrb() {
+function AssistantOrb({ compact = false }: { compact?: boolean }) {
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState("Touchez pour parler");
   const recorder = useRef<MediaRecorder | null>(null);
@@ -371,9 +377,9 @@ function AssistantOrb() {
     window.dispatchEvent(new Event(activateWakeEvent));
   };
 
-  return <Card className="dashboard-assistant-card overflow-hidden border-sky-400/25 bg-black">
+  return <Card className={(compact ? "sidebar-assistant-card " : "dashboard-assistant-card ") + "overflow-hidden border-sky-400/25 bg-black"}>
     <button type="button" aria-label="Activer l’assistant vocal" onClick={activate} className="flex h-full w-full items-center justify-center p-4 outline-none transition hover:bg-white/[0.04] focus-visible:ring-2 focus-visible:ring-sky-300">
-      <Orb state={listening ? "using" : "waiting"} size={240} dotSize={0.45} speed={listening ? 1 : 0.7} label="Assistant vocal" />
+      <Orb state={listening ? "using" : "waiting"} size={compact ? 112 : 240} dotSize={0.45} speed={listening ? 1 : 0.7} label="Assistant vocal" />
       <span className="sr-only">{status}</span>
     </button>
   </Card>;
@@ -508,6 +514,10 @@ function ReminderDetailDialog({ reminder, onClose }: { reminder: Reminder; onClo
   </div>;
 }
 
+function WeeklyChoresCard() {
+  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{weeklyChores.map((task) => <div key={task.objective} className="flex items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2"><span className={"size-2 shrink-0 rounded-full " + task.tone} /><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></div>)}</CardContent></Card>;
+}
+
 type VoiceStatus = { state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
 
 function VoiceOverlay({ status }: { status: VoiceStatus }) {
@@ -604,13 +614,14 @@ function App() {
   return (
     <main className="h-dvh overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950">
       <div className="mx-auto grid h-full max-w-[1600px] grid-cols-1 lg:grid-cols-[248px_1fr]">
-        <aside className="border-b border-white/10 bg-zinc-900/70 px-5 py-6 lg:border-r lg:border-b-0">
+        <aside className="flex h-full flex-col border-b border-white/10 bg-zinc-900/70 px-5 py-6 lg:border-r lg:border-b-0">
           <div className="flex items-center justify-between lg:block">
             <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-2xl bg-white text-zinc-950"><Sparkles className="size-5" /></div><div><p className="text-sm font-semibold tracking-wide">HOME AI</p><p className="text-xs text-zinc-500">Appartement</p></div></div>
             <Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button>
           </div>
           <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant={view === "profile" ? "secondary" : "ghost"} onClick={() => { setView("profile"); setNavOpen(false); }} className={view === "profile" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><UserRound /> Profil</Button><Button variant={view === "cost" ? "secondary" : "ghost"} onClick={() => { setView("cost"); setNavOpen(false); }} className={view === "cost" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><WalletCards /> Coût</Button></nav>
-          <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:mt-10 lg:flex"><Settings /> Réglages</Button>
+          <div className="mt-5 hidden lg:block"><AssistantOrb compact /></div>
+          <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:flex"><Settings /> Réglages</Button>
         </aside>
 
         <section className="app-section flex min-h-0 flex-col overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -632,7 +643,7 @@ function App() {
             <WeatherCard />
             <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map((room) => { const Icon = room.icon; return <button key={room.name} type="button" onClick={() => setSelectedRoom(room)} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + room.tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={room.active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{room.name}</span><span className="block truncate text-xs text-slate-500">{room.detail}</span></span></button>; })}</CardContent></Card>
             <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappels</p><p className="mt-1 text-sm text-slate-400">À venir</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{agendaItems.slice(0, 3).map((reminder) => <button key={reminder.title} type="button" onClick={() => setSelectedReminder(reminder)} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"size-2 shrink-0 rounded-full " + reminder.tone} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reminder.title}</span><span className="block text-xs text-slate-500">{reminder.time}</span></span></button>)}</CardContent></Card>
-            <AssistantOrb />
+            <WeeklyChoresCard />
           </div>
 
           <div className="hidden"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>
