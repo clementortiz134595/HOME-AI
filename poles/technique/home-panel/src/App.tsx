@@ -15,6 +15,8 @@ import {
   Utensils,
 } from "lucide-react";
 import { Orb } from "@yogesharc/thinking-orbs";
+import { Ascii } from "ascii.rest/react";
+import * as landscape from "ascii.rest/pieces/landscape";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -414,7 +416,9 @@ function WeatherCard() {
 
   return (
     <Card className="dashboard-weather relative overflow-hidden border-sky-400/30 bg-gradient-to-br from-sky-300 via-cyan-200 to-violet-300 text-zinc-950">
-      <div className="dot-field absolute inset-y-0 right-0 w-2/5 opacity-60" />
+      <div className="weather-landscape" aria-hidden="true">
+        <Ascii piece={landscape} options={{ fps: 8 }} className="weather-landscape-art" />
+      </div>
       <CardContent className="weather-content relative flex min-h-[220px] flex-col justify-between p-6">
         <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-zinc-700">{weather?.location.name ?? "Météo locale"}</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">{weather ? `${Math.round(weather.current.temperatureCelsius)}°` : "—"}</p></div><CloudSun className="size-12 text-sky-700/80" /></div>
         <div className="flex items-end justify-between gap-4"><p className="weather-detail max-w-64 text-sm leading-5 text-zinc-700">{weather?.current.summary ?? (unavailable ? "La météo est momentanément indisponible." : "Chargement de la météo…")}</p><span className="shrink-0 rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-zinc-700">{weather ? `Ressenti ${Math.round(weather.current.apparentCelsius)}°` : "Home Core"}</span></div>
