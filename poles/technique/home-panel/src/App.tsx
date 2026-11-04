@@ -547,7 +547,7 @@ function App() {
           {view === "profile" && <ProfileView profile={profile} />}
           {view === "cost" && <CostView />}
           <div className={view === "dashboard" ? "block" : "hidden"}>
-          <div className="dashboard-overview mt-8 grid gap-4 xl:grid-cols-[1.25fr_.75fr]">
+          <div className="dashboard-overview mt-8 grid gap-4 lg:grid-cols-[1.25fr_.75fr]">
             <WeatherCard />
             <Card className="dashboard-next"><CardHeader><div><p className="text-sm font-medium">Rappel</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-lg font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-5 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="next-detail text-xs text-slate-400">Connecté bientôt à iCloud</span></div></CardContent></Card>
           </div>
