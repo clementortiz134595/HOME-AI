@@ -143,7 +143,12 @@ button { font: inherit; }
 .agenda-events { min-height: 0; overflow: hidden; }
 .agenda-calendar { display: flex; flex-direction: column; }
 .agenda-calendar > div:last-child { display: flex; min-height: 0; flex: 1; align-items: center; justify-content: center; }
-.agenda-day-picker { --rdp-accent-color: #7dd3fc; --rdp-accent-background-color: rgba(56, 189, 248, .16); --rdp-day-height: min(3.5rem, 8vh); --rdp-day-width: min(3.5rem, 8vw); margin: 0 auto; color: #e4e4e7; }
+.agenda-day-picker { --rdp-accent-color: #7dd3fc; --rdp-accent-background-color: rgba(56, 189, 248, .16); --rdp-day-height: min(4.5rem, 11vh); --rdp-day-width: min(4.5rem, 11vw); width: 100%; margin: 0 auto; color: #e4e4e7; }
+.agenda-day-picker .rdp-months,
+.agenda-day-picker .rdp-month,
+.agenda-day-picker .rdp-month_grid { width: 100%; }
+.agenda-day-picker .rdp-month_grid { table-layout: fixed; }
+.agenda-day-picker .rdp-day_button { width: 100%; height: 100%; }
 .agenda-day-picker .rdp-caption_label { color: #f4f4f5; font-weight: 600; text-transform: capitalize; }
 .agenda-day-picker .rdp-weekday { color: #94a3b8; }
 .agenda-day-picker .rdp-button_previous,
