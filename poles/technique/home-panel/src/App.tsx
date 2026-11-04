@@ -46,7 +46,7 @@ const rooms = [
 ];
 
 type Profile = "Duo";
-type View = "dashboard" | "home" | "agenda" | "profile" | "cost";
+type View = "dashboard" | "home" | "agenda" | "profile" | "cost" | "settings";
 
 const agendaItems = [
   { time: "20:30", title: "Dîner avec Lise", detail: "À la maison", owner: "Duo", tone: "bg-emerald-400" },
@@ -169,6 +169,10 @@ function CostView() {
       <Card className="cost-breakdown"><CardHeader><div><p className="text-lg font-semibold">Répartition</p><p className="mt-1 text-sm text-slate-500">À connecter aux métriques Home Core</p></div></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-sky-400/10 p-4"><p className="text-sm text-sky-200">Modèles IA</p><p className="mt-2 text-xl font-semibold">8,90 €</p></div><div className="rounded-2xl bg-violet-400/10 p-4"><p className="text-sm text-violet-200">Hébergement</p><p className="mt-2 text-xl font-semibold">2,50 €</p></div><div className="rounded-2xl bg-teal-400/10 p-4"><p className="text-sm text-teal-200">Services</p><p className="mt-2 text-xl font-semibold">1,00 €</p></div></CardContent></Card>
     </div>
   );
+}
+
+function SettingsView({ lightMode, onThemeChange }: { lightMode: boolean; onThemeChange: (value: boolean) => void }) {
+  return <div className="mt-8 max-w-2xl"><div><p className="text-sm text-slate-500">Personnalisation du panneau</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Réglages</h2></div><Card className="mt-6"><CardContent className="flex items-center justify-between gap-4 p-5"><div><p className="font-semibold">Mode clair</p><p className="mt-1 text-sm text-slate-500">Utiliser une interface lumineuse.</p></div><button type="button" role="switch" aria-checked={lightMode} onClick={() => onThemeChange(!lightMode)} className={lightMode ? "relative h-7 w-12 rounded-full bg-sky-500 transition" : "relative h-7 w-12 rounded-full bg-zinc-700 transition"}><span className={lightMode ? "absolute right-1 top-1 size-5 rounded-full bg-white transition" : "absolute left-1 top-1 size-5 rounded-full bg-white transition"} /></button></CardContent></Card></div>;
 }
 
 const wakeEvent = "home-ai:wake";
@@ -594,6 +598,7 @@ function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (an
 
 function App() {
   const [view, setView] = useState<View>("dashboard");
+  const [lightMode, setLightMode] = useState(() => window.localStorage.getItem("home-ai:theme") === "light");
   const profile: Profile = "Duo";
   const todayLabel = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   const [navOpen, setNavOpen] = useState(false);
@@ -601,6 +606,7 @@ function App() {
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const calendarLabel = "Partagé";
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
+  const changeTheme = (value: boolean) => { setLightMode(value); window.localStorage.setItem("home-ai:theme", value ? "light" : "dark"); };
   const lastVoiceUpdate = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -649,7 +655,7 @@ function App() {
   }, []);
 
   return (
-    <main className="h-dvh overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950">
+    <main className={(lightMode ? "light-mode " : "") + "h-dvh overflow-hidden bg-zinc-950 text-zinc-100 selection:bg-sky-300 selection:text-zinc-950"}>
       <div className="mx-auto grid h-full max-w-[1600px] grid-cols-1 lg:grid-cols-[248px_1fr]">
         <aside className="flex h-auto flex-col border-b border-white/10 bg-zinc-900/70 px-5 py-6 lg:h-full lg:border-r lg:border-b-0">
           <div className="flex items-center justify-between lg:block">
@@ -658,7 +664,7 @@ function App() {
           </div>
           <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant={view === "profile" ? "secondary" : "ghost"} onClick={() => { setView("profile"); setNavOpen(false); }} className={view === "profile" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><UserRound /> Profil</Button><Button variant={view === "cost" ? "secondary" : "ghost"} onClick={() => { setView("cost"); setNavOpen(false); }} className={view === "cost" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><WalletCards /> Coût</Button></nav>
           <div className="mt-5 hidden lg:block"><AssistantOrb compact /></div>
-          <Button variant="ghost" className="mt-auto hidden w-full justify-start lg:flex"><Settings /> Réglages</Button>
+          <Button variant={view === "settings" ? "secondary" : "ghost"} onClick={() => { setView("settings"); setNavOpen(false); }} className="mt-auto hidden w-full justify-start lg:flex"><Settings /> Réglages</Button>
         </aside>
 
         <section className="app-section flex min-h-0 flex-col overflow-hidden px-5 py-7 sm:px-8 lg:px-10 lg:py-9">
@@ -666,6 +672,7 @@ function App() {
           {view === "agenda" && <AgendaView profile={profile} />}
           {view === "profile" && <ProfileView profile={profile} />}
           {view === "cost" && <CostView />}
+          {view === "settings" && <SettingsView lightMode={lightMode} onThemeChange={changeTheme} />}
           <div className={view === "dashboard" ? "dashboard-page block" : "hidden"}>
           <div className="dashboard-overview hidden">
             <WeatherCard />

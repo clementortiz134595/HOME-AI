@@ -6,6 +6,15 @@
 html, body, #root { height: 100%; overflow: hidden; }
 body { margin: 0; min-width: 320px; background: #09090b; }
 button { font: inherit; }
+.light-mode { background: #f8fafc !important; color: #18181b !important; }
+.light-mode aside,
+.light-mode .bg-zinc-900\/80,
+.light-mode .bg-zinc-900\/70 { background: #ffffff !important; color: #18181b !important; }
+.light-mode .bg-zinc-950,
+.light-mode .bg-black { background: #f8fafc !important; }
+.light-mode .text-zinc-100,
+.light-mode .text-white { color: #18181b !important; }
+.light-mode .text-slate-500 { color: #64748b !important; }
 
 .dot-field {
   background-image: radial-gradient(circle, rgba(15, 23, 42, 0.28) 1.25px, transparent 1.5px);
