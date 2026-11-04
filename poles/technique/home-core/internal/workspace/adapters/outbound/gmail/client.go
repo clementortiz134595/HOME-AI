@@ -126,7 +126,9 @@ func (client *Client) readDriveContent(ctx context.Context, file model.DriveFile
 }
 
 func (client *Client) AuthorizationURL(state string) string {
-	return client.config.AuthCodeURL(state, oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("prompt", "consent"))
+	// Google asks for consent the first time. The offline refresh token is
+	// persisted by fileTokenStore, so subsequent sessions reuse the grant.
+	return client.config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 }
 
 func (client *Client) OAuthStatePath() string { return client.store.path + ".oauth-state" }
