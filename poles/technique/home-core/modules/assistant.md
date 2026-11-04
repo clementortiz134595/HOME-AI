@@ -30,6 +30,8 @@ Ce premier incrément ne fournit aucun outil au modèle et ne permet pas de déc
 
 ## Contrat vocal initial
 
+Home Core expose aussi `POST /v1/assistant/speech` avec `{"text":"..."}` et retourne un flux `audio/mpeg` généré par ElevenLabs. La clé reste côté Home Core via `HOME_CORE_TTS_API_KEY`; le modèle par défaut est `eleven_v4_turbo` et la voix est configurable via `HOME_CORE_TTS_VOICE_ID`.
+
 `POST /v1/assistant/voice` accepte un corps audio `audio/webm` (limite 10 MiB). La réponse contient la transcription et la réponse texte de l’assistant :
 
 ```json

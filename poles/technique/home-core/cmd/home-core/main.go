@@ -14,6 +14,7 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/agenda/adapters/outbound/applecaldav"
 	agendaapp "github.com/clementortiz/home-ai/home-core/internal/agenda/application"
 	assistanthttp "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/elevenlabs"
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/gemini"
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/google"
 	sherpakws "github.com/clementortiz/home-ai/home-core/internal/assistant/adapters/outbound/sherpa"
@@ -88,6 +89,8 @@ func main() {
 	voiceAgent := assistantapp.NewAgent(conversation, aiProvider, tools, sttProvider)
 	voiceState := assistanthttp.NewVoiceStateHandler()
 	mux.Handle("/v1/assistant/voice", assistanthttp.NewVoiceHandler(assistantapp.NewVoiceCommand(sttProvider, voiceAgent), voiceState))
+	ttsProvider := elevenlabs.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_TTS_BASE_URL"), os.Getenv("HOME_CORE_TTS_API_KEY"), os.Getenv("HOME_CORE_TTS_MODEL"), os.Getenv("HOME_CORE_TTS_VOICE_ID"))
+	mux.Handle("/v1/assistant/speech", assistanthttp.NewSpeechHandler(ttsProvider))
 	mux.Handle("/v1/assistant/voice/state", voiceState)
 	var wakeDetector *sherpakws.Detector
 	if detector, detectorErr := sherpakws.NewDetector(os.Getenv("HOME_CORE_WAKE_MODEL_DIR")); detectorErr != nil {
