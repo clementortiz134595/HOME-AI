@@ -8,12 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"golang.org/x/oauth2"
+
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
 )
 
 func TestTranscriberSendsGoogleSpeechRequest(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Query().Get("key") != "secret" || request.URL.Path != "/v2/projects/project/locations/eu/recognizers/_:recognize" {
+		if request.URL.Query().Get("key") != "" || request.URL.Path != "/v2/projects/project/locations/eu/recognizers/_:recognize" || request.Header.Get("Authorization") != "Bearer test-token" {
 			t.Fatalf("unexpected request: %s", request.URL.String())
 		}
 		var payload recognitionRequest
@@ -28,7 +30,9 @@ func TestTranscriberSendsGoogleSpeechRequest(t *testing.T) {
 	}))
 	defer server.Close()
 
-	text, err := NewTranscriber(server.Client(), server.URL+"/v2/projects", "secret", "fr-FR", "project", "eu").Transcribe(context.Background(), model.VoiceInput{Audio: []byte("audio")})
+	transcriber := NewTranscriber(server.Client(), server.URL+"/v2/projects", "secret", "fr-FR", "project", "eu")
+	transcriber.tokenSource = oauth2.StaticTokenSource(&oauth2.Token{AccessToken: "test-token"})
+	text, err := transcriber.Transcribe(context.Background(), model.VoiceInput{Audio: []byte("audio")})
 	if err != nil || text != "Qui est Napoléon ?" {
 		t.Fatalf("text=%q err=%v", text, err)
 	}

@@ -12,18 +12,22 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/oauth2"
+	googleauth "golang.org/x/oauth2/google"
+
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
 )
 
 // Transcriber uses Google Cloud Speech-to-Text synchronous recognition.
 // Credentials stay in Home Core and the audio is sent only after capture ends.
 type Transcriber struct {
-	httpClient *http.Client
-	baseURL    string
-	apiKey     string
-	language   string
-	project    string
-	location   string
+	httpClient  *http.Client
+	baseURL     string
+	apiKey      string
+	language    string
+	project     string
+	location    string
+	tokenSource oauth2.TokenSource
 }
 
 func NewTranscriber(httpClient *http.Client, baseURL, apiKey, language, project, location string) *Transcriber {
@@ -36,18 +40,22 @@ func NewTranscriber(httpClient *http.Client, baseURL, apiKey, language, project,
 	if location == "" {
 		location = "eu"
 	}
-	return &Transcriber{httpClient: httpClient, baseURL: baseURL, apiKey: apiKey, language: language, project: project, location: location}
+	var tokenSource oauth2.TokenSource
+	if credentials, err := googleauth.FindDefaultCredentials(context.Background(), "https://www.googleapis.com/auth/cloud-platform"); err == nil {
+		tokenSource = credentials.TokenSource
+	}
+	return &Transcriber{httpClient: httpClient, baseURL: baseURL, apiKey: apiKey, language: language, project: project, location: location, tokenSource: tokenSource}
 }
 
 func (client *Transcriber) Transcribe(ctx context.Context, input model.VoiceInput) (string, error) {
 	started := time.Now()
 	slog.Info("stt request starting", "audio_bytes", len(input.Audio), "content_type", input.ContentType, "language", client.language)
 	defer func() { slog.Info("stt request finished", "duration_ms", time.Since(started).Milliseconds()) }()
-	if client.apiKey == "" {
-		return "", fmt.Errorf("google STT provider is not configured")
-	}
 	if client.project == "" {
 		return "", fmt.Errorf("google STT project is not configured")
+	}
+	if client.tokenSource == nil {
+		return "", fmt.Errorf("google STT OAuth credentials are not configured")
 	}
 	payload := recognitionRequest{
 		Config: recognitionConfig{AutoDecodingConfig: map[string]any{}, LanguageCodes: []string{client.language}, Model: "chirp_3"},
@@ -57,12 +65,17 @@ func (client *Transcriber) Transcribe(ctx context.Context, input model.VoiceInpu
 	if err != nil {
 		return "", fmt.Errorf("encode google STT request: %w", err)
 	}
-	url := fmt.Sprintf("%s/%s/locations/%s/recognizers/_:recognize?key=%s", strings.TrimRight(client.baseURL, "/"), client.project, client.location, client.apiKey)
+	url := fmt.Sprintf("%s/%s/locations/%s/recognizers/_:recognize", strings.TrimRight(client.baseURL, "/"), client.project, client.location)
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("create google STT request: %w", err)
 	}
 	request.Header.Set("Content-Type", "application/json")
+	token, err := client.tokenSource.Token()
+	if err != nil {
+		return "", fmt.Errorf("get google STT OAuth token: %w", err)
+	}
+	request.Header.Set("Authorization", "Bearer "+token.AccessToken)
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		slog.Error("stt http request failed", "error", err)
