@@ -27,6 +27,7 @@ import (
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
 	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/insights/adapters/outbound/navitia"
+	"github.com/clementortiz/home-ai/home-core/internal/insights/adapters/outbound/twelvedata"
 	insightsapp "github.com/clementortiz/home-ai/home-core/internal/insights/application"
 	remindershttp "github.com/clementortiz/home-ai/home-core/internal/reminders/adapters/inbound/http"
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
@@ -64,7 +65,8 @@ func main() {
 	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
 	trainsProvider := navitia.NewClient(&http.Client{Timeout: 10 * time.Second}, envOr("HOME_CORE_SNCF_BASE_URL", "https://api.trainnomade.fr"), envOr("HOME_CORE_SNCF_STOP_AREA", "87751784"))
-	mux.Handle("/v1/insights/", insightshttp.NewHandler(insightsapp.NewGetTrains(trainsProvider)))
+	marketProvider := twelvedata.NewClient(&http.Client{Timeout: 10 * time.Second}, os.Getenv("HOME_CORE_TWELVE_DATA_BASE_URL"), os.Getenv("HOME_CORE_TWELVE_DATA_API_KEY"))
+	mux.Handle("/v1/insights/", insightshttp.NewHandler(insightsapp.NewGetTrains(trainsProvider), insightsapp.NewGetMarketHistory(marketProvider)))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	var mailReader assistantapp.MailReader
 	var driveReader assistantapp.DriveReader

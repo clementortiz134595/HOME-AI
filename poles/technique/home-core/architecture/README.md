@@ -21,7 +21,7 @@ Le Home Panel utilise l'API de Home Core. Home Assistant, Google Calendar, la m�
 | `assistant` | Questions libres, interprétation d'intention, confirmations et réponses. | Fournisseur IA autorisé, ports des autres modules. |
 | `memory-preferences` | Préférences, mémoire contrôlable et rétention. | Stockage chiffré si retenu. |
 | `system-health` | Santé, capacités disponibles, audit minimal et diagnostics. | Horloge, stockage, sondes d'intégration. |
-| `insights` | Informations externes normalisées, dont les départs ferroviaires. | SNCF/Navitia via un adaptateur dédié. |
+| `insights` | Informations externes normalisées, dont les départs ferroviaires et l’historique des ETF suivis. | SNCF/Navitia et Twelve Data via des adaptateurs dédiés. |
 
 Un module est propriétaire de son modèle et de ses règles. Il ne peut pas requêter directement le stockage ou les adaptateurs d'un autre module. Les échanges passent par une façade applicative, un contrat typé ou un événement applicatif local documenté. Les dépendances sont orientées vers le domaine : l'application déclare les ports dont elle a besoin ; les adaptateurs les implémentent.
 
@@ -81,3 +81,4 @@ Le runtime du premier incrément est consigné dans l'[ADR-0002](adr/0002-runtim
 Le socle d'appareils extensible par protocole est consigné dans l'[ADR-0005](adr/0005-module-home-control-protocoles.md).
 Le premier contrat IA texte est consigné dans l'[ADR-0006](adr/0006-assistant-fournisseur-ia.md) et son flux dans [sequence-assistant-question.mmd](../diagrammes/sequence-assistant-question.mmd).
 L'orchestration vocale et les outils contrôlés sont consignés dans l'[ADR-0005](adr/0005-assistant-vocal-outils-controles.md) et son flux dans [sequence-assistant-vocal-outil.mmd](../diagrammes/sequence-assistant-vocal-outil.mmd).
+L’historique des ETF est décrit dans [sequence-historique-etf.mmd](../diagrammes/sequence-historique-etf.mmd) et la décision dans l'[ADR-0012](adr/0012-integration-historique-etf-twelve-data.md).
