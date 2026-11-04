@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
 )
@@ -26,6 +27,9 @@ func (DeterministicInterpreter) Interpret(_ context.Context, interaction model.I
 	if action, ok := switchCommand(text); ok {
 		return action, nil
 	}
+	if action, ok := reminderCommand(text); ok {
+		return action, nil
+	}
 	if strings.Contains(text, "agenda") || strings.Contains(text, "calendrier") || strings.Contains(text, "rendez-vous") || strings.Contains(text, "rendez vous") {
 		return model.Intent{Name: "agenda.list", Parameters: map[string]any{"period": calendarPeriod(text)}, Sensitive: true}, nil
 	}
@@ -36,6 +40,27 @@ func (DeterministicInterpreter) Interpret(_ context.Context, interaction model.I
 		return model.Intent{Name: "drive.search", Parameters: map[string]any{"query": cleanSearch(text, "drive", "document", "fichier")}, Sensitive: true}, nil
 	}
 	return model.Intent{Name: "assistant.question", Parameters: map[string]any{"text": strings.TrimSpace(interaction.Text)}}, nil
+}
+
+func reminderCommand(text string) (model.Intent, bool) {
+	if !strings.Contains(text, "rappelle-moi") && !strings.Contains(text, "rappelle moi") && !strings.Contains(text, "rappel-moi") && !strings.Contains(text, "rappel moi") {
+		return model.Intent{}, false
+	}
+	text = strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(text, "rappelle-moi"), "rappelle moi"))
+	text = strings.TrimSpace(strings.TrimPrefix(text, "de"))
+	date := time.Now().Format("2006-01-02")
+	if strings.Contains(text, "demain") {
+		date = time.Now().AddDate(0, 0, 1).Format("2006-01-02")
+		text = strings.Replace(text, "demain", "", 1)
+	}
+	if strings.Contains(text, "aujourd'hui") {
+		text = strings.Replace(text, "aujourd'hui", "", 1)
+	}
+	text = strings.TrimSpace(strings.Trim(text, " :,-"))
+	if text == "" {
+		return model.Intent{}, false
+	}
+	return model.Intent{Name: "reminders.create", Parameters: map[string]any{"title": text, "date": date}}, true
 }
 
 func calendarPeriod(text string) string {
@@ -130,6 +155,9 @@ type modelToolInterpreter struct{ fallback IntentInterpreter }
 
 func (router modelToolInterpreter) Interpret(ctx context.Context, interaction model.Interaction) (model.Intent, error) {
 	if action, ok := switchCommand(strings.TrimSpace(strings.ToLower(interaction.Text))); ok {
+		return action, nil
+	}
+	if action, ok := reminderCommand(strings.TrimSpace(strings.ToLower(interaction.Text))); ok {
 		return action, nil
 	}
 	intent, err := router.fallback.Interpret(ctx, interaction)

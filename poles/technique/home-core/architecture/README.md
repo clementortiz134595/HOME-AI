@@ -21,6 +21,7 @@ Le Home Panel utilise l'API de Home Core. Home Assistant, Google Calendar, la m�
 | `assistant` | Questions libres, interprétation d'intention, confirmations et réponses. | Fournisseur IA autorisé, ports des autres modules. |
 | `memory-preferences` | Préférences, mémoire contrôlable et rétention. | Stockage chiffré si retenu. |
 | `system-health` | Santé, capacités disponibles, audit minimal et diagnostics. | Horloge, stockage, sondes d'intégration. |
+| `insights` | Informations externes normalisées, dont les départs ferroviaires. | SNCF/Navitia via un adaptateur dédié. |
 
 Un module est propriétaire de son modèle et de ses règles. Il ne peut pas requêter directement le stockage ou les adaptateurs d'un autre module. Les échanges passent par une façade applicative, un contrat typé ou un événement applicatif local documenté. Les dépendances sont orientées vers le domaine : l'application déclare les ports dont elle a besoin ; les adaptateurs les implémentent.
 
@@ -74,6 +75,7 @@ Les appels de mutation doivent recevoir une clé d'idempotence lorsqu'une répé
 - Politique de conservation des transcriptions, mémoire et journal d'audit.
 
 Voir les [diagrammes Mermaid](../diagrammes/README.md) et le [plan Docker](../infrastructure/docker.md).
+Le flux des trains SNCF est décrit dans [sequence-trains-sncf.mmd](../diagrammes/sequence-trains-sncf.mmd) et la décision dans l'[ADR-0011](adr/0011-integration-trains-sncf-navitia.md).
 La décision de structure est consignée dans l'[ADR-0001](adr/0001-monolithe-modulaire-docker.md).
 Le runtime du premier incrément est consigné dans l'[ADR-0002](adr/0002-runtime-go.md).
 Le socle d'appareils extensible par protocole est consigné dans l'[ADR-0005](adr/0005-module-home-control-protocoles.md).

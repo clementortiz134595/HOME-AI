@@ -26,6 +26,8 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
 	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/insights/adapters/outbound/navitia"
+	insightsapp "github.com/clementortiz/home-ai/home-core/internal/insights/application"
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
@@ -59,7 +61,8 @@ func main() {
 	}
 	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
-	mux.Handle("/v1/insights/", insightshttp.NewHandler())
+	trainsProvider := navitia.NewClient(&http.Client{Timeout: 10 * time.Second}, envOr("HOME_CORE_SNCF_BASE_URL", "https://api.trainnomade.fr"), envOr("HOME_CORE_SNCF_STOP_AREA", "87751784"))
+	mux.Handle("/v1/insights/", insightshttp.NewHandler(insightsapp.NewGetTrains(trainsProvider)))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
 	var mailReader assistantapp.MailReader
 	var driveReader assistantapp.DriveReader
@@ -133,6 +136,13 @@ func main() {
 		os.Exit(1)
 	}
 	logger.Info("home-core stopped")
+}
+
+func envOr(name, fallback string) string {
+	if value := os.Getenv(name); value != "" {
+		return value
+	}
+	return fallback
 }
 
 func calendarRegistryFromEnvironment() (agendaapp.Registry, error) {

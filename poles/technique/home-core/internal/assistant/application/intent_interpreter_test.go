@@ -15,6 +15,16 @@ func TestDeterministicInterpreterRoutesHomeCommand(t *testing.T) {
 	}
 }
 
+func TestDeterministicInterpreterRoutesReminder(t *testing.T) {
+	intent, err := NewDeterministicInterpreter().Interpret(context.Background(), model.Interaction{Text: "Rappelle-moi de sortir les poubelles demain"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if intent.Name != "reminders.create" || intent.Parameters["title"] != "sortir les poubelles" {
+		t.Fatalf("unexpected intent: %+v", intent)
+	}
+}
+
 func TestDeterministicInterpreterRoutesPrivateSources(t *testing.T) {
 	for _, test := range []struct{ text, name string }{{"cherche mes mails facture", "gmail.search"}, {"regarde mes mails concernant la facture", "gmail.search"}, {"trouve le document budget dans Drive", "drive.search"}} {
 		intent, err := NewDeterministicInterpreter().Interpret(context.Background(), model.Interaction{Text: test.text})

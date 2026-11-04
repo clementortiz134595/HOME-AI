@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant Panel as Home Panel
+    participant API as Home Core / insights
+    participant SNCF as Navitia SNCF
+    Panel->>API: GET /v1/insights/trains
+    API->>SNCF: departures?data_freshness=realtime
+    SNCF-->>API: départs, horaires théoriques, quais, perturbations
+    API-->>Panel: contrat normalisé sans secret
+    Panel-->>Panel: liste et détail au clic

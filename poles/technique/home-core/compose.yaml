@@ -26,6 +26,8 @@ services:
       HOME_CORE_GMAIL_CLIENT_SECRET: ${HOME_CORE_GMAIL_CLIENT_SECRET:-}
       HOME_CORE_GMAIL_REDIRECT_URL: ${HOME_CORE_GMAIL_REDIRECT_URL:-http://localhost:8080/v1/workspace/google/gmail/oauth/callback}
       HOME_CORE_GMAIL_TOKEN_PATH: ${HOME_CORE_GMAIL_TOKEN_PATH:-/var/lib/home-core/gmail-token.json}
+      HOME_CORE_SNCF_BASE_URL: ${HOME_CORE_SNCF_BASE_URL:-https://api.trainnomade.fr}
+      HOME_CORE_SNCF_STOP_AREA: ${HOME_CORE_SNCF_STOP_AREA:-87751784}
     ports:
       - "127.0.0.1:18080:8080"
     volumes:

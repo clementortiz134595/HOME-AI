@@ -1,9 +1,28 @@
 package insightshttp
 
-import ("encoding/json"; "net/http")
+import (
+	"encoding/json"
+	"github.com/clementortiz/home-ai/home-core/internal/insights/application"
+	"net/http"
+)
 
-// Handler exposes deterministic fixtures until SNCF and market data providers
-// are configured. Its response contract remains stable for the Panel.
-type Handler struct{}
-func NewHandler() *Handler{return &Handler{}}
-func (h *Handler) ServeHTTP(w http.ResponseWriter,r *http.Request){w.Header().Set("Content-Type","application/json; charset=utf-8");switch r.URL.Path{case "/v1/insights/trains":_ = json.NewEncoder(w).Encode(map[string]any{"trains":[]map[string]any{{"time":"07:42","arrival":"08:18","status":"on_time","message":"À l’heure"},{"time":"08:42","arrival":"09:18","status":"delayed","message":"Retard estimé : 10 min"},{"time":"09:42","arrival":"10:18","status":"on_time","message":"À l’heure"}}});case "/v1/insights/markets":_ = json.NewEncoder(w).Encode(map[string]any{"period":"day","etfs":[]map[string]any{{"symbol":"ETF Monde","change":0.42},{"symbol":"ETF Europe","change":-0.18},{"symbol":"ETF USA","change":0.63}},"news":[]string{"Les marchés européens ouvrent en hausse.","La BCE maintient ses taux directeurs.","Les valeurs technologiques restent soutenues."}});default:w.WriteHeader(http.StatusNotFound)}}
+type Handler struct{ trains *application.GetTrains }
+
+func NewHandler(trains *application.GetTrains) *Handler { return &Handler{trains: trains} }
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if r.URL.Path == "/v1/insights/markets" {
+		_ = json.NewEncoder(w).Encode(map[string]any{"period": "day", "etfs": []map[string]any{{"symbol": "ETF Monde", "change": 0.42}, {"symbol": "ETF Europe", "change": -0.18}, {"symbol": "ETF USA", "change": 0.63}}, "news": []string{"Les marchés européens ouvrent en hausse.", "La BCE maintient ses taux directeurs.", "Les valeurs technologiques restent soutenues."}})
+		return
+	}
+	if r.URL.Path != "/v1/insights/trains" {
+		http.NotFound(w, r)
+		return
+	}
+	trains, err := h.trains.Execute(r.Context())
+	if err != nil {
+		http.Error(w, `{"error":"train_service_unavailable"}`, http.StatusServiceUnavailable)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"station": "La Ciotat-Ceyreste", "destination": "Marseille", "source": "SNCF / Navitia", "trains": trains})
+}
