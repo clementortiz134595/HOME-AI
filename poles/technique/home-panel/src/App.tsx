@@ -9,13 +9,14 @@ import {
   MoreHorizontal,
   Settings,
   Sparkles,
+  ThermometerSun,
   WalletCards,
   UserRound,
   Utensils,
 } from "lucide-react";
 import { Orb } from "@yogesharc/thinking-orbs";
 import { Ascii } from "ascii.rest/react";
-import * as landscape from "ascii.rest/pieces/landscape";
+import * as earthrise from "ascii.rest/pieces/earthrise";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -414,13 +415,13 @@ function WeatherCard() {
   }, []);
 
   return (
-    <Card className="dashboard-weather relative overflow-hidden border-sky-400/30 bg-gradient-to-br from-sky-300 via-cyan-200 to-violet-300 text-zinc-950">
+    <Card className="dashboard-weather relative overflow-hidden border-sky-400/20 bg-zinc-950 text-sky-50">
       <div className="weather-landscape" aria-hidden="true">
-        <Ascii piece={landscape} options={{ fps: 8 }} className="weather-landscape-art" />
+        <Ascii piece={earthrise} options={{ fps: 8 }} className="weather-landscape-art" style={{ width: "max(100%, 360px)" }} />
       </div>
       <CardContent className="weather-content relative flex min-h-[220px] flex-col justify-between p-6">
-        <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-zinc-700">{weather?.location.name ?? "Météo locale"}</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">{weather ? `${Math.round(weather.current.temperatureCelsius)}°` : "—"}</p></div><CloudSun className="size-12 text-sky-700/80" /></div>
-        <div className="flex items-end justify-between gap-4"><p className="weather-detail max-w-64 text-sm leading-5 text-zinc-700">{weather?.current.summary ?? (unavailable ? "La météo est momentanément indisponible." : "Chargement de la météo…")}</p><span className="shrink-0 rounded-full bg-white/70 px-3 py-2 text-xs font-medium text-zinc-700">{weather ? `Ressenti ${Math.round(weather.current.apparentCelsius)}°` : "Home Core"}</span></div>
+        <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-sky-50">{weather?.location.name ?? "Météo locale"}</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">{weather ? `${Math.round(weather.current.temperatureCelsius)}°` : "—"}</p></div><CloudSun className="size-12 text-sky-100/80" /></div>
+        <div className="flex items-end justify-between gap-4"><p className="weather-detail max-w-64 text-sm leading-5 text-sky-50">{weather?.current.summary ?? (unavailable ? "La météo est momentanément indisponible." : "Chargement de la météo…")}</p><span className="shrink-0 rounded-full bg-white/15 px-3 py-2 text-xs font-medium text-sky-50">{weather ? `Ressenti ${Math.round(weather.current.apparentCelsius)}°` : "Home Core"}</span></div>
       </CardContent>
     </Card>
   );
@@ -550,23 +551,17 @@ function App() {
           {view === "profile" && <ProfileView profile={profile} />}
           {view === "cost" && <CostView />}
           <div className={view === "dashboard" ? "block" : "hidden"}>
-          <div className="dashboard-overview mt-8 grid gap-4 lg:hidden">
+          <div className="dashboard-overview mt-8 grid gap-4 lg:grid-cols-[1.25fr_.75fr]">
             <WeatherCard />
             <Card className="dashboard-next"><CardHeader><div><p className="text-sm font-medium">Rappel</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-lg font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-5 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="next-detail text-xs text-slate-400">Connecté bientôt à iCloud</span></div></CardContent></Card>
           </div>
 
           <Card className="dashboard-room-summary mt-3 sm:hidden"><CardContent className="flex items-center justify-between gap-3 p-3"><div className="min-w-0"><p className="text-sm font-semibold">Maison</p><p className="mt-0.5 text-xs text-slate-500">{rooms.length} pièces · {rooms.filter((room) => room.active).length} éclairées</p></div><Button variant="ghost" className="h-8 shrink-0 px-2 text-xs" onClick={() => setView("home")}>Voir</Button></CardContent></Card>
 
-          <div className="dashboard-compact-grid hidden lg:grid">
-            <WeatherCard />
-            <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <button key={name} type="button" onClick={() => setView("home")} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08]"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{name}</span><span className="block truncate text-xs text-slate-500">{detail}</span></span></button>)}</CardContent></Card>
-            <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappel</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-xl font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-4 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="text-xs text-slate-400">Prochain événement</span></div></CardContent></Card>
-            <Card className="dashboard-cost-card"><CardHeader><div><p className="text-lg font-semibold">Coûts</p><p className="mt-1 text-sm text-slate-500">Estimation du mois</p></div><WalletCards className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-4xl font-semibold tracking-[-0.04em]">12,40 €</p><p className="mt-1 text-sm text-emerald-400">−8 % vs. mois dernier</p><Button variant="ghost" className="mt-4 h-8 px-2 text-xs" onClick={() => setView("cost")}>Voir le détail</Button></CardContent></Card>
-          </div>
+          <div className="mt-7 hidden items-center justify-between sm:flex"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>
+          <div className="mt-4 hidden gap-4 sm:grid sm:grid-cols-2 xl:grid-cols-4">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <Card key={name} className="transition-shadow hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]"><CardContent className="p-5"><div className="flex items-start justify-between"><div className={"grid size-10 place-items-center rounded-2xl " + tone}><Icon className="size-5" /></div><div className={active ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-slate-200"} /></div><p className="mt-8 text-base font-medium">{name}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></CardContent></Card>)}</div>
 
-          <div className="mt-7 hidden items-center justify-between sm:flex lg:hidden"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>
-          <div className="mt-4 hidden gap-4 sm:grid sm:grid-cols-2 lg:hidden">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <Card key={name} className="transition-shadow hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]"><CardContent className="p-5"><div className="flex items-start justify-between"><div className={"grid size-10 place-items-center rounded-2xl " + tone}><Icon className="size-5" /></div><div className={active ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-slate-200"} /></div><p className="mt-8 text-base font-medium">{name}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></CardContent></Card>)}</div>
-
+          <div className="mt-7 hidden gap-4 lg:grid lg:grid-cols-2"><Card><CardHeader><div><p className="text-lg font-semibold">Routines</p><p className="mt-1 text-sm text-slate-500">Préparer la maison en un geste</p></div><MoreHorizontal className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-3"><div className="routine-card routine-evening"><span className="routine-icon"><Lightbulb className="size-4" /></span> Soirée</div><div className="routine-card routine-night"><span className="routine-icon"><Sparkles className="size-4" /></span> Bonne nuit</div></CardContent></Card><Card><CardHeader><div><p className="text-lg font-semibold">Confort</p><p className="mt-1 text-sm text-slate-500">Données indicatives — non connectées</p></div><ThermometerSun className="size-5 text-slate-400" /></CardHeader><CardContent><div className="flex items-end justify-between"><div><p className="text-4xl font-semibold tracking-[-0.04em]">21°</p><p className="mt-1 text-sm text-slate-500">Température moyenne</p></div><div className="text-right"><p className="text-sm font-medium">Tout est normal</p><p className="mt-1 text-sm text-emerald-600">Aucune alerte</p></div></div></CardContent></Card></div>
           </div>
         </section>
       </div>
