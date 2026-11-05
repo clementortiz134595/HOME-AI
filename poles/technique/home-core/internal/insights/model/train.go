@@ -7,12 +7,15 @@ type TrainStatus string
 const (
 	OnTime  TrainStatus = "on_time"
 	Delayed TrainStatus = "delayed"
+	Cancelled TrainStatus = "cancelled"
 )
 
 type Train struct {
 	ID                 string      `json:"id"`
 	Departure          time.Time   `json:"departure"`
+	Arrival            *time.Time  `json:"arrival,omitempty"`
 	ScheduledDeparture time.Time   `json:"scheduledDeparture"`
+	LastUpdated        *time.Time  `json:"lastUpdated,omitempty"`
 	Destination        string      `json:"destination"`
 	TrainNumber        string      `json:"trainNumber"`
 	CommercialMode     string      `json:"commercialMode"`

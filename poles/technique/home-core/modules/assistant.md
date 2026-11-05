@@ -23,6 +23,9 @@ Les erreurs de forme renvoient `400`. Une configuration absente ou une panne du 
 - `HOME_CORE_AI_BASE_URL` : URL de base de l'API Gemini.
 - `HOME_CORE_AI_API_KEY` : clé conservée par Home Core, jamais côté navigateur ni dans les logs.
 - `HOME_CORE_AI_MODEL` : modèle à utiliser ; choix initial : `gemini-2.5-flash-native-audio-preview-12-2025`.
+- `HOME_CORE_AI_ROUTER_MODEL` : modèle utilisé uniquement pour classer une transcription en intention et paramètres ; valeur par défaut : `gemini-3.1-flash-lite`.
+
+Le routage d'intention utilise un modèle distinct des réponses conversationnelles afin de pouvoir privilégier la latence et le coût pour la sortie JSON courte. `HOME_CORE_AI_MODEL` reste utilisé pour les réponses libres et les conversations avec outils.
 
 Pour l'audio bidirectionnel, l'adaptateur devra utiliser Gemini Live API ; le client texte actuel reste un incrément de transition et ne doit pas être présenté comme une intégration audio complète.
 

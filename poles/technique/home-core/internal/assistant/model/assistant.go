@@ -43,12 +43,13 @@ type ActionResult struct {
 // Answer is deliberately provider-neutral so the Home Panel does not depend
 // on a vendor response format.
 type Answer struct {
-	Text           string       `json:"text"`
-	Provider       string       `json:"provider"`
-	Model          string       `json:"model"`
-	Generated      bool         `json:"generated"`
-	Status         ActionStatus `json:"status,omitempty"`
-	ConfirmationID string       `json:"confirmationId,omitempty"`
+	Text                 string       `json:"text"`
+	Provider             string       `json:"provider"`
+	Model                string       `json:"model"`
+	Generated            bool         `json:"generated"`
+	Status               ActionStatus `json:"status,omitempty"`
+	ConfirmationID       string       `json:"confirmationId,omitempty"`
+	ContinueConversation bool         `json:"continueConversation,omitempty"`
 }
 
 // Tool messages preserve the provider conversation, including opaque signatures.

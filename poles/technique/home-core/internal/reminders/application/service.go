@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/clementortiz/home-ai/home-core/internal/reminders/model"
+	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -30,6 +32,11 @@ func NewService(repositories ...Repository) *Service {
 		if values, err := s.repository.ListReminders(); err == nil {
 			for _, value := range values {
 				s.reminders[value.ID] = value
+				if strings.HasPrefix(value.ID, "reminder-") {
+					if number, parseErr := strconv.Atoi(strings.TrimPrefix(value.ID, "reminder-")); parseErr == nil && number > s.next {
+						s.next = number
+					}
+				}
 			}
 		}
 	}
@@ -46,7 +53,9 @@ func (s *Service) List() []model.Reminder {
 	return result
 }
 func (s *Service) Create(value model.Reminder) (model.Reminder, error) {
+	slog.Info("reminder service create", "title_length", len(value.Title), "date", value.Date, "repository_configured", s.repository != nil)
 	if strings.TrimSpace(value.Title) == "" || strings.TrimSpace(value.Date) == "" {
+		slog.Warn("reminder validation failed", "reason", "title_and_date_required")
 		return model.Reminder{}, errors.New("title and date are required")
 	}
 	s.mu.Lock()
@@ -56,6 +65,7 @@ func (s *Service) Create(value model.Reminder) (model.Reminder, error) {
 	s.reminders[value.ID] = value
 	if s.repository != nil {
 		if err := s.repository.SaveReminder(value); err != nil {
+			slog.Error("reminder persistence failed", "reminder_id", value.ID, "error", err)
 			return model.Reminder{}, err
 		}
 	}

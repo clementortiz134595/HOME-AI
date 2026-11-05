@@ -54,8 +54,14 @@ func (handler *VoiceHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	input := model.VoiceInput{Audio: audio, ContentType: request.Header.Get("Content-Type")}
 	var answer model.Answer
 	var transcript string
-	if progressive, ok := handler.ask.(interface { ExecuteWithProgress(context.Context, model.VoiceInput, func(string, string)) (model.Answer, string, error) }); ok {
-		answer, transcript, err = progressive.ExecuteWithProgress(request.Context(), input, func(state, text string) { if handler.state != nil { handler.state.Update(map[string]any{"state": state, "transcript": text}) } })
+	if progressive, ok := handler.ask.(interface {
+		ExecuteWithProgress(context.Context, model.VoiceInput, func(string, string)) (model.Answer, string, error)
+	}); ok {
+		answer, transcript, err = progressive.ExecuteWithProgress(request.Context(), input, func(state, text string) {
+			if handler.state != nil {
+				handler.state.Update(map[string]any{"state": state, "transcript": text})
+			}
+		})
 	} else {
 		answer, transcript, err = handler.ask.Execute(request.Context(), input)
 	}
@@ -73,7 +79,7 @@ func (handler *VoiceHandler) ServeHTTP(writer http.ResponseWriter, request *http
 	}
 	slog.Info("voice pipeline succeeded", "transcript_length", len(transcript), "answer_length", len(answer.Text))
 	if handler.state != nil {
-		handler.state.Update(map[string]any{"state": "answered", "transcript": transcript, "answer": answer.Text, "confirmationId": answer.ConfirmationID})
+		handler.state.Update(map[string]any{"state": "answered", "transcript": transcript, "answer": answer.Text, "confirmationId": answer.ConfirmationID, "continueConversation": answer.ContinueConversation})
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"transcript": transcript, "answer": answer})
 }

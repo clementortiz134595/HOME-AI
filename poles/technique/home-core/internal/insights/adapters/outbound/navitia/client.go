@@ -27,17 +27,34 @@ func NewClient(h *http.Client, baseURL, uic string) *Client {
 }
 
 type response struct {
-	Passages []struct {
-		Number      string `json:"n"`
-		Departure   int    `json:"d"`
-		Delay       int    `json:"rd"`
-		Platform    string `json:"v"`
-		Destination string `json:"de"`
-		Cancelled   bool   `json:"x"`
-		Passed      int    `json:"p"`
-		Category    string `json:"pr"`
+	CollectedAt string `json:"collecte_le"`
+	Passages    []struct {
+		Number      string       `json:"n"`
+		Departure   int          `json:"d"`
+		Delay       int          `json:"rd"`
+		Platform    string       `json:"v"`
+		Destination string       `json:"de"`
+		Cancelled   flexibleBool `json:"x"`
+		Passed      int          `json:"p"`
+		Category    string       `json:"pr"`
 	} `json:"passages"`
 	Names map[string]string `json:"noms"`
+}
+
+type flexibleBool bool
+
+func (b *flexibleBool) UnmarshalJSON(data []byte) error {
+	var value bool
+	if err := json.Unmarshal(data, &value); err == nil {
+		*b = flexibleBool(value)
+		return nil
+	}
+	var number int
+	if err := json.Unmarshal(data, &number); err != nil {
+		return err
+	}
+	*b = flexibleBool(number != 0)
+	return nil
 }
 
 func (c *Client) Departures(ctx context.Context) ([]model.Train, error) {
@@ -66,6 +83,10 @@ func (c *Client) Departures(ctx context.Context) ([]model.Train, error) {
 	now := time.Now().In(location)
 	midnight := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, location)
 	trains := make([]model.Train, 0, len(p.Passages))
+	var lastUpdated *time.Time
+	if parsed, parseErr := time.Parse(time.RFC3339, p.CollectedAt); parseErr == nil {
+		lastUpdated = &parsed
+	}
 	for _, d := range p.Passages {
 		if d.Departure == 0 || d.Passed != 0 {
 			continue
@@ -77,14 +98,15 @@ func (c *Client) Departures(ctx context.Context) ([]model.Train, error) {
 			status = model.Delayed
 		}
 		var disruption *model.Disruption
-		if d.Cancelled {
+		if bool(d.Cancelled) {
+			status = model.Cancelled
 			disruption = &model.Disruption{Title: "Train supprimé", Effect: "CANCELLED"}
 		}
 		destination := p.Names[d.Destination]
 		if !strings.Contains(strings.ToLower(destination), "marseille") {
 			continue
 		}
-		trains = append(trains, model.Train{ID: d.Number, Departure: departure, ScheduledDeparture: scheduled, Destination: destination, TrainNumber: d.Number, CommercialMode: d.Category, Platform: d.Platform, Status: status, DelayMinutes: d.Delay / 60, Disruption: disruption})
+		trains = append(trains, model.Train{ID: d.Number, Departure: departure, ScheduledDeparture: scheduled, LastUpdated: lastUpdated, Destination: destination, TrainNumber: d.Number, CommercialMode: d.Category, Platform: d.Platform, Status: status, DelayMinutes: d.Delay / 60, Disruption: disruption})
 	}
 	seen := make(map[string]bool, len(trains))
 	for _, train := range trains {

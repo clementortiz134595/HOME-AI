@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
 )
@@ -22,6 +23,19 @@ func TestDeterministicInterpreterRoutesReminder(t *testing.T) {
 	}
 	if intent.Name != "reminders.create" || intent.Parameters["title"] != "sortir les poubelles" {
 		t.Fatalf("unexpected intent: %+v", intent)
+	}
+}
+
+func TestDeterministicInterpreterRoutesNaturalReminderCreation(t *testing.T) {
+	intent, err := NewDeterministicInterpreter().Interpret(context.Background(), model.Interaction{Text: "crée un rappel pour demain de sortir les poubelles"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if intent.Name != "reminders.create" || intent.Parameters["title"] != "sortir les poubelles" {
+		t.Fatalf("unexpected intent: %+v", intent)
+	}
+	if intent.Parameters["date"] != time.Now().AddDate(0, 0, 1).Format("2006-01-02") {
+		t.Fatalf("unexpected date: %+v", intent.Parameters["date"])
 	}
 }
 

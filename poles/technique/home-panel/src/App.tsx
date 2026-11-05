@@ -62,7 +62,7 @@ const weeklyChores = [
 ];
 type Market = { symbol: string; name: string; isin: string; change: number; price: number };
 type MarketDetail = { etf: Market; history: { label: string | number; value: number }[]; dataStatus: string };
-type Train = { id: string; departure: string; scheduledDeparture: string; destination: string; trainNumber: string; commercialMode: string; platform?: string; status: "on_time" | "delayed"; delayMinutes: number; disruption?: { title: string; cause?: string; effect?: string; information?: string } };
+type Train = { id: string; departure: string; arrival?: string; scheduledDeparture: string; lastUpdated?: string; destination: string; trainNumber: string; commercialMode: string; platform?: string; status: "on_time" | "delayed" | "cancelled"; delayMinutes: number; disruption?: { title: string; cause?: string; effect?: string; information?: string } };
 
 function HomeView() {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
@@ -303,7 +303,7 @@ function WakeWordListener() {
   return null;
 }
 
-type AssistantAnswer = { text: string; confirmationId?: string };
+type AssistantAnswer = { text: string; confirmationId?: string; continueConversation?: boolean };
 
 function MailConfirmation({ id, onAnswer, onCancel }: { id: string; onAnswer: (answer: AssistantAnswer) => void; onCancel: () => void }) {
   const [busy, setBusy] = useState(false);
@@ -487,7 +487,8 @@ function WeatherCard() {
 
 type DashboardRoom = (typeof rooms)[number];
 type RoomDialogRoom = Pick<DashboardRoom, "name" | "icon" | "tone">;
-type Reminder = (typeof agendaItems)[number];
+type Reminder = { id: string; time: string; title: string; detail: string; owner: string; tone: string; date: string };
+type ReminderRecord = { id: string; title: string; date: string; details?: string };
 
 function RoomDetailDialog({ room, onClose }: { room: RoomDialogRoom; onClose: () => void }) {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
@@ -563,8 +564,9 @@ function TrainsCard() {
   const [trains, setTrains] = useState<Train[]>([]); const [error, setError] = useState(false); const [selected, setSelected] = useState<Train | null>(null);
   useEffect(() => { const controller = new AbortController(); fetch("/v1/insights/trains", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => { if (Array.isArray(data.trains)) setTrains(data.trains); }).catch(() => setError(true)); return () => controller.abort(); }, []);
   const format = (value: string) => new Date(value).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  const formatUpdated = (value?: string) => value ? new Date(value).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Non communiquée";
   const dayLabel = (value: string) => { const date = new Date(value); const today = new Date(); const delta = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime(); return delta === 86400000 ? "Demain" : delta === 0 ? "Aujourd’hui" : date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }); };
-  return <><Card className="dashboard-trains-card"><CardHeader><div><p className="text-lg font-semibold">4 prochains trains</p><p className="mt-1 text-sm text-slate-500">La Ciotat-Ceyreste → Marseille · SNCF</p></div><TrainFront className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{error ? <p className="text-sm text-amber-300">Informations SNCF indisponibles.</p> : trains.length === 0 ? <p className="text-sm text-slate-500">Chargement des départs en temps réel…</p> : trains.slice(0, 4).map((train) => <button type="button" onClick={() => setSelected(train)} key={train.id} className="flex w-full items-center justify-between rounded-xl bg-white/[0.04] px-2 py-2 text-left hover:bg-white/[0.08]"><span><span className="text-sm font-semibold">{format(train.departure)}</span><span className="ml-2 text-xs text-slate-500">{dayLabel(train.departure)} · {train.trainNumber || train.commercialMode}</span></span><Badge className={train.status === "delayed" ? "bg-amber-400/15 text-amber-200" : "bg-emerald-400/15 text-emerald-200"}>{train.status === "delayed" ? `+${train.delayMinutes} min` : "À l’heure"}</Badge></button>)}</CardContent></Card>{selected && <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-sm" onMouseDown={() => setSelected(null)}><section role="dialog" aria-modal="true" className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-sky-400/15 text-sky-200"><TrainFront className="size-6" /></span><div><p className="text-sm text-slate-400">{selected.commercialMode || "Train SNCF"} · {selected.trainNumber}</p><h2 className="text-xl font-semibold">{selected.destination}</h2></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Départ</p><p className="mt-1 font-semibold">{dayLabel(selected.departure)} · {format(selected.departure)} <span className="text-xs text-slate-500">(prévu {format(selected.scheduledDeparture)})</span></p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Quai</p><p className="mt-1 font-semibold">{selected.platform || "Non communiqué"}</p></div></div>{selected.disruption && <div className="mt-3 rounded-2xl bg-amber-400/10 p-3 text-sm text-amber-100"><p className="font-semibold">{selected.disruption.title}</p>{selected.disruption.cause && <p className="mt-1">Cause : {selected.disruption.cause}</p>}{selected.disruption.information && <p className="mt-1">{selected.disruption.information}</p>}</div>}<div className="mt-5 flex justify-end"><Button onClick={() => setSelected(null)}>Fermer</Button></div></section></div>}</>;
+  return <><Card className="dashboard-trains-card"><CardHeader><div><p className="text-lg font-semibold">4 prochains trains</p><p className="mt-1 text-sm text-slate-500">La Ciotat-Ceyreste → Marseille · SNCF</p></div><TrainFront className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{error ? <p className="text-sm text-amber-300">Informations SNCF indisponibles.</p> : trains.length === 0 ? <p className="text-sm text-slate-500">Chargement des départs en temps réel…</p> : trains.slice(0, 4).map((train) => <button type="button" onClick={() => setSelected(train)} key={train.id} className="flex w-full items-center justify-between rounded-xl bg-white/[0.04] px-2 py-2 text-left hover:bg-white/[0.08]"><span><span className="flex items-baseline gap-2"><span className="text-sm font-semibold">{format(train.departure)}</span><span className="text-xs text-slate-400">départ</span>{train.arrival && <><span className="text-sm font-semibold">{format(train.arrival)}</span><span className="text-xs text-slate-400">arrivée</span></>}</span><span className="text-xs text-slate-500">{dayLabel(train.departure)} · {train.trainNumber || train.commercialMode}</span></span><Badge className={train.status === "cancelled" ? "bg-rose-400/15 text-rose-200" : train.status === "delayed" ? "bg-amber-400/15 text-amber-200" : "bg-emerald-400/15 text-emerald-200"}>{train.status === "cancelled" ? "Supprimé" : train.status === "delayed" ? `+${train.delayMinutes} min` : "À l’heure"}</Badge></button>)}</CardContent></Card>{selected && <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-sm" onMouseDown={() => setSelected(null)}><section role="dialog" aria-modal="true" className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-sky-400/15 text-sky-200"><TrainFront className="size-6" /></span><div><p className="text-sm text-slate-400">{selected.commercialMode || "Train SNCF"} · {selected.trainNumber}</p><h2 className="text-xl font-semibold">{selected.destination}</h2></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Départ</p><p className="mt-1 font-semibold">{dayLabel(selected.departure)} · {format(selected.departure)} <span className="text-xs text-slate-500">(prévu {format(selected.scheduledDeparture)})</span></p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Arrivée</p><p className="mt-1 font-semibold">{selected.arrival ? `${dayLabel(selected.arrival)} · ${format(selected.arrival)}` : "Non communiquée"}</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Quai</p><p className="mt-1 font-semibold">{selected.platform || "Non communiqué"}</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Mise à jour</p><p className="mt-1 font-semibold">{formatUpdated(selected.lastUpdated)}</p></div></div>{selected.disruption && <div className="mt-3 rounded-2xl bg-amber-400/10 p-3 text-sm text-amber-100"><p className="font-semibold">{selected.disruption.title}</p>{selected.disruption.cause && <p className="mt-1">Cause : {selected.disruption.cause}</p>}{selected.disruption.information && <p className="mt-1">{selected.disruption.information}</p>}</div>}<div className="mt-5 flex justify-end"><Button onClick={() => setSelected(null)}>Fermer</Button></div></section></div>}</>;
 }
 
 function MarketsCard() {
@@ -580,7 +582,26 @@ function MarketsCard() {
   return <><Card className="dashboard-markets-card"><CardHeader><div><p className="text-lg font-semibold">Marchés & actualités</p><div className="mt-2 flex gap-1">{["Jour", "Mois", "Année"].map((item) => <Button key={item} type="button" variant={period === item ? "secondary" : "ghost"} className="h-6 px-2 text-[10px]" onClick={() => setPeriod(item)}>{item}</Button>)}</div></div><TrendingUp className="size-5 text-slate-400" /></CardHeader><CardContent>{marketsError ? <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-xs text-rose-200">Backend marchés indisponible.</p> : <div className="grid grid-cols-2 gap-1">{markets.map((market) => <button type="button" key={market.symbol} onClick={() => setSelected(market)} className="rounded-lg bg-white/[0.04] p-1.5 text-left transition hover:bg-white/[0.1]"><p className="truncate text-[10px] text-slate-300">{market.symbol}</p><p className="truncate text-[9px] text-slate-500">{market.name.replace("Amundi ", "")}</p><p className={market.change >= 0 ? "text-xs font-semibold text-emerald-400" : "text-xs font-semibold text-rose-400"}>{market.change >= 0 ? "+" : ""}{market.change}%</p></button>)}</div>}<ol className="mt-2 space-y-1.5">{news.slice(0, 3).map((item) => <li key={item} className="text-xs leading-4 text-slate-300">• {item}</li>)}</ol></CardContent></Card>{selected && <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4" onMouseDown={() => setSelected(null)}><section role="dialog" aria-modal="true" aria-labelledby="market-dialog-title" className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-slate-400">ETF suivi · {selected.symbol}</p><h2 id="market-dialog-title" className="mt-1 text-xl font-semibold">{selected.name}</h2><p className="mt-1 text-xs text-slate-500">ISIN {selected.isin}</p></div><Button variant="ghost" size="icon" aria-label="Fermer" onClick={() => setSelected(null)}><X /></Button></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Cours indicatif</p><p className="mt-1 font-semibold">{selected.price.toFixed(2)} €</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Variation</p><p className={selected.change >= 0 ? "mt-1 font-semibold text-emerald-400" : "mt-1 font-semibold text-rose-400"}>{selected.change >= 0 ? "+" : ""}{selected.change}%</p></div></div><div className="mt-5 rounded-2xl bg-white/[0.04] p-3"><p className="mb-2 text-xs text-slate-500">Évolution · {period.toLowerCase()}</p>{detailError ? <p role="alert" className="py-10 text-center text-sm text-amber-200">Historique indisponible avec la source de données actuelle.</p> : detail?.history?.length ? <svg viewBox="0 0 360 120" className="h-32 w-full" role="img" aria-label={`Évolution de ${selected.symbol}`}><polyline fill="none" stroke="rgb(110 231 183)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={detail.history.map((point, index) => `${(index / (detail.history.length - 1)) * 340 + 10},${110 - ((point.value - Math.min(...detail.history.map((item) => item.value))) / (Math.max(...detail.history.map((item) => item.value)) - Math.min(...detail.history.map((item) => item.value)) || 1)) * 90}`).join(" ")} /></svg> : <p className="py-10 text-center text-sm text-slate-500">Chargement de l’historique…</p>}</div></section></div>}</>;
 }
 
-type VoiceStatus = { confirmationId?: string; state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
+type VoiceStatus = { confirmationId?: string; continueConversation?: boolean; state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
+
+type VoiceSource = { id: string; label: string; detail: string; mark: string };
+
+const voiceSources: VoiceSource[] = [
+  { id: "gmail", label: "Gmail", detail: "Recherche et lecture", mark: "G" },
+  { id: "drive", label: "Drive", detail: "Fichiers et documents", mark: "D" },
+  { id: "home", label: "Maison", detail: "Commandes locales", mark: "⌁" },
+  { id: "call", label: "Appel", detail: "Conversation en cours", mark: "☎" },
+  { id: "assistant", label: "Assistant", detail: "Réflexion et réponse", mark: "✦" },
+];
+
+function getActiveVoiceSource(status: VoiceStatus) {
+  const request = `${status.transcript ?? ""} ${status.answer ?? ""}`.toLocaleLowerCase("fr-FR");
+  if (/(mail|gmail|courriel|email|message)/.test(request)) return "gmail";
+  if (/(drive|fichier|document|pdf)/.test(request)) return "drive";
+  if (/(maison|salon|lumière|prise|chauffage|volet|domotique)/.test(request)) return "home";
+  if (status.state === "listening" || status.state === "transcribing") return "call";
+  return "assistant";
+}
 
 function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (answer: AssistantAnswer) => void }) {
   useEffect(() => {
@@ -633,10 +654,11 @@ function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (an
         ? <Orb state="reasoning" variant="twins" size={180} speed={.9} label="Routage Gemini en cours" />
         : <Orb state="using" variant="tap" size={180} speed={1} label="Exécution en cours" />;
   const stageLabel = status.state === "listening" ? "Je vous écoute" : status.state === "transcribing" ? "Je transcris votre demande" : status.state === "thinking" ? "Je route votre demande vers Gemini" : status.state === "answered" ? "Réponse prête" : "J’exécute votre demande";
+  const activeSource = getActiveVoiceSource(status);
   return <div className="voice-overlay fixed inset-0 z-50 grid place-items-center p-6 text-zinc-100">
-    <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="voice-overlay-content relative grid w-full max-w-7xl gap-5 text-center lg:grid-cols-[minmax(220px,.8fr)_minmax(280px,1.2fr)_minmax(260px,.9fr)] lg:items-center">
-      <section className="workspace-column workspace-list text-left"><p className="workspace-eyebrow">Sources</p><div className="workspace-list-item workspace-list-item-active"><span className="workspace-source-mark">G</span><span><strong>Gmail</strong><small>Recherche et lecture</small></span></div><div className="workspace-list-item"><span className="workspace-source-mark">D</span><span><strong>Drive</strong><small>Fichiers et documents</small></span></div><div className="workspace-list-item workspace-list-item-muted"><span className="workspace-source-mark">⌁</span><span><strong>Maison</strong><small>Commandes locales</small></span></div></section>
-      <section className="workspace-column workspace-interaction"><p className="workspace-eyebrow">Interaction</p><div className="voice-orb-stage text-zinc-300">{orb}</div><p className="mt-2 text-sm text-zinc-400">{stageLabel}</p>{status.transcript && <p className="mt-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left text-sm text-zinc-300">« {status.transcript} »</p>}</section>
+    <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="voice-overlay-content relative grid w-full max-w-7xl gap-5 text-center lg:grid-cols-3 lg:items-stretch">
+      <section className="workspace-column workspace-list text-left"><p className="workspace-eyebrow">Sources</p><div className="workspace-list-content">{voiceSources.map((source) => <div key={source.id} className={`workspace-list-item ${source.id === activeSource ? "workspace-list-item-active" : source.id === "assistant" ? "workspace-list-item-muted" : ""}`} aria-current={source.id === activeSource ? "step" : undefined}><span className="workspace-source-mark">{source.mark}</span><span><strong>{source.label}</strong><small>{source.detail}</small></span></div>)}</div><p className="workspace-active-caption">Source active · {voiceSources.find((source) => source.id === activeSource)?.label}</p></section>
+      <section className="workspace-column workspace-interaction"><p className="workspace-eyebrow">Interaction</p><div className="voice-orb-stage text-zinc-300">{orb}</div><p className="mt-2 text-sm text-zinc-400 transition-opacity duration-300">{stageLabel}</p><div className={`workspace-transcript ${status.transcript ? "workspace-content-visible" : ""}`}>{status.transcript && <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left text-sm text-zinc-300">« {status.transcript} »</p>}</div></section>
       <section className="workspace-column workspace-questions text-left"><p className="workspace-eyebrow">Questions et validation</p><AgentPipeline status={status} />{status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} onCancel={() => onAnswer({ text: "Action refusée." })} />}</section>
     </div>
   </div>;
@@ -650,10 +672,28 @@ function App() {
   const [navOpen, setNavOpen] = useState(false);
   const [selectedRoom, setSelectedRoom] = useState<DashboardRoom | null>(null);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const calendarLabel = "Partagé";
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
   const changeTheme = (value: boolean) => { setLightMode(value); window.localStorage.setItem("home-ai:theme", value ? "light" : "dark"); };
   const lastVoiceUpdate = useRef<string | undefined>(undefined);
+
+  const refreshReminders = useCallback(async () => {
+    const response = await fetch("/v1/reminders", { cache: "no-store" });
+    if (!response.ok) throw new Error("reminders_unavailable");
+    const data = await response.json() as { reminders?: ReminderRecord[] };
+    setReminders((data.reminders ?? []).map((reminder) => ({
+      id: reminder.id,
+      date: reminder.date,
+      time: new Date(`${reminder.date}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }),
+      title: reminder.title,
+      detail: reminder.details ?? "Rappel personnel",
+      owner: "Duo",
+      tone: "bg-sky-400",
+    })));
+  }, []);
+
+  useEffect(() => { void refreshReminders(); }, [refreshReminders]);
 
   useEffect(() => {
     let active = true;
@@ -690,6 +730,23 @@ function App() {
     }, voiceStatus.confirmationId ? 300_000 : 20_000);
     return () => window.clearTimeout(timeout);
   }, [voiceStatus.state, voiceStatus.updatedAt, voiceStatus.confirmationId]);
+
+  useEffect(() => {
+    if (voiceStatus.state !== "answered") return;
+    void refreshReminders();
+    if (voiceStatus.continueConversation) {
+      const timer = window.setTimeout(() => {
+        setVoiceStatus((current) => ({ ...current, state: "listening", answer: undefined, transcript: undefined, updatedAt: new Date().toISOString() }));
+        window.dispatchEvent(new Event(activateWakeEvent));
+      }, 900);
+      return () => window.clearTimeout(timer);
+    }
+    const timer = window.setTimeout(() => {
+      setVoiceStatus({ state: "idle" });
+      void fetch("/v1/assistant/voice/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: "idle" }) });
+    }, 3500);
+    return () => window.clearTimeout(timer);
+  }, [voiceStatus.state, voiceStatus.updatedAt, voiceStatus.continueConversation, refreshReminders]);
 
   useEffect(() => {
     const handleTranscript = (event: Event) => {
@@ -730,7 +787,7 @@ function App() {
           <div className="dashboard-compact-grid grid">
             <WeatherCard />
             <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map((room) => { const Icon = room.icon; return <button key={room.name} type="button" onClick={() => setSelectedRoom(room)} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + room.tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={room.active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{room.name}</span><span className="block truncate text-xs text-slate-500">{room.detail}</span></span></button>; })}</CardContent></Card>
-            <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappels</p><p className="mt-1 text-sm text-slate-400">À venir</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{agendaItems.slice(0, 3).map((reminder) => <button key={reminder.title} type="button" onClick={() => setSelectedReminder(reminder)} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"size-2 shrink-0 rounded-full " + reminder.tone} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reminder.title}</span><span className="block text-xs text-slate-500">{reminder.time}</span></span></button>)}</CardContent></Card>
+            <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappels</p><p className="mt-1 text-sm text-slate-400">À venir</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{reminders.length === 0 ? <p className="text-sm text-slate-500">Aucun rappel enregistré.</p> : reminders.slice(0, 3).map((reminder) => <button key={reminder.id} type="button" onClick={() => setSelectedReminder(reminder)} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"size-2 shrink-0 rounded-full " + reminder.tone} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reminder.title}</span><span className="block text-xs text-slate-500">{reminder.time}</span></span></button>)}</CardContent></Card>
             <WeeklyChoresCard />
             <TrainsCard />
             <MarketsCard />

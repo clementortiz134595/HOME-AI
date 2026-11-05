@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
 )
@@ -114,8 +116,9 @@ func (client *Client) Interpret(ctx context.Context, interaction model.Interacti
 	if client.apiKey == "" || client.model == "" {
 		return model.Intent{}, fmt.Errorf("%w: provider is not configured", ErrUnavailable)
 	}
+	prompt := fmt.Sprintf("%s\nDate du jour : %s. Pour toute expression temporelle française, même si elle n'est pas exemplifiée (soir, matin, après-demain, durée, semaine, mois, jour de semaine, prochain, prochainement, etc.), calcule la date calendaire correspondante à partir de cette date. Pour un rappel, le champ date est toujours obligatoire au format YYYY-MM-DD : ne l'omets jamais et n'invente pas une date si l'expression est ambiguë.", intentSystemInstruction, time.Now().Format("2006-01-02"))
 	payload := generateRequest{
-		SystemInstruction: content{Parts: []part{{Text: intentSystemInstruction}}},
+		SystemInstruction: content{Parts: []part{{Text: prompt}}},
 		Contents:          []content{{Role: "user", Parts: []part{{Text: interaction.Text}}}},
 		GenerationConfig:  &generationConfig{ResponseMIMEType: "application/json"},
 	}
@@ -169,16 +172,39 @@ func validateIntent(intent *model.Intent, transcript string) error {
 		}
 	}
 	if intent.Name == "reminders.create" {
-		for _, key := range []string{"title", "date"} {
-			if value, ok := intent.Parameters[key].(string); !ok || strings.TrimSpace(value) == "" {
-				return fmt.Errorf("reminder %s is required", key)
+		if value, ok := intent.Parameters["title"].(string); !ok || strings.TrimSpace(value) == "" {
+			return errors.New("reminder title is required")
+		}
+		if value, ok := intent.Parameters["date"].(string); !ok || strings.TrimSpace(value) == "" {
+			if containsTemporalExpression(transcript) {
+				return errors.New("reminder date could not be resolved")
 			}
+			intent.Parameters["date"] = time.Now().Format("2006-01-02")
+			slog.Warn("reminder intent date missing; defaulting to today", "title_length", len(intent.Parameters["title"].(string)), "date", intent.Parameters["date"])
+		} else if _, err := time.Parse("2006-01-02", strings.TrimSpace(value)); err != nil {
+			return fmt.Errorf("reminder date is invalid: %w", err)
 		}
 	}
 	if intent.Name == "gmail.search" || intent.Name == "drive.search" || intent.Name == "agenda.list" {
 		intent.Sensitive = true
 	}
 	return nil
+}
+
+func reminderDateFromText(text string) string {
+	if date, ok := model.RelativeDate(text, time.Now()); ok {
+		return date
+	}
+	return time.Now().Format("2006-01-02")
+}
+
+func containsTemporalExpression(text string) bool {
+	for _, word := range []string{"aujourd", "demain", "après", "apres", "soir", "matin", "midi", "nuit", "semaine", "mois", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche", "prochain", "dans"} {
+		if strings.Contains(strings.ToLower(text), word) {
+			return true
+		}
+	}
+	return false
 }
 
 func nonEmptyString(parameters map[string]any, key string) bool {
