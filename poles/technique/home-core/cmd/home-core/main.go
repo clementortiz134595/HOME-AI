@@ -74,6 +74,8 @@ func main() {
 	marketProvider := eodhd.NewClient(&http.Client{Timeout: 10 * time.Second}, os.Getenv("HOME_CORE_EODHD_BASE_URL"), os.Getenv("HOME_CORE_EODHD_API_KEY"))
 	mux.Handle("/v1/insights/", insightshttp.NewHandler(insightsapp.NewGetTrains(trainsProvider), insightsapp.NewGetMarketHistory(marketProvider)))
 	aiProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), os.Getenv("HOME_CORE_AI_MODEL"))
+	// Keep routing on the fastest dedicated model; the established AI client
+	// remains responsible for the conversational answer and tool execution.
 	routerProvider := gemini.NewClient(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_AI_BASE_URL"), os.Getenv("HOME_CORE_AI_API_KEY"), envOr("HOME_CORE_AI_ROUTER_MODEL", "gemini-3.1-flash-lite"))
 	var mailReader assistantapp.MailReader
 	var driveReader assistantapp.DriveReader
@@ -108,6 +110,8 @@ func main() {
 		mailReader = gmailProvider
 		driveReader = gmailProvider
 		mux.Handle("/v1/workspace/google/gmail/oauth/", workspacehttp.NewGmailOAuthHandler(gmailProvider))
+		mux.Handle("/v1/workspace/google/gmail/messages", workspacehttp.NewGmailMessagesHandler(gmailProvider))
+		mux.Handle("/v1/workspace/google/gmail/messages/", workspacehttp.NewGmailMessagesHandler(gmailProvider))
 	} else {
 		logger.Warn("Gmail is not configured", "error", gmailErr)
 	}
@@ -192,7 +196,3 @@ func listenAddress() string {
 	}
 	return ":8080"
 }
-	// Keep routing on the fastest dedicated model; the established AI client
-	// remains responsible for the conversational answer and tool execution.
-		mux.Handle("/v1/workspace/google/gmail/messages", workspacehttp.NewGmailMessagesHandler(gmailProvider))
-		mux.Handle("/v1/workspace/google/gmail/messages/", workspacehttp.NewGmailMessagesHandler(gmailProvider))

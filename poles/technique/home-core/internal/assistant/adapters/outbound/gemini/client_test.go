@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/clementortiz/home-ai/home-core/internal/assistant/model"
@@ -51,6 +52,29 @@ func TestClientToolProtocol(t *testing.T) {
 		{Role: "user", Parts: []model.Part{{FunctionResponse: &model.ToolResponse{Name: "gmail_search", Response: map[string]any{"mails": []any{}}}}}},
 	}, []model.ToolDefinition{{Name: "gmail_search"}})
 	if err != nil || result.Parts[0].FunctionCall.Name != "gmail_read" || result.Parts[0].ThoughtSignature != "next" {
+		t.Fatalf("result=%+v err=%v", result, err)
+	}
+}
+
+func TestClientDoesNotInviteToolCallsWithoutDefinitions(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload generateRequest
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatal(err)
+		}
+		if len(payload.Tools) != 0 {
+			t.Fatalf("tools=%+v", payload.Tools)
+		}
+		instruction := payload.SystemInstruction.Parts[0].Text
+		if !strings.Contains(instruction, "N’essaie pas d’appeler un outil") {
+			t.Fatalf("missing no-tool instruction: %q", instruction)
+		}
+		_, _ = w.Write([]byte(`{"candidates":[{"content":{"parts":[{"text":"Je ne peux pas consulter les actualités en direct."}]}}]}`))
+	}))
+	defer server.Close()
+
+	result, err := NewClient(server.Client(), server.URL, "secret", "test").Generate(context.Background(), []model.Content{{Role: "user", Parts: []model.Part{{Text: "Quelles sont les actualités ?"}}}}, nil)
+	if err != nil || result.Parts[0].Text == "" {
 		t.Fatalf("result=%+v err=%v", result, err)
 	}
 }

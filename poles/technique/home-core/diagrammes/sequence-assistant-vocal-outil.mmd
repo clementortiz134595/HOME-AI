@@ -15,6 +15,11 @@ sequenceDiagram
     STT-->>Core: Transcript
     Core->>IA: Interpréter(transcript, contexte minimal)
     IA-->>Core: Intent + paramètres
+    alt Source personnelle explicitement demandée
+        Core->>IA: Exposer uniquement l'outil Gmail ou Drive concerné
+    else Question générale ou actualité
+        Core->>IA: Répondre sans outil Workspace
+    end
     Core->>Policy: Vérifier droits / confirmation
     alt Confirmation nécessaire
         Policy-->>Core: Confirmation requise

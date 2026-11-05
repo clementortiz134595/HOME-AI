@@ -56,23 +56,40 @@ func NewToolConversation(provider ToolModel, mail MailReader, drives ...DriveRea
 	}
 	return &ToolConversation{provider: provider, mail: mail, drive: drive, pending: map[string]pendingCall{}, trusted: trusted}
 }
-func (agent *ToolConversation) definitions() []model.ToolDefinition {
-	if agent.mail == nil {
-		if agent.drive == nil {
-			return nil
-		}
-	}
+func (agent *ToolConversation) definitions(question string) []model.ToolDefinition {
 	schema := func(key string) map[string]any {
 		return map[string]any{"type": "OBJECT", "properties": map[string]any{key: map[string]any{"type": "STRING"}}, "required": []string{key}}
 	}
-	definitions := []model.ToolDefinition{
-		{Name: "gmail_search", Description: "Recherche les mails avec une requête Gmail. Renvoie les identifiants, expéditeurs et objets.", Parameters: schema("query")},
-		{Name: "gmail_read", Description: "Lit le contenu d’un mail à partir d’un identifiant retourné par gmail_search.", Parameters: schema("id")},
+	definitions := make([]model.ToolDefinition, 0, 4)
+	if agent.mail != nil && mentionsMail(question) {
+		definitions = append(definitions,
+			model.ToolDefinition{Name: "gmail_search", Description: "Recherche les mails avec une requête Gmail. Renvoie les identifiants, expéditeurs et objets.", Parameters: schema("query")},
+			model.ToolDefinition{Name: "gmail_read", Description: "Lit le contenu d’un mail à partir d’un identifiant retourné par gmail_search.", Parameters: schema("id")},
+		)
 	}
-	if agent.drive != nil {
+	if agent.drive != nil && mentionsDrive(question) {
 		definitions = append(definitions, model.ToolDefinition{Name: "drive_search", Description: "Recherche les fichiers Google Drive par nom.", Parameters: schema("query")}, model.ToolDefinition{Name: "drive_read", Description: "Lit le contenu texte d’un fichier Google Drive trouvé précédemment.", Parameters: schema("id")})
 	}
 	return definitions
+}
+
+func mentionsMail(question string) bool {
+	text := strings.ToLower(question)
+	return strings.Contains(text, "mail") || strings.Contains(text, "gmail") || strings.Contains(text, "courriel") || strings.Contains(text, "email") || strings.Contains(text, "e-mail")
+}
+
+func mentionsDrive(question string) bool {
+	text := strings.ToLower(question)
+	return strings.Contains(text, "drive") || strings.Contains(text, "document") || strings.Contains(text, "fichier")
+}
+
+func (agent *ToolConversation) allowsTool(question, name string) bool {
+	for _, definition := range agent.definitions(question) {
+		if definition.Name == name {
+			return true
+		}
+	}
+	return false
 }
 func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question model.Question) (model.Answer, error) {
 	messages := []model.Content{{Role: "user", Parts: []model.Part{{Text: question.Text}}}}
@@ -110,7 +127,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	if steps > 6 {
 		return model.Answer{Text: "La limite d’appels est atteinte. Précisez votre demande.", Status: model.ActionRefused}, nil
 	}
-	response, err := agent.provider.Generate(ctx, messages, agent.definitions())
+	response, err := agent.provider.Generate(ctx, messages, agent.definitions(question.Text))
 	if err != nil {
 		return model.Answer{}, err
 	}
@@ -134,7 +151,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 		return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted}, nil
 	}
 	// A single approval never authorizes additional parallel calls.
-	if steps >= 6 || len(calls) != 1 || agent.validate(calls[0], messages[:len(messages)-1]) != nil {
+	if steps >= 6 || len(calls) != 1 || !agent.allowsTool(question.Text, calls[0].Name) || agent.validate(calls[0], messages[:len(messages)-1]) != nil {
 		if len(calls) == 1 {
 			slog.Warn("assistant tool call rejected", "tool", calls[0].Name, "argument_count", len(calls[0].Args), "argument_names", toolArgumentNames(calls[0]))
 		} else {
@@ -154,7 +171,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 			return model.Answer{Text: "L’accès à cette source a échoué. Vous pouvez relancer la demande.", Status: model.ActionUnavailable}, nil
 		}
 		messages = append(messages, model.Content{Role: "user", Parts: []model.Part{{FunctionResponse: &model.ToolResponse{Name: calls[0].Name, Response: result}}}})
-		response, err = agent.provider.Generate(ctx, messages, agent.definitions())
+		response, err = agent.provider.Generate(ctx, messages, agent.definitions(question.Text))
 		if err != nil {
 			return model.Answer{}, err
 		}
@@ -175,7 +192,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 			}
 			break
 		}
-		if agent.validate(calls[0], messages[:len(messages)-1]) != nil {
+		if !agent.allowsTool(question.Text, calls[0].Name) || agent.validate(calls[0], messages[:len(messages)-1]) != nil {
 			break
 		}
 		agent.mu.Lock()

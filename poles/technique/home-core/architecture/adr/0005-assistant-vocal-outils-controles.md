@@ -10,6 +10,8 @@ Home Core orchestre une interaction vocale selon la chaîne `audio → vérifica
 
 Les commandes maison déterministes peuvent être interprétées sans LLM. La vérification de locuteur compare un embedding vocal à des profils enrôlés et retourne `unknown` sous le seuil de confiance. Les lectures Gmail/Drive et les actions externes restent soumises à l’identité, aux droits et, si nécessaire, à une confirmation explicite. Une correspondance vocale seule ne constitue jamais une authentification forte.
 
+Les outils Gmail et Drive ne sont proposés au modèle que lorsqu’une demande mentionne explicitement la source concernée (mail/Gmail/courriel pour Gmail ; Drive/document/fichier pour Drive). Une question générale, notamment d’actualité, n’expose aucun outil Workspace et ne peut donc pas déclencher une demande d’accès à des données personnelles.
+
 ## Conséquences
 
 - L’audio brut n’est pas journalisé par défaut et son envoi hors domicile doit être explicite.

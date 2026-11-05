@@ -10,10 +10,12 @@ import (
 type scriptedModel struct {
 	turns []model.Content
 	seen  [][]model.Content
+	tools [][]model.ToolDefinition
 }
 
-func (m *scriptedModel) Generate(_ context.Context, messages []model.Content, _ []model.ToolDefinition) (model.Content, error) {
+func (m *scriptedModel) Generate(_ context.Context, messages []model.Content, definitions []model.ToolDefinition) (model.Content, error) {
 	m.seen = append(m.seen, messages)
+	m.tools = append(m.tools, definitions)
 	result := m.turns[0]
 	m.turns = m.turns[1:]
 	return result, nil
@@ -48,7 +50,7 @@ func TestToolConversationAutoApprovesWorkspaceAndReads(t *testing.T) {
 	mail := &fakeMail{}
 	agent := NewToolConversation(provider, mail)
 	ctx := context.Background()
-	first, err := agent.AnswerQuestion(ctx, model.Question{Text: "Lis la facture EDF"})
+	first, err := agent.AnswerQuestion(ctx, model.Question{Text: "Lis le mail de facture EDF"})
 	if err != nil || first.Text != "42 euros" || first.Status != model.ActionExecuted || mail.searches != 1 || mail.reads != 1 {
 		t.Fatalf("first=%+v err=%v", first, err)
 	}
@@ -69,9 +71,21 @@ func TestToolConversationAutoApprovesDrive(t *testing.T) {
 	drive := &fakeDrive{}
 	provider := &scriptedModel{turns: []model.Content{call("drive_search", "query", "assurance"), {Parts: []model.Part{{Text: "Le document est trouvé."}}}}}
 	agent := NewToolConversation(provider, nil, drive)
-	first, err := agent.AnswerQuestion(context.Background(), model.Question{Text: "Trouve mon assurance"})
+	first, err := agent.AnswerQuestion(context.Background(), model.Question{Text: "Trouve le document d’assurance dans Drive"})
 	if err != nil || first.Text != "Le document est trouvé." || first.Status != model.ActionExecuted || drive.searches != 1 {
 		t.Fatalf("first=%+v err=%v", first, err)
+	}
+}
+
+func TestToolConversationDoesNotExposeWorkspaceForNews(t *testing.T) {
+	provider := &scriptedModel{turns: []model.Content{{Parts: []model.Part{{Text: "Je ne peux pas consulter les actualités en direct."}}}}}
+	agent := NewToolConversation(provider, &fakeMail{}, &fakeDrive{})
+	answer, err := agent.AnswerQuestion(context.Background(), model.Question{Text: "Quelles sont les actualités aux États-Unis ?"})
+	if err != nil || answer.Status != model.ActionExecuted {
+		t.Fatalf("answer=%+v err=%v", answer, err)
+	}
+	if len(provider.tools) != 1 || len(provider.tools[0]) != 0 {
+		t.Fatalf("workspace tools must not be available for news: %+v", provider.tools)
 	}
 }
 

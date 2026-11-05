@@ -3,6 +3,7 @@ package assistanthttp
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
 )
 
@@ -39,6 +40,7 @@ func (handler *WakeHandler) ServeHTTP(writer http.ResponseWriter, request *http.
 		return
 	}
 	if detected && handler.state != nil {
+		slog.Info("wake word detected")
 		handler.state.Update(map[string]any{"state": "listening"})
 	}
 	writeJSON(writer, http.StatusOK, map[string]any{"detected": detected})
