@@ -22,6 +22,7 @@ import (
 	choreshttp "github.com/clementortiz/home-ai/home-core/internal/chores/adapters/inbound/http"
 	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/homeassistant"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
@@ -62,8 +63,13 @@ func main() {
 		logger.Error("invalid Zigbee fixture", "error", err)
 		os.Exit(1)
 	}
-	zigbeeService := homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
-	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(zigbeeService))
+	var homeService homecontrolapp.Service
+	if url, token := os.Getenv("HOME_CORE_HOME_ASSISTANT_URL"), os.Getenv("HOME_CORE_HOME_ASSISTANT_TOKEN"); url != "" && token != "" {
+		homeService = homecontrolapp.NewService(homeassistant.NewClient(&http.Client{Timeout: 10 * time.Second}, url, token))
+	} else {
+		homeService = homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
+	}
+	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(homeService))
 	trainsProvider := navitia.NewClient(&http.Client{Timeout: 10 * time.Second}, envOr("HOME_CORE_SNCF_BASE_URL", "https://api.trainnomade.fr"), envOr("HOME_CORE_SNCF_STOP_AREA", "87751784"))
 	marketProvider := eodhd.NewClient(&http.Client{Timeout: 10 * time.Second}, os.Getenv("HOME_CORE_EODHD_BASE_URL"), os.Getenv("HOME_CORE_EODHD_API_KEY"))
 	mux.Handle("/v1/insights/", insightshttp.NewHandler(insightsapp.NewGetTrains(trainsProvider), insightsapp.NewGetMarketHistory(marketProvider)))
@@ -73,6 +79,9 @@ func main() {
 	var driveReader assistantapp.DriveReader
 	sttProvider := google.NewTranscriber(&http.Client{Timeout: 30 * time.Second}, os.Getenv("HOME_CORE_STT_BASE_URL"), os.Getenv("HOME_CORE_STT_API_KEY"), os.Getenv("HOME_CORE_STT_LANGUAGE"), os.Getenv("HOME_CORE_STT_PROJECT"), os.Getenv("HOME_CORE_STT_LOCATION"))
 	tools := map[string]assistantapp.ActionExecutor{}
+	homeTool := assistantapp.NewHomeTool(homeService)
+	tools["home.turn_on"] = homeTool
+	tools["home.turn_off"] = homeTool
 	databasePath := os.Getenv("HOME_CORE_DATABASE_PATH")
 	if databasePath == "" {
 		databasePath = "/var/lib/home-core/home-core.sqlite"

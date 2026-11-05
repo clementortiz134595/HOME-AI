@@ -9,6 +9,8 @@ Home Core doit piloter des appareils, commencer par Zigbee, puis intégrer d'aut
 
 ## Décision
 
+Home Assistant est retenu comme passerelle d'intégration pour le premier déploiement domotique. L'adaptateur REST utilise `HOME_CORE_HOME_ASSISTANT_URL` et `HOME_CORE_HOME_ASSISTANT_TOKEN`, inventorie les entités `light`, `switch` et `sensor`, exécute `turn_on`/`turn_off`, puis relit l'état avant de retourner un succès.
+
 Le module `home-control` définit un modèle commun d'appareil, de capacité, d'état confirmé et de commande. L'application dépend d'un port `Connector`; chaque protocole implémente ce port dans son adaptateur. L'adaptateur Zigbee expose un port `Transport` minimal, sans dépendance à un fournisseur.
 
 Les mesures électriques sont optionnelles et l'état retourné par l'intégration est la seule confirmation d'une action.

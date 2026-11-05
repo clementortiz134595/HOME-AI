@@ -2,6 +2,10 @@
 
 Le module porte l'inventaire, les capacités, l'état confirmé et les commandes des appareils domestiques. Il ne connaît ni Home Panel ni un fabricant Zigbee.
 
+## Adaptateur Home Assistant
+
+Home Core peut utiliser Home Assistant comme passerelle domotique en configurant `HOME_CORE_HOME_ASSISTANT_URL` et `HOME_CORE_HOME_ASSISTANT_TOKEN`. L'adaptateur utilise l'API REST Home Assistant, conserve les `entity_id` comme identifiants de périphériques et relit l'état après chaque commande pour ne jamais annoncer une réussite supposée. Les entités `light`, `switch` et `sensor` sont actuellement inventoriées ; les commandes `turn_on` et `turn_off` sont supportées pour les lumières et interrupteurs.
+
 - `model.Device` décrit un appareil et ses capacités (`switch`, `current`, `power`).
 - `model.DeviceState` distingue l'état observé de l'action demandée.
 - `application.Service` expose l'inventaire, la lecture d'état et `turn_on` / `turn_off`.

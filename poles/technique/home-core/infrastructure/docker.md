@@ -6,6 +6,8 @@
 
 Home Core est livré comme **un conteneur applicatif unique** dans un projet Docker Compose dédié. Le monolithe contient les modules métier ; Docker ne crée pas un conteneur par module. Home Assistant reste une dépendance déjà présente sur le réseau local, et non un sous-conteneur de Home Core.
 
+Pour activer la passerelle domotique, injecter `HOME_CORE_HOME_ASSISTANT_URL` et `HOME_CORE_HOME_ASSISTANT_TOKEN` dans Home Core. Le jeton doit provenir d'un secret d'environnement ou d'un gestionnaire de secrets et ne doit jamais être committé.
+
 ```text
 Raspberry Pi ou serveur local
 └── projet Docker Compose home-core
