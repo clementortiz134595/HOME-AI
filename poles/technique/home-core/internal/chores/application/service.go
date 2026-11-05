@@ -3,8 +3,10 @@ package application
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/clementortiz/home-ai/home-core/internal/chores/model"
 )
@@ -34,6 +36,11 @@ func NewService(repositories ...Repository) *Service {
 			}
 		}
 	}
+	if s.repository != nil && len(s.chores) == 0 {
+		for _, chore := range DefaultChores(time.Now()) {
+			_, _ = s.Create(chore)
+		}
+	}
 	return s
 }
 
@@ -45,6 +52,88 @@ func (s *Service) List() []model.Chore {
 		result = append(result, chore)
 	}
 	return result
+}
+
+// Weekly returns only occurrences due in the ISO week containing weekStart.
+// Date is the recurrence anchor; assignments rotate by occurrence, not by calendar month.
+func (s *Service) Weekly(weekStart time.Time) []model.Chore {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	start := dateOnly(weekStart)
+	for start.Weekday() != time.Monday {
+		start = start.AddDate(0, 0, -1)
+	}
+	end := start.AddDate(0, 0, 7)
+	result := make([]model.Chore, 0)
+	for _, chore := range s.chores {
+		anchor, err := time.Parse("2006-01-02", chore.Date)
+		if err != nil {
+			continue
+		}
+		for day := start; day.Before(end); day = day.AddDate(0, 0, 1) {
+			if !occursOn(chore, anchor, day) {
+				continue
+			}
+			occurrence := chore
+			occurrence.DueDate = day.Format("2006-01-02")
+			occurrence.Completed = false
+			if chore.Alternating && len(chore.Assignees) > 0 {
+				occurrence.Assignees = []string{chore.Assignees[occurrenceIndex(chore, anchor, day)%len(chore.Assignees)]}
+			}
+			result = append(result, occurrence)
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].DueDate+result[i].ID < result[j].DueDate+result[j].ID })
+	return result
+}
+
+func dateOnly(value time.Time) time.Time {
+	y, m, d := value.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, value.Location())
+}
+func occursOn(chore model.Chore, anchor, day time.Time) bool {
+	if day.Before(anchor) {
+		return false
+	}
+	days := int(day.Sub(anchor).Hours() / 24)
+	switch chore.Frequency {
+	case "daily":
+		return true
+	case "every_3_days":
+		return days%3 == 0
+	case "weekly", "weekend":
+		if chore.Frequency == "weekend" {
+			return day.Weekday() == time.Saturday
+		}
+		return days%7 == 0
+	case "every_15_days":
+		return days%15 == 0
+	case "monthly":
+		return day.Day() == anchor.Day()
+	case "every_3_months":
+		return day.Day() == anchor.Day() && ((day.Year()-anchor.Year())*12+int(day.Month()-anchor.Month()))%3 == 0
+	case "every_6_months":
+		return day.Day() == anchor.Day() && ((day.Year()-anchor.Year())*12+int(day.Month()-anchor.Month()))%6 == 0
+	case "":
+		return day.Equal(anchor)
+	default:
+		return chore.IntervalWeeks > 0 && days%(chore.IntervalWeeks*7) == 0
+	}
+}
+func occurrenceIndex(chore model.Chore, anchor, day time.Time) int {
+	days := int(day.Sub(anchor).Hours() / 24)
+	switch chore.Frequency {
+	case "monthly":
+		return (day.Year()-anchor.Year())*12 + int(day.Month()-anchor.Month())
+	case "every_3_months":
+		return ((day.Year()-anchor.Year())*12 + int(day.Month()-anchor.Month())) / 3
+	case "every_6_months":
+		return ((day.Year()-anchor.Year())*12 + int(day.Month()-anchor.Month())) / 6
+	}
+	if chore.Frequency == "weekly" || chore.Frequency == "weekend" {
+		return days / 7
+	}
+	return days
 }
 
 func (s *Service) Create(chore model.Chore) (model.Chore, error) {
@@ -169,7 +258,7 @@ func validate(chore model.Chore) error {
 	if chore.Alternating && len(chore.Assignees) < 2 {
 		return errors.New("an alternating chore needs two assignees")
 	}
-	if chore.Frequency != "" && chore.Frequency != "weekly" {
+	if chore.Frequency != "" && !map[string]bool{"daily": true, "every_3_days": true, "weekly": true, "weekend": true, "every_15_days": true, "monthly": true, "every_3_months": true, "every_6_months": true}[chore.Frequency] {
 		return errors.New("unsupported frequency")
 	}
 	return nil

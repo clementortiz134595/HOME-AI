@@ -55,11 +55,7 @@ const agendaItems = [
   { time: "Jeudi · 19:00", title: "Cours de yoga", detail: "Agenda de Lise", owner: "Lise", tone: "bg-violet-400" },
 ];
 
-const weeklyChores = [
-  { id: "chore-1", date: "Lun. 3", objective: "Passer l’aspirateur", person: "Clément", icon: RobotVacuum, tone: "bg-sky-400", completed: false },
-  { id: "chore-2", date: "Mer. 5", objective: "Sortir le recyclage", person: "Lise", icon: Recycle, tone: "bg-amber-400", completed: false },
-  { id: "chore-3", date: "Sam. 8", objective: "Nettoyer la cuisine", person: "Duo", icon: UtensilsCrossed, tone: "bg-emerald-400", completed: false },
-];
+type WeeklyChore = { id: string; dueDate: string; objective: string; assignees: string[]; completed: boolean };
 type Market = { symbol: string; name: string; isin: string; change: number; price: number };
 type MarketDetail = { etf: Market; history: { label: string | number; value: number }[]; dataStatus: string };
 type Train = { id: string; departure: string; scheduledDeparture: string; destination: string; trainNumber: string; commercialMode: string; platform?: string; status: "on_time" | "delayed"; delayMinutes: number; disruption?: { title: string; cause?: string; effect?: string; information?: string } };
@@ -554,9 +550,10 @@ function ReminderDetailDialog({ reminder, onClose }: { reminder: Reminder; onClo
 }
 
 function WeeklyChoresCard() {
-  const [tasks, setTasks] = useState(() => { try { const saved = JSON.parse(window.localStorage.getItem("home-ai:weekly-chores") ?? "{}") as Record<string, boolean>; return weeklyChores.map((task) => ({ ...task, completed: saved[task.id] ?? task.completed })); } catch { return weeklyChores; } });
-  const toggle = (id: string) => { const next = tasks.map((task) => task.id === id ? { ...task, completed: !task.completed } : task); setTasks(next); try { window.localStorage.setItem("home-ai:weekly-chores", JSON.stringify(Object.fromEntries(next.map((task) => [task.id, task.completed])))); } catch { /* Storage is optional. */ } const task = next.find((item) => item.id === id)!; void fetch(`/v1/chores/${encodeURIComponent(id)}/completion`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ completed: task.completed }) }).catch(() => { /* The locally saved state remains usable offline. */ }); };
-  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{tasks.map((task) => { const Icon = task.icon; return <button type="button" onClick={() => toggle(task.id)} key={task.id} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className={"grid size-7 shrink-0 place-items-center rounded-lg bg-white/10 " + task.tone}><Icon className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{task.date} · {task.person}</p></div></button>; })}</CardContent></Card>;
+  const [tasks, setTasks] = useState<WeeklyChore[]>([]); const [unavailable, setUnavailable] = useState(false);
+  useEffect(() => { const controller = new AbortController(); fetch("/v1/chores/", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => setTasks(Array.isArray(data.chores) ? data.chores : [])).catch(() => setUnavailable(true)); return () => controller.abort(); }, []);
+  const toggle = (id: string) => { const task = tasks.find((item) => item.id === id); if (!task) return; setTasks((current) => current.map((item) => item.id === id ? { ...item, completed: !item.completed } : item)); void fetch(`/v1/chores/${encodeURIComponent(id)}/completion`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ completed: !task.completed }) }); };
+  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{unavailable ? <p className="text-sm text-amber-300">Tâches ménagères indisponibles.</p> : tasks.length === 0 ? <p className="text-sm text-slate-500">Aucune tâche cette semaine.</p> : tasks.map((task) => <button type="button" onClick={() => toggle(task.id)} key={`${task.id}-${task.dueDate}`} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-400"><UtensilsCrossed className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{new Date(`${task.dueDate}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} · {task.assignees.join(" & ")}</p></div></button>)}</CardContent></Card>;
 }
 
 function TrainsCard() {
