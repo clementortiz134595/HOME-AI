@@ -77,6 +77,7 @@ func (agent *ToolConversation) definitions() []model.ToolDefinition {
 func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question model.Question) (model.Answer, error) {
 	messages := []model.Content{{Role: "user", Parts: []model.Part{{Text: question.Text}}}}
 	steps := 0
+	gmailQuery := ""
 	if question.ConfirmationID != "" {
 		agent.mu.Lock()
 		pending, ok := agent.pending[question.ConfirmationID]
@@ -145,6 +146,9 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 	trusted := agent.trusted[calls[0].Name]
 	agent.mu.Unlock()
 	for trusted {
+		if calls[0].Name == "gmail_search" {
+			gmailQuery, _ = calls[0].Args["query"].(string)
+		}
 		result, err := agent.execute(ctx, calls[0])
 		if err != nil {
 			return model.Answer{Text: "L’accès à cette source a échoué. Vous pouvez relancer la demande.", Status: model.ActionUnavailable}, nil
@@ -167,7 +171,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 		}
 		if len(calls) != 1 {
 			if len(calls) == 0 && strings.TrimSpace(answer.String()) != "" {
-				return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted}, nil
+				return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted, GmailQuery: gmailQuery}, nil
 			}
 			break
 		}
@@ -178,7 +182,7 @@ func (agent *ToolConversation) AnswerQuestion(ctx context.Context, question mode
 		trusted = agent.trusted[calls[0].Name]
 		agent.mu.Unlock()
 		if strings.TrimSpace(answer.String()) != "" {
-			return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted}, nil
+			return model.Answer{Text: answer.String(), Provider: "gemini", Generated: true, Status: model.ActionExecuted, GmailQuery: gmailQuery}, nil
 		}
 	}
 	token := make([]byte, 32)

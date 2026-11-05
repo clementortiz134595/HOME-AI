@@ -193,7 +193,29 @@ func (client *Client) ReadMail(ctx context.Context, id string) (model.MailMessag
 		return model.MailMessage{}, err
 	}
 	summary := message.summary()
-	return model.MailMessage{MailSummary: summary, Body: decodeBody(message.Payload)}, nil
+	return model.MailMessage{MailSummary: summary, Body: decodeBody(message.Payload), Attachments: attachments(message.Payload)}, nil
+}
+
+func (client *Client) ReadMailAttachment(ctx context.Context, messageID, attachmentID string) ([]byte, error) {
+	token, err := client.token(ctx)
+	if err != nil {
+		return nil, err
+	}
+	endpoint := "https://gmail.googleapis.com/gmail/v1/users/me/messages/" + url.PathEscape(messageID) + "/attachments/" + url.PathEscape(attachmentID)
+	request, _ := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	response, err := client.httpClient(token).Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode/100 != 2 {
+		return nil, fmt.Errorf("Gmail attachment returned status %d", response.StatusCode)
+	}
+	var payload struct{ Data string `json:"data"` }
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		return nil, err
+	}
+	return base64.RawURLEncoding.DecodeString(strings.TrimRight(payload.Data, "="))
 }
 
 func (client *Client) readSummary(ctx context.Context, token *oauth2.Token, id string) (model.MailSummary, error) {
@@ -275,7 +297,9 @@ type gmailPayload struct {
 	Filename string                         `json:"filename"`
 	Headers  []struct{ Name, Value string } `json:"headers"`
 	Body     struct {
-		Data string `json:"data"`
+		Data         string `json:"data"`
+		AttachmentID string `json:"attachmentId"`
+		Size         int64  `json:"size"`
 	} `json:"body"`
 	Parts []gmailPayload `json:"parts"`
 }
@@ -316,4 +340,19 @@ func decodeMIMEBody(payload gmailPayload, mimeType string) string {
 		}
 	}
 	return strings.Join(bodies, "\n")
+}
+
+func attachments(payload gmailPayload) []model.MailAttachment {
+	items := make([]model.MailAttachment, 0)
+	var visit func(gmailPayload)
+	visit = func(part gmailPayload) {
+		if part.Filename != "" {
+			items = append(items, model.MailAttachment{ID: part.Body.AttachmentID, Name: part.Filename, MimeType: part.MimeType, Size: part.Body.Size})
+		}
+		for _, child := range part.Parts {
+			visit(child)
+		}
+	}
+	visit(payload)
+	return items
 }

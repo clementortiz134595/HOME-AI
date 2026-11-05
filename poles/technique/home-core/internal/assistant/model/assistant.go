@@ -50,6 +50,7 @@ type Answer struct {
 	Status               ActionStatus `json:"status,omitempty"`
 	ConfirmationID       string       `json:"confirmationId,omitempty"`
 	ContinueConversation bool         `json:"continueConversation,omitempty"`
+	GmailQuery           string       `json:"gmailQuery,omitempty"`
 }
 
 // Tool messages preserve the provider conversation, including opaque signatures.

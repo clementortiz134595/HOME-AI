@@ -13,7 +13,15 @@ type MailSummary struct {
 
 type MailMessage struct {
 	MailSummary
-	Body string `json:"body"`
+	Body        string           `json:"body"`
+	Attachments []MailAttachment `json:"attachments,omitempty"`
+}
+
+type MailAttachment struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	MimeType string `json:"mimeType"`
+	Size     int64  `json:"size"`
 }
 
 type DriveFile struct {
