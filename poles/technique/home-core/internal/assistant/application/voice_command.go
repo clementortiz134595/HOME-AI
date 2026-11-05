@@ -47,9 +47,20 @@ func (command VoiceCommand) ExecuteWithProgress(ctx context.Context, input model
 	if result.Answer != nil {
 		answer := *result.Answer
 		answer.ContinueConversation = answer.ConfirmationID != "" || strings.HasSuffix(strings.TrimSpace(answer.Text), "?")
+		if answer.GmailQuery == "" {
+			answer.GmailQuery = gmailQuery(result.Intent)
+		}
 		return answer, transcript, nil
 	}
-	return model.Answer{Text: result.Message, Provider: "home-core", Model: "deterministic-tools", Generated: false, ContinueConversation: result.Status == model.ActionConfirmation || strings.HasSuffix(strings.TrimSpace(result.Message), "?")}, transcript, nil
+	return model.Answer{Text: result.Message, Provider: "home-core", Model: "deterministic-tools", Generated: false, ContinueConversation: result.Status == model.ActionConfirmation || strings.HasSuffix(strings.TrimSpace(result.Message), "?"), GmailQuery: gmailQuery(result.Intent)}, transcript, nil
+}
+
+func gmailQuery(intent *model.Intent) string {
+	if intent == nil || intent.Name != "gmail.search" {
+		return ""
+	}
+	query, _ := intent.Parameters["query"].(string)
+	return strings.TrimSpace(query)
 }
 
 func intentName(intent *model.Intent) string {

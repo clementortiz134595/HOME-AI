@@ -192,3 +192,7 @@ func listenAddress() string {
 	}
 	return ":8080"
 }
+	// Keep routing on the fastest dedicated model; the established AI client
+	// remains responsible for the conversational answer and tool execution.
+		mux.Handle("/v1/workspace/google/gmail/messages", workspacehttp.NewGmailMessagesHandler(gmailProvider))
+		mux.Handle("/v1/workspace/google/gmail/messages/", workspacehttp.NewGmailMessagesHandler(gmailProvider))

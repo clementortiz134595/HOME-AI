@@ -11,6 +11,7 @@ type VoiceStatus struct {
 	State      string `json:"state"`
 	Transcript string `json:"transcript,omitempty"`
 	Answer     string `json:"answer,omitempty"`
+	GmailQuery string `json:"gmailQuery,omitempty"`
 	UpdatedAt  string `json:"updatedAt"`
 }
 

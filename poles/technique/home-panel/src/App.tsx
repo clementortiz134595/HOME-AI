@@ -8,6 +8,7 @@ import {
   CookingPot,
   Home,
   Lightbulb,
+  Mail,
   Mic,
   Monitor,
   MoreHorizontal,
@@ -24,11 +25,14 @@ import {
   UtensilsCrossed,
   WalletCards,
   UserRound,
+  Paperclip,
   X,
 } from "lucide-react";
 import { Orb } from "@yogesharc/thinking-orbs";
 import { Ascii } from "ascii.rest/react";
 import * as earthrise from "ascii.rest/pieces/earthrise";
+import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +41,8 @@ import { getWeather, type WeatherReport } from "@/lib/weather";
 import { getDeviceState, getHomeDevices, setDeviceSwitch, type DeviceState, type HomeDevice } from "@/lib/homeControl";
 import { getCalendarEvents, getCalendars, type CalendarEvent } from "@/lib/calendar";
 import { AgentPipeline } from "@/components/ai/agent-pipeline";
+
+GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const rooms = [
   { name: "Salon", detail: "2 lumières · 21°", icon: Sofa, active: true, tone: "bg-sky-100 text-sky-700" },
@@ -316,6 +322,138 @@ function MailConfirmation({ id, onAnswer, onCancel }: { id: string; onAnswer: (a
   }}>{busy ? "Consultation…" : "Confirmer et continuer"}</Button></div>{error && <p role="alert">{error}</p>}</div>;
 }
 
+type DebugMail = {
+  id: string;
+  sender: string;
+  senderEmail: string;
+  recipients: string[];
+  date: string;
+  subject: string;
+  preview: string;
+  body: string[];
+  attachments: { id?: string; name: string; size: string; type: string }[];
+  unread?: boolean;
+};
+
+const debugMails: DebugMail[] = [
+  {
+    id: "design-review",
+    sender: "Lise Martin",
+    senderEmail: "lise.martin@example.com",
+    recipients: ["Clément", "Équipe maison"],
+    date: "Aujourd’hui · 09:42",
+    subject: "Re: Revue de l’interface Home AI",
+    preview: "J’ai ajouté mes retours sur la nouvelle vue des mails…",
+    body: ["Salut Clément,", "J’ai ajouté mes retours sur la nouvelle vue des mails. La lecture en deux colonnes fonctionne bien sur tablette, surtout avec les pièces jointes visibles dès le premier regard.", "On peut en reparler ce soir si tu veux. À bientôt !\nLise"],
+    attachments: [{ name: "retours-interface.pdf", size: "1,2 Mo", type: "PDF" }],
+    unread: true,
+  },
+  {
+    id: "delivery",
+    sender: "Maison & Confort",
+    senderEmail: "suivi@maison-confort.example",
+    recipients: ["Clément"],
+    date: "Hier · 16:18",
+    subject: "Votre livraison est prévue demain",
+    preview: "Votre commande arrivera entre 14 h et 16 h…",
+    body: ["Bonjour Clément,", "Votre commande arrivera demain entre 14 h et 16 h à l’adresse indiquée lors de votre commande.", "Vous pouvez suivre la livraison depuis votre espace client."],
+    attachments: [{ name: "bon-de-commande.pdf", size: "284 ko", type: "PDF" }],
+  },
+  {
+    id: "calendar",
+    sender: "Clément Dubois",
+    senderEmail: "clement.dubois@example.com",
+    recipients: ["Lise Martin", "Clément"],
+    date: "Lundi · 11:07",
+    subject: "Préparation du week-end",
+    preview: "Voici la liste des choses à prévoir pour samedi…",
+    body: ["Bonjour,", "Voici la liste des choses à prévoir pour samedi. J’ai mis à jour le calendrier partagé et ajouté les horaires de train.", "Bonne journée"],
+    attachments: [],
+  },
+];
+
+type GmailMessageResponse = {
+  id: string;
+  threadId?: string;
+  from: string;
+  subject: string;
+  receivedAt: string;
+  snippet: string;
+  body: string;
+  attachments?: { id: string; name: string; mimeType: string; size: number }[];
+};
+
+function useGmailMails(query = "", enabled = true) {
+  const [mails, setMails] = useState<DebugMail[]>([]);
+  const [loading, setLoading] = useState(enabled);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!enabled || !query) { setMails([]); setLoading(false); return; }
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/v1/workspace/google/gmail/messages?q=${encodeURIComponent(query)}`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Gmail indisponible");
+        return response.json() as Promise<{ messages: GmailMessageResponse[] }>;
+      })
+      .then((payload) => {
+        if (cancelled) return;
+        const formatter = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
+        setMails((payload.messages ?? []).map((mail) => {
+          const match = mail.from.match(/^(.*?)\s*<([^>]+)>$/);
+          const sender = match?.[1]?.trim() || mail.from;
+          const senderEmail = match?.[2] || mail.from;
+          return { id: mail.id, sender, senderEmail, recipients: ["vous"], date: formatter.format(new Date(mail.receivedAt)), subject: mail.subject || "(sans objet)", preview: mail.snippet, body: mail.body ? mail.body.split(/\n{2,}/) : [mail.snippet], attachments: (mail.attachments ?? []).map((attachment) => ({ id: attachment.id, name: attachment.name, size: attachment.size >= 1_000_000 ? `${(attachment.size / 1_000_000).toFixed(1)} Mo` : `${Math.max(1, Math.round(attachment.size / 1_000))} Ko`, type: attachment.mimeType })) };
+        }));
+        setError("");
+      })
+      .catch((reason: Error) => { if (!cancelled) setError(reason.message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [query, enabled]);
+  return { mails, loading, error };
+}
+
+function gmailQueryFromTranscript(transcript?: string) {
+  const match = transcript?.match(/\b(?:de|avec|pour)\s+([A-ZÀ-ÖØ-Ý][\p{L}'-]+(?:\s+[A-ZÀ-ÖØ-Ý][\p{L}'-]+){1,2})/u);
+  return match?.[1] ?? "newer_than:30d";
+}
+
+function MailDebugDialog({ onClose }: { onClose: () => void }) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [previewAttachment, setPreviewAttachment] = useState<{ name: string; type: string; size: string } | null>(null);
+  const [dragX, setDragX] = useState(0);
+  const live = useGmailMails("newer_than:30d");
+  const dragStart = useRef<number | null>(null);
+  const debugMails = live.mails;
+  const move = (direction: number) => setSelectedIndex((current) => (current + direction + debugMails.length) % debugMails.length);
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => { dragStart.current = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); };
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragStart.current === null) return;
+    const delta = event.clientX - dragStart.current;
+    dragStart.current = null;
+    if (Math.abs(delta) > 48) move(delta < 0 ? 1 : -1);
+    setDragX(0);
+  };
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  const attachmentKind = (name: string) => name.endsWith(".pdf") ? "PDF" : name.match(/\.(png|jpe?g|gif|webp)$/i) ? "Image" : name.match(/\.(mp4|mov|webm)$/i) ? "Vidéo" : name.match(/\.(xlsx?|csv)$/i) ? "Tableur" : "Document";
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-zinc-950/80 p-3 backdrop-blur-sm" role="presentation" onMouseDown={onClose}>
+    <section role="dialog" aria-modal="true" aria-labelledby="mail-debug-title" className="mail-debug-dialog flex h-[min(760px,calc(100dvh-1.5rem))] w-full max-w-6xl flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+      <header className="flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-7"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-sky-400/15 text-sky-200"><Mail className="size-5" /></span><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-sky-200">Debug · conversation</p><h2 id="mail-debug-title" className="text-lg font-semibold">Recherche de mails</h2></div></div><Button variant="ghost" size="icon" aria-label="Fermer la prévisualisation des mails" onClick={onClose}><X /></Button></header>
+      <div className="mail-debug-layout grid min-h-0 flex-1 md:grid-cols-[minmax(240px,.8fr)_minmax(340px,1.2fr)]">
+        <section className="flex min-h-0 flex-col justify-center p-6 sm:p-10"><p className="text-xs font-semibold uppercase tracking-[.18em] text-sky-200">Assistant · Gmail</p><p className="mt-4 max-w-md text-2xl font-semibold tracking-tight sm:text-3xl">J’ai trouvé {debugMails.length} mails correspondant à votre recherche.</p><p className="mt-4 max-w-md text-sm leading-6 text-slate-400">Faites glisser la carte pour parcourir les résultats. Les informations restent dans la conversation.</p><div className="mt-8 flex items-center gap-2 text-xs text-slate-500"><span className="size-2 rounded-full bg-sky-300" />{selectedIndex + 1} sur {debugMails.length}</div></section>
+        <section className="flex min-h-0 flex-col justify-center overflow-hidden px-5 pb-8 sm:px-10 sm:pb-10">{live.loading ? <p className="text-sm text-slate-400">Lecture des vrais mails Gmail…</p> : live.error ? <p className="text-sm text-rose-300">{live.error}. Connectez Gmail pour afficher les messages.</p> : debugMails.length === 0 ? <p className="text-sm text-slate-400">Aucun mail trouvé sur les 30 derniers jours.</p> : <><div className="mail-stack" onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerMove={(event) => { if (dragStart.current !== null) setDragX(event.clientX - dragStart.current); }} aria-label="Résultats mails, faites glisser pour naviguer">{debugMails.map((mail, index) => { const offset = (index - selectedIndex + debugMails.length) % debugMails.length; const isSelected = offset === 0; return <article key={mail.id} className={`mail-card ${isSelected ? "mail-card-active" : ""}`} style={{ transform: isSelected ? `translateX(${dragX}px) rotate(${dragX * 0.025}deg)` : `translateY(${offset * 10}px) rotate(${offset === 1 ? 6 : -6}deg) scale(${1 - offset * .035})`, zIndex: debugMails.length - offset, opacity: offset > 2 ? 0 : 1 }}><div className="flex items-start justify-between gap-3"><div><p className="text-xs text-slate-500">{mail.date}</p><h3 className="mt-2 text-lg font-semibold leading-tight">{mail.subject}</h3></div><Badge className="shrink-0 bg-sky-400/15 text-sky-200">{mail.unread ? "Nouveau" : "Lu"}</Badge></div><div className="mt-5 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-full bg-gradient-to-br from-sky-300 to-violet-300 text-sm font-bold text-zinc-950">{mail.sender.split(" ").map((part) => part[0]).join("").slice(0, 2)}</span><div className="min-w-0"><p className="truncate text-sm font-semibold">{mail.sender}</p><p className="truncate text-xs text-slate-500">À {mail.recipients.join(", ")}</p></div></div><div className="mail-debug-body mt-6 space-y-3 text-sm leading-6 text-slate-300">{mail.body.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>{mail.attachments.length > 0 && <button type="button" onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setPreviewAttachment({ ...mail.attachments[0], type: attachmentKind(mail.attachments[0].name) }); }} className="mt-6 flex w-full items-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-left text-xs text-sky-100 transition hover:bg-white/[0.1]"><Paperclip className="size-3.5" />{mail.attachments[0].name}<span className="text-slate-500">· {mail.attachments[0].size}</span></button>}<div className="mt-6 flex gap-2"><Button variant="secondary" className="h-9 text-xs">Répondre</Button><Button variant="ghost" className="h-9 text-xs">Ouvrir</Button></div></article>; })}</div><div className="mt-6 flex justify-center gap-2"><Button variant="ghost" size="icon" aria-label="Mail précédent" onClick={() => move(-1)}><ChevronLeft /></Button><div className="flex items-center gap-1.5">{debugMails.map((mail, index) => <button key={mail.id} type="button" aria-label={`Afficher ${mail.subject}`} onClick={() => setSelectedIndex(index)} className={`size-1.5 rounded-full ${index === selectedIndex ? "bg-sky-300" : "bg-zinc-700"}`} />)}</div><Button variant="ghost" size="icon" aria-label="Mail suivant" onClick={() => move(1)}><ChevronRight /></Button></div></>}</section>
+      </div>
+      {previewAttachment && <div className="attachment-drawer-backdrop fixed inset-0 z-[60] bg-zinc-950/65" role="presentation" onMouseDown={() => setPreviewAttachment(null)}><section role="dialog" aria-modal="true" aria-labelledby="attachment-preview-title" className="attachment-drawer fixed inset-y-0 right-0 w-full max-w-[50vw] min-w-[360px] overflow-y-auto border-l border-white/10 bg-zinc-900 p-5 shadow-2xl sm:p-8" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.16em] text-sky-200">Aperçu · {previewAttachment.type}</p><h2 id="attachment-preview-title" className="mt-2 text-xl font-semibold">{previewAttachment.name}</h2><p className="mt-1 text-xs text-slate-500">{previewAttachment.size} · lecture intégrée, aucun téléchargement</p></div><Button variant="ghost" size="icon" aria-label="Fermer l’aperçu" onClick={() => setPreviewAttachment(null)}><X /></Button></div><div className="attachment-document mt-6"><div className="attachment-document-toolbar"><span>{previewAttachment.type}</span><span>1 / 1</span></div><div className="attachment-document-page"><h3>Revue de l’interface Home AI</h3><p>Document affiché directement dans le panneau de lecture.</p><p>La pièce jointe est consultable sans quitter la conversation. Le viewer final pourra afficher le contenu fourni par Home Core : PDF, image, vidéo, document texte ou tableur.</p><div className="attachment-document-lines"><span /><span /><span /><span /><span /></div></div></div></section></div>}
+    </section>
+  </div>;
+}
+
 function AssistantOrb({ compact = false }: { compact?: boolean }) {
   const [listening, setListening] = useState(false);
   const [status, setStatus] = useState("Touchez pour parler");
@@ -552,9 +690,11 @@ function ReminderDetailDialog({ reminder, onClose }: { reminder: Reminder; onClo
 
 function WeeklyChoresCard() {
   const [tasks, setTasks] = useState<WeeklyChore[]>([]); const [unavailable, setUnavailable] = useState(false);
-  useEffect(() => { const controller = new AbortController(); fetch("/v1/chores/", { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => setTasks(Array.isArray(data.chores) ? data.chores : [])).catch(() => setUnavailable(true)); return () => controller.abort(); }, []);
+  useEffect(() => { const controller = new AbortController(); const today = new Date().toISOString().slice(0, 10); fetch(`/v1/chores/?day=${today}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => setTasks(Array.isArray(data.chores) ? data.chores : [])).catch(() => setUnavailable(true)); return () => controller.abort(); }, []);
   const toggle = (id: string) => { const task = tasks.find((item) => item.id === id); if (!task) return; setTasks((current) => current.map((item) => item.id === id ? { ...item, completed: !item.completed } : item)); void fetch(`/v1/chores/${encodeURIComponent(id)}/completion`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ completed: !task.completed }) }); };
-  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">Cette semaine</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{unavailable ? <p className="text-sm text-amber-300">Tâches ménagères indisponibles.</p> : tasks.length === 0 ? <p className="text-sm text-slate-500">Aucune tâche cette semaine.</p> : tasks.map((task) => <button type="button" onClick={() => toggle(task.id)} key={`${task.id}-${task.dueDate}`} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className="grid size-7 shrink-0 place-items-center rounded-lg bg-emerald-400"><UtensilsCrossed className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{new Date(`${task.dueDate}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} · {task.assignees.join(" & ")}</p></div></button>)}</CardContent></Card>;
+  const assigneeTone = (task: WeeklyChore) => task.assignees.length > 1 ? "chore-duo" : task.assignees[0] === "Lise" ? "chore-lise" : "chore-clement";
+  const completedCount = tasks.filter((task) => task.completed).length;
+  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">{completedCount} tâche{completedCount > 1 ? "s" : ""} réalisée{completedCount > 1 ? "s" : ""} sur {tasks.length} aujourd’hui</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{unavailable ? <p className="text-sm text-amber-300">Tâches ménagères indisponibles.</p> : tasks.length === 0 ? <p className="text-sm text-slate-500">Aucune tâche aujourd’hui.</p> : tasks.map((task) => <button type="button" onClick={() => toggle(task.id)} key={`${task.id}-${task.dueDate}`} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className={`chore-person-icon grid size-7 shrink-0 place-items-center rounded-lg ${assigneeTone(task)}`}><UtensilsCrossed className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{new Date(`${task.dueDate}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} · {task.assignees.join(" & ")}</p></div></button>)}</CardContent></Card>;
 }
 
 function TrainsCard() {
@@ -563,7 +703,7 @@ function TrainsCard() {
   const format = (value: string) => new Date(value).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
   const formatUpdated = (value?: string) => value ? new Date(value).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Non communiquée";
   const dayLabel = (value: string) => { const date = new Date(value); const today = new Date(); const delta = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime(); return delta === 86400000 ? "Demain" : delta === 0 ? "Aujourd’hui" : date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" }); };
-  return <><Card className="dashboard-trains-card"><CardHeader><div><p className="text-lg font-semibold">4 prochains trains</p><p className="mt-1 text-sm text-slate-500">La Ciotat-Ceyreste → Marseille · SNCF</p></div><TrainFront className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{error ? <p className="text-sm text-amber-300">Informations SNCF indisponibles.</p> : trains.length === 0 ? <p className="text-sm text-slate-500">Chargement des départs en temps réel…</p> : trains.slice(0, 4).map((train) => <button type="button" onClick={() => setSelected(train)} key={train.id} className="flex w-full items-center justify-between rounded-xl bg-white/[0.04] px-2 py-2 text-left hover:bg-white/[0.08]"><span><span className="flex items-baseline gap-2"><span className="text-sm font-semibold">{format(train.departure)}</span><span className="text-xs text-slate-400">départ</span>{train.arrival && <><span className="text-sm font-semibold">{format(train.arrival)}</span><span className="text-xs text-slate-400">arrivée</span></>}</span><span className="text-xs text-slate-500">{dayLabel(train.departure)} · {train.trainNumber || train.commercialMode}</span></span><Badge className={train.status === "cancelled" ? "bg-rose-400/15 text-rose-200" : train.status === "delayed" ? "bg-amber-400/15 text-amber-200" : "bg-emerald-400/15 text-emerald-200"}>{train.status === "cancelled" ? "Supprimé" : train.status === "delayed" ? `+${train.delayMinutes} min` : "À l’heure"}</Badge></button>)}</CardContent></Card>{selected && <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-sm" onMouseDown={() => setSelected(null)}><section role="dialog" aria-modal="true" className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-sky-400/15 text-sky-200"><TrainFront className="size-6" /></span><div><p className="text-sm text-slate-400">{selected.commercialMode || "Train SNCF"} · {selected.trainNumber}</p><h2 className="text-xl font-semibold">{selected.destination}</h2></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Départ</p><p className="mt-1 font-semibold">{dayLabel(selected.departure)} · {format(selected.departure)} <span className="text-xs text-slate-500">(prévu {format(selected.scheduledDeparture)})</span></p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Arrivée</p><p className="mt-1 font-semibold">{selected.arrival ? `${dayLabel(selected.arrival)} · ${format(selected.arrival)}` : "Non communiquée"}</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Quai</p><p className="mt-1 font-semibold">{selected.platform || "Non communiqué"}</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Mise à jour</p><p className="mt-1 font-semibold">{formatUpdated(selected.lastUpdated)}</p></div></div>{selected.disruption && <div className="mt-3 rounded-2xl bg-amber-400/10 p-3 text-sm text-amber-100"><p className="font-semibold">{selected.disruption.title}</p>{selected.disruption.cause && <p className="mt-1">Cause : {selected.disruption.cause}</p>}{selected.disruption.information && <p className="mt-1">{selected.disruption.information}</p>}</div>}<div className="mt-5 flex justify-end"><Button onClick={() => setSelected(null)}>Fermer</Button></div></section></div>}</>;
+  return <><Card className="dashboard-trains-card"><CardHeader><div><p className="text-lg font-semibold">{trains.length || 0} prochains trains</p><p className="mt-1 text-sm text-slate-500">La Ciotat-Ceyreste → Marseille · SNCF</p></div><TrainFront className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{error ? <p className="text-sm text-amber-300">Informations SNCF indisponibles.</p> : trains.length === 0 ? <p className="text-sm text-slate-500">Chargement des départs en temps réel…</p> : trains.map((train) => <button type="button" onClick={() => setSelected(train)} key={train.id} className="flex w-full items-center justify-between rounded-xl bg-white/[0.04] px-2 py-2 text-left hover:bg-white/[0.08]"><span><span className="flex items-baseline gap-2"><span className="text-sm font-semibold">{format(train.departure)}</span><span className="text-xs text-slate-400">départ</span>{train.arrival && <><span className="text-sm font-semibold">{format(train.arrival)}</span><span className="text-xs text-slate-400">arrivée</span></>}</span><span className="text-xs text-slate-500">{dayLabel(train.departure)} · {train.trainNumber || train.commercialMode}</span></span><Badge className={train.status === "cancelled" ? "bg-rose-400/15 text-rose-200" : train.status === "delayed" ? "bg-amber-400/15 text-amber-200" : "bg-emerald-400/15 text-emerald-200"}>{train.status === "cancelled" ? "Supprimé" : train.status === "delayed" ? `+${train.delayMinutes} min` : "À l’heure"}</Badge></button>)}</CardContent></Card>{selected && <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4" onMouseDown={() => setSelected(null)}><section role="dialog" aria-modal="true" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-center gap-3"><span className="grid size-12 place-items-center rounded-2xl bg-sky-400/15 text-sky-200"><TrainFront className="size-6" /></span><div><p className="text-sm text-slate-400">{selected.commercialMode || "Train SNCF"} · {selected.trainNumber}</p><h2 className="text-xl font-semibold">{selected.destination}</h2></div></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Départ</p><p className="mt-1 font-semibold">{dayLabel(selected.departure)} · {format(selected.departure)} <span className="text-xs text-slate-500">(prévu {format(selected.scheduledDeparture)})</span></p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Arrivée</p><p className="mt-1 font-semibold">{selected.arrival ? `${dayLabel(selected.arrival)} · ${format(selected.arrival)}` : "Non communiquée"}</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Quai</p><p className="mt-1 font-semibold">{selected.platform || "Non communiqué"}</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Mise à jour</p><p className="mt-1 font-semibold">{formatUpdated(selected.lastUpdated)}</p></div></div>{selected.disruption && <div className="mt-3 rounded-2xl bg-amber-400/10 p-3 text-sm text-amber-100"><p className="font-semibold">{selected.disruption.title}</p>{selected.disruption.cause && <p className="mt-1">Cause : {selected.disruption.cause}</p>}{selected.disruption.information && <p className="mt-1">{selected.disruption.information}</p>}</div>}<div className="mt-5 flex justify-end"><Button onClick={() => setSelected(null)}>Fermer</Button></div></section></div>}</>;
 }
 
 function MarketsCard() {
@@ -579,7 +719,7 @@ function MarketsCard() {
   return <><Card className="dashboard-markets-card"><CardHeader><div><p className="text-lg font-semibold">Marchés & actualités</p><div className="mt-2 flex gap-1">{["Jour", "Mois", "Année"].map((item) => <Button key={item} type="button" variant={period === item ? "secondary" : "ghost"} className="h-6 px-2 text-[10px]" onClick={() => setPeriod(item)}>{item}</Button>)}</div></div><TrendingUp className="size-5 text-slate-400" /></CardHeader><CardContent>{marketsError ? <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-xs text-rose-200">Backend marchés indisponible.</p> : <div className="grid grid-cols-2 gap-1">{markets.map((market) => <button type="button" key={market.symbol} onClick={() => setSelected(market)} className="rounded-lg bg-white/[0.04] p-1.5 text-left transition hover:bg-white/[0.1]"><p className="truncate text-[10px] text-slate-300">{market.symbol}</p><p className="truncate text-[9px] text-slate-500">{market.name.replace("Amundi ", "")}</p><p className={market.change >= 0 ? "text-xs font-semibold text-emerald-400" : "text-xs font-semibold text-rose-400"}>{market.change >= 0 ? "+" : ""}{market.change}%</p></button>)}</div>}<ol className="mt-2 space-y-1.5">{news.slice(0, 3).map((item) => <li key={item} className="text-xs leading-4 text-slate-300">• {item}</li>)}</ol></CardContent></Card>{selected && <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4" onMouseDown={() => setSelected(null)}><section role="dialog" aria-modal="true" aria-labelledby="market-dialog-title" className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-slate-400">ETF suivi · {selected.symbol}</p><h2 id="market-dialog-title" className="mt-1 text-xl font-semibold">{selected.name}</h2><p className="mt-1 text-xs text-slate-500">ISIN {selected.isin}</p></div><Button variant="ghost" size="icon" aria-label="Fermer" onClick={() => setSelected(null)}><X /></Button></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Cours indicatif</p><p className="mt-1 font-semibold">{selected.price.toFixed(2)} €</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Variation</p><p className={selected.change >= 0 ? "mt-1 font-semibold text-emerald-400" : "mt-1 font-semibold text-rose-400"}>{selected.change >= 0 ? "+" : ""}{selected.change}%</p></div></div><div className="mt-5 rounded-2xl bg-white/[0.04] p-3"><p className="mb-2 text-xs text-slate-500">Évolution · {period.toLowerCase()}</p>{detailError ? <p role="alert" className="py-10 text-center text-sm text-amber-200">Historique indisponible avec la source de données actuelle.</p> : detail?.history?.length ? <svg viewBox="0 0 360 120" className="h-32 w-full" role="img" aria-label={`Évolution de ${selected.symbol}`}><polyline fill="none" stroke="rgb(110 231 183)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={detail.history.map((point, index) => `${(index / (detail.history.length - 1)) * 340 + 10},${110 - ((point.value - Math.min(...detail.history.map((item) => item.value))) / (Math.max(...detail.history.map((item) => item.value)) - Math.min(...detail.history.map((item) => item.value)) || 1)) * 90}`).join(" ")} /></svg> : <p className="py-10 text-center text-sm text-slate-500">Chargement de l’historique…</p>}</div></section></div>}</>;
 }
 
-type VoiceStatus = { confirmationId?: string; continueConversation?: boolean; state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
+type VoiceStatus = { confirmationId?: string; continueConversation?: boolean; gmailQuery?: string; state: "idle" | "listening" | "transcribing" | "thinking" | "answered" | "error"; transcript?: string; answer?: string; updatedAt?: string };
 
 type VoiceSource = { id: string; label: string; detail: string; mark: string };
 
@@ -600,7 +740,80 @@ function getActiveVoiceSource(status: VoiceStatus) {
   return "assistant";
 }
 
-function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (answer: AssistantAnswer) => void }) {
+function isConversationStop(text: string) {
+  return /\b(fin de la conversation|arrête(?:-toi)?|stop|annule(?:r)?|cancel|merci beaucoup|merci)\b/i.test(text.trim());
+}
+
+function PDFPreview({ url, name }: { url: string; name: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [state, setState] = useState<{ pages?: number; error?: boolean }>({});
+  useEffect(() => {
+    let active = true;
+    const task = getDocument(url);
+    void task.promise.then(async (document) => {
+      const page = await document.getPage(1);
+      const canvas = canvasRef.current;
+      if (!canvas || !active) return;
+      const viewport = page.getViewport({ scale: 1.5 });
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("canvas unavailable");
+      await page.render({ canvas, canvasContext: context, viewport }).promise;
+      if (active) setState({ pages: document.numPages });
+    }).catch(() => { if (active) setState({ error: true }); });
+    return () => { active = false; void task.destroy(); };
+  }, [url]);
+  if (state.error) return <p role="alert" className="mt-6 rounded-xl bg-rose-400/10 p-4 text-sm text-rose-200">Impossible d’afficher ce PDF.</p>;
+  return <div className="mt-6"><canvas ref={canvasRef} className="min-h-48 w-full rounded-xl bg-white shadow-sm" aria-label={`Première page de ${name}`} />{state.pages && <p className="mt-2 text-center text-xs text-slate-500">Page 1 sur {state.pages}</p>}</div>;
+}
+
+function VoiceOverlay({ status, open, onAnswer, onClose }: { status: VoiceStatus; open: boolean; onAnswer: (answer: AssistantAnswer) => void; onClose: () => void }) {
+  const gmailQuery = status.gmailQuery || "";
+  const liveGmail = useGmailMails(gmailQuery, Boolean(status.answer));
+  const debugMails = liveGmail.mails;
+  const [selectedMailIndex, setSelectedMailIndex] = useState(0);
+  const [mailDragX, setMailDragX] = useState(0);
+  const [attachmentPreview, setAttachmentPreview] = useState<{ name: string; size: string; type: string; sourceURL: string; previewURL?: string; error?: boolean } | null>(null);
+  const mailDragStart = useRef<number | null>(null);
+  const moveMail = (direction: number) => {
+    if (debugMails.length < 2) return;
+    setSelectedMailIndex((current) => (current + direction + debugMails.length) % debugMails.length);
+  };
+  const startMailSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+    mailDragStart.current = event.clientX;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const endMailSwipe = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (mailDragStart.current === null) return;
+    const delta = event.clientX - mailDragStart.current;
+    mailDragStart.current = null;
+    if (Math.abs(delta) > 44) moveMail(delta < 0 ? 1 : -1);
+    setMailDragX(0);
+  };
+  const previewAttachment = (messageID: string, attachment: DebugMail["attachments"][number]) => {
+    if (!attachment.id) return;
+    setAttachmentPreview({ ...attachment, sourceURL: `/v1/workspace/google/gmail/messages/${encodeURIComponent(messageID)}/attachments/${encodeURIComponent(attachment.id)}?mime=${encodeURIComponent(attachment.type)}` });
+  };
+  useEffect(() => {
+    if (!attachmentPreview?.sourceURL) return;
+    const controller = new AbortController();
+    let previewURL: string | undefined;
+    void fetch(attachmentPreview.sourceURL, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("attachment unavailable");
+        const content = await response.blob();
+        previewURL = URL.createObjectURL(new Blob([content], { type: attachmentPreview.type || content.type }));
+        setAttachmentPreview((current) => current?.sourceURL === attachmentPreview.sourceURL ? { ...current, previewURL } : current);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setAttachmentPreview((current) => current?.sourceURL === attachmentPreview.sourceURL ? { ...current, error: true } : current);
+        }
+      });
+    return () => { controller.abort(); if (previewURL) URL.revokeObjectURL(previewURL); };
+  }, [attachmentPreview?.sourceURL]);
+  useEffect(() => { setSelectedMailIndex(0); }, [gmailQuery]);
   useEffect(() => {
     if (status.state !== "answered" || !status.answer) return;
     let audioURL: string | undefined;
@@ -642,7 +855,7 @@ function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (an
     void oscillator.addEventListener("ended", () => void audioContext.close());
     return () => { void audioContext.close(); };
   }, [status.state]);
-  if (status.state === "idle") return null;
+  if (!open) return null;
   const orb = status.state === "listening"
     ? <Orb state="using" variant="record" size={180} speed={1} label="Écoute en cours" />
     : status.state === "transcribing"
@@ -652,12 +865,21 @@ function VoiceOverlay({ status, onAnswer }: { status: VoiceStatus; onAnswer: (an
         : <Orb state="using" variant="tap" size={180} speed={1} label="Exécution en cours" />;
   const stageLabel = status.state === "listening" ? "Je vous écoute" : status.state === "transcribing" ? "Je transcris votre demande" : status.state === "thinking" ? "Je route votre demande vers Gemini" : status.state === "answered" ? "Réponse prête" : "J’exécute votre demande";
   const activeSource = getActiveVoiceSource(status);
-  return <div className="voice-overlay fixed inset-0 z-50 grid place-items-center p-6 text-zinc-100">
+  return <div className="voice-overlay fixed inset-0 z-50 grid place-items-center p-6 text-zinc-100"><Button variant="ghost" size="icon" aria-label="Arrêter la conversation et fermer" className="absolute left-6 top-6 z-10 text-zinc-400 hover:bg-white/10 hover:text-white" onClick={onClose}><X /></Button>
     <div role="dialog" aria-modal="true" aria-label="Assistant vocal" className="voice-overlay-content relative grid w-full max-w-7xl gap-5 text-center lg:grid-cols-3 lg:items-stretch">
-      <section className="workspace-column workspace-list text-left"><p className="workspace-eyebrow">Sources</p><div className="workspace-list-content">{voiceSources.map((source) => <div key={source.id} className={`workspace-list-item ${source.id === activeSource ? "workspace-list-item-active" : source.id === "assistant" ? "workspace-list-item-muted" : ""}`} aria-current={source.id === activeSource ? "step" : undefined}><span className="workspace-source-mark">{source.mark}</span><span><strong>{source.label}</strong><small>{source.detail}</small></span></div>)}</div><p className="workspace-active-caption">Source active · {voiceSources.find((source) => source.id === activeSource)?.label}</p></section>
       <section className="workspace-column workspace-interaction"><p className="workspace-eyebrow">Interaction</p><div className="voice-orb-stage text-zinc-300">{orb}</div><p className="mt-2 text-sm text-zinc-400 transition-opacity duration-300">{stageLabel}</p><div className={`workspace-transcript ${status.transcript ? "workspace-content-visible" : ""}`}>{status.transcript && <p className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-left text-sm text-zinc-300">« {status.transcript} »</p>}</div></section>
-      <section className="workspace-column workspace-questions text-left"><p className="workspace-eyebrow">Questions et validation</p><AgentPipeline status={status} />{status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} onCancel={() => onAnswer({ text: "Action refusée." })} />}</section>
+      <section className="workspace-column workspace-questions text-left"><p className="workspace-eyebrow">Questions et validation</p><AgentPipeline status={status} />{activeSource === "gmail" && status.answer && <div className="mail-inline-result mt-4"><div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-sky-200"><Mail className="size-4" /> Résultats Gmail · {debugMails.length} mails</div><div className="mail-inline-stack mt-3">{debugMails.map((mail, index) => <article key={mail.id} className={`mail-inline-card mail-inline-card-${index}`}><p className="text-[11px] text-slate-500">{mail.date}</p><p className="mt-1 text-sm font-semibold">{mail.subject}</p><p className="mt-1 truncate text-xs text-slate-400">{mail.preview}</p>{mail.attachments.length > 0 && <div className="mt-2 flex items-center gap-1 text-[11px] text-sky-200"><Paperclip className="size-3" />{mail.attachments[0].name}</div>}</article>)}</div><p className="mt-3 text-xs text-slate-500">Dites « merci », « stop » ou « fin de la conversation » pour terminer.</p></div>}{status.confirmationId && <MailConfirmation key={status.confirmationId} id={status.confirmationId} onAnswer={onAnswer} onCancel={() => onAnswer({ text: "Action refusée." })} />}</section>
+      <section className="workspace-column workspace-mail-panel text-left">
+        <p className="workspace-eyebrow">Résultats</p>
+        {activeSource === "gmail" && status.answer ? !gmailQuery ? <p className="mt-4 text-sm text-slate-400">Je prépare la recherche Gmail demandée…</p> : liveGmail.loading ? <p className="mt-4 text-sm text-slate-400">Recherche Gmail en cours…</p> : liveGmail.error ? <p className="mt-4 text-sm text-rose-300">Impossible de lire Gmail.</p> : <>
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[.14em] text-sky-200"><Mail className="size-4" /> Gmail · {debugMails.length} mails · {gmailQuery}</div>
+          {debugMails.length > 0 ? <><div className="mail-inline-stack mt-3" onPointerDown={startMailSwipe} onPointerMove={(event) => { if (mailDragStart.current !== null) setMailDragX(event.clientX - mailDragStart.current); }} onPointerUp={endMailSwipe} onPointerCancel={() => { mailDragStart.current = null; setMailDragX(0); }} aria-label="Résultats Gmail, faites glisser horizontalement pour changer de mail">
+            {debugMails.map((mail, index) => { const offset = (index - selectedMailIndex + debugMails.length) % debugMails.length; const selected = offset === 0; return <article key={mail.id} className={`mail-inline-card ${selected ? "mail-inline-card-active" : ""}`} style={{ transform: selected ? `translateX(${mailDragX}px) rotate(${mailDragX * .025}deg)` : `translateY(${offset * 12}px) rotate(${offset === 1 ? 7 : -7}deg) scale(${1 - offset * .035})`, zIndex: debugMails.length - offset, opacity: offset > 2 ? 0 : 1 }}><p className="text-[11px] text-slate-500">{mail.date}</p><p className="mt-2 text-base font-semibold leading-snug">{mail.subject}</p><p className="mt-2 line-clamp-3 text-sm text-slate-400">{mail.preview}</p><p className="mt-4 text-xs font-medium text-sky-200">{mail.sender}</p>{mail.attachments.length > 0 && <button type="button" className="mt-3 flex items-center gap-1.5 text-left text-xs text-sky-200 hover:text-sky-100" onPointerDown={(event) => event.stopPropagation()} onPointerUp={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); previewAttachment(mail.id, mail.attachments[0]); }}><Paperclip className="size-3.5" />{mail.attachments[0].name}<span className="text-slate-500">· {mail.attachments[0].size}</span>{mail.attachments.length > 1 && <span className="text-slate-500">+{mail.attachments.length - 1}</span>}</button>}</article>; })}
+          </div><div className="mt-3 flex items-center justify-center gap-3"><Button variant="ghost" size="icon" aria-label="Mail précédent" onClick={() => moveMail(-1)}><ChevronLeft /></Button><span className="text-xs text-slate-400">{selectedMailIndex + 1} / {debugMails.length}</span><Button variant="ghost" size="icon" aria-label="Mail suivant" onClick={() => moveMail(1)}><ChevronRight /></Button></div></> : <p className="mt-4 text-sm text-slate-400">Aucun mail pour cette recherche.</p>}
+        </> : <p className="text-sm text-slate-500">Les résultats d’outil apparaîtront ici.</p>}
+      </section>
     </div>
+    {attachmentPreview && <div className="attachment-drawer-backdrop fixed inset-0 z-[60] bg-zinc-950/65" role="presentation" onMouseDown={() => setAttachmentPreview(null)}><section role="dialog" aria-modal="true" aria-label={`Aperçu de ${attachmentPreview.name}`} className="attachment-drawer fixed inset-y-0 right-0 w-full max-w-[50vw] min-w-[360px] overflow-y-auto border-l border-white/10 bg-zinc-900 p-5 shadow-2xl sm:p-8" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.16em] text-sky-200">Pièce jointe · {attachmentPreview.type}</p><h2 className="mt-2 text-xl font-semibold">{attachmentPreview.name}</h2><p className="mt-1 text-xs text-slate-500">{attachmentPreview.size} · aperçu intégré</p></div><Button variant="ghost" size="icon" aria-label="Fermer l’aperçu" onClick={() => setAttachmentPreview(null)}><X /></Button></div>{attachmentPreview.error ? <p role="alert" className="mt-6 rounded-xl bg-rose-400/10 p-4 text-sm text-rose-200">Impossible de charger cette pièce jointe.</p> : !attachmentPreview.previewURL ? <p className="mt-6 text-sm text-slate-400">Chargement de l’aperçu…</p> : attachmentPreview.type.startsWith("image/") ? <img className="mt-6 max-h-[calc(100vh-11rem)] w-full rounded-xl object-contain" src={attachmentPreview.previewURL} alt={attachmentPreview.name} /> : attachmentPreview.type === "application/pdf" ? <PDFPreview url={attachmentPreview.previewURL} name={attachmentPreview.name} /> : <div className="attachment-document mt-6"><div className="attachment-document-toolbar"><span>{attachmentPreview.type}</span></div><div className="attachment-document-page"><h3>{attachmentPreview.name}</h3><p>Ce format est bien attaché au mail. Son aperçu natif sera ajouté pour les documents Office et les vidéos.</p></div></div>}</section></div>}
   </div>;
 }
 
@@ -672,8 +894,12 @@ function App() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const calendarLabel = "Partagé";
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const voiceStatusRef = useRef<VoiceStatus>({ state: "idle" });
+  const [mailDebugOpen, setMailDebugOpen] = useState(false);
   const changeTheme = (value: boolean) => { setLightMode(value); window.localStorage.setItem("home-ai:theme", value ? "light" : "dark"); };
   const lastVoiceUpdate = useRef<string | undefined>(undefined);
+  voiceStatusRef.current = voiceStatus;
 
   const refreshReminders = useCallback(async () => {
     const response = await fetch("/v1/reminders", { cache: "no-store" });
@@ -708,6 +934,11 @@ function App() {
         const response = await fetch("/v1/assistant/voice/state", { cache: "no-store" });
         if (active && response.ok) {
           const nextStatus = await response.json() as VoiceStatus;
+          // An idle response from the shared backend must not dismiss an
+          // active overlay. Only an explicit local close or stop phrase may
+          // transition the visible conversation to idle.
+          if (nextStatus.state === "idle" && voiceStatusRef.current.state !== "idle") return;
+          if (nextStatus.state !== "idle") setOverlayOpen(true);
           if (nextStatus.updatedAt !== lastVoiceUpdate.current) {
             lastVoiceUpdate.current = nextStatus.updatedAt;
             setVoiceStatus(nextStatus);
@@ -721,16 +952,9 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (voiceStatus.state === "idle") return;
-    const timeout = window.setTimeout(() => {
-      setVoiceStatus({ state: "idle" });
-    }, voiceStatus.confirmationId ? 300_000 : 20_000);
-    return () => window.clearTimeout(timeout);
-  }, [voiceStatus.state, voiceStatus.updatedAt, voiceStatus.confirmationId]);
-
-  useEffect(() => {
     if (voiceStatus.state !== "answered") return;
     void refreshReminders();
+    const mailConversation = getActiveVoiceSource(voiceStatus) === "gmail";
     if (voiceStatus.continueConversation) {
       const timer = window.setTimeout(() => {
         setVoiceStatus((current) => ({ ...current, state: "listening", answer: undefined, transcript: undefined, updatedAt: new Date().toISOString() }));
@@ -738,17 +962,19 @@ function App() {
       }, 900);
       return () => window.clearTimeout(timer);
     }
-    const timer = window.setTimeout(() => {
-      setVoiceStatus({ state: "idle" });
-      void fetch("/v1/assistant/voice/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: "idle" }) });
-    }, 3500);
-    return () => window.clearTimeout(timer);
   }, [voiceStatus.state, voiceStatus.updatedAt, voiceStatus.continueConversation, refreshReminders]);
 
   useEffect(() => {
     const handleTranscript = (event: Event) => {
       const transcript = (event as CustomEvent<VoiceTranscriptDetail>).detail?.transcript;
-      if (transcript) setVoiceStatus((current) => ({ ...current, state: "listening", transcript, updatedAt: new Date().toISOString() }));
+      if (!transcript) return;
+      if (isConversationStop(transcript)) {
+        setOverlayOpen(false);
+        setVoiceStatus({ state: "idle" });
+        void fetch("/v1/assistant/voice/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: "idle" }) });
+        return;
+      }
+      setVoiceStatus((current) => ({ ...current, state: "listening", transcript, updatedAt: new Date().toISOString() }));
     };
     window.addEventListener(voiceTranscriptEvent, handleTranscript);
     return () => window.removeEventListener(voiceTranscriptEvent, handleTranscript);
@@ -760,10 +986,11 @@ function App() {
         <aside className="flex h-auto flex-col border-b border-white/10 bg-zinc-900/70 px-5 py-6 lg:h-full lg:border-r lg:border-b-0">
           <div className="flex items-center justify-between lg:block">
             <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-2xl bg-white text-zinc-950"><Sparkles className="size-5" /></div><div><p className="text-sm font-semibold tracking-wide">HOME AI</p><p className="text-xs capitalize text-zinc-500">{todayLabel}</p></div></div>
-            <Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button>
+            <div className="flex items-center gap-1"><Button variant="ghost" size="icon" aria-label="Ouvrir la prévisualisation des mails" className="lg:hidden" onClick={() => setMailDebugOpen(true)}><Mail /></Button><Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button></div>
           </div>
           <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant={view === "profile" ? "secondary" : "ghost"} onClick={() => { setView("profile"); setNavOpen(false); }} className={view === "profile" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><UserRound /> Profil</Button><Button variant={view === "cost" ? "secondary" : "ghost"} onClick={() => { setView("cost"); setNavOpen(false); }} className={view === "cost" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><WalletCards /> Coût</Button></nav>
           <div className="mt-5 hidden lg:block"><AssistantOrb compact /></div>
+          <Button variant="ghost" onClick={() => setMailDebugOpen(true)} className="mt-3 w-full justify-start"><Mail /> Debug mails</Button>
           <Button variant={view === "settings" ? "secondary" : "ghost"} onClick={() => { setView("settings"); setNavOpen(false); }} className="mt-auto hidden w-full justify-start lg:flex"><Settings /> Réglages</Button>
         </aside>
 
@@ -800,7 +1027,8 @@ function App() {
       <WakeWordListener />
       {selectedRoom && <RoomDetailDialog room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
       {selectedReminder && <ReminderDetailDialog reminder={selectedReminder} onClose={() => setSelectedReminder(null)} />}
-      <VoiceOverlay status={voiceStatus} onAnswer={(answer) => setVoiceStatus({ state: "answered", answer: answer.text, confirmationId: answer.confirmationId })} />
+      <VoiceOverlay status={voiceStatus} open={overlayOpen} onAnswer={(answer) => setVoiceStatus({ state: "answered", answer: answer.text, confirmationId: answer.confirmationId })} onClose={() => { setOverlayOpen(false); setVoiceStatus({ state: "idle" }); void fetch("/v1/assistant/voice/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: "idle" }) }); }} />
+      {mailDebugOpen && <MailDebugDialog onClose={() => setMailDebugOpen(false)} />}
     </main>
   );
 }
