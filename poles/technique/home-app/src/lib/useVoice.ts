@@ -72,9 +72,10 @@ export function useVoice(enabled: boolean) {
       });
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Votre connexion à Home Core doit être autorisée." : audio ? "Home Core est indisponible pour transcrire et répondre." : "Transcription conservée à l’écran. Home Core est indisponible pour répondre.");
       const result = await response.json() as { text?: string; transcript?: string; answer?: { text: string } };
+      if (!current.cancelled && audio && result.transcript) setTranscript(result.transcript);
       const answer = audio ? result.answer?.text : result.text;
       if (!answer) throw new Error("Home Core n’a pas renvoyé de réponse.");
-      if (!current.cancelled) { if (audio) setTranscript(result.transcript ?? ""); setMessage(answer); setPhase("answered"); }
+      if (!current.cancelled) { setMessage(answer); setPhase("answered"); }
     } catch (error) {
       fail(current, error instanceof Error && error.name !== "AbortError" ? error.message : "Le délai de réponse est dépassé. Réessayez.");
     } finally { release(current); if (session.current === current) session.current = null; }
