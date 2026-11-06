@@ -16,3 +16,20 @@ flowchart LR
   Core --> HA[Home Assistant]
   App --> Shell[Cache shell statique uniquement]
 ```
+
+## Évolution du 6 novembre — STT navigateur
+
+À la demande utilisateur, utiliser `SpeechRecognition` / `webkitSpeechRecognition` en français lorsqu’il est disponible. La transcription intermédiaire reste visible ; à la fin de l’écoute, seul le texte est envoyé à l’API existante `POST /v1/assistant/questions` (`{text}`). Ce contrat est conversationnel ; il ne remplace pas le routage des commandes domotiques du flux audio. Aucun nouveau contrat serveur introduit.
+
+Le STT navigateur n’est pas nécessairement exécuté sur l’appareil : le fournisseur du navigateur peut traiter l’audio. Une mention visible le précise pendant l’écoute. Absence d’API : capture MediaRecorder et STT Home Core existant. Si le service navigateur échoue (réseau/service indisponible), proposer une nouvelle tentative via Home Core ; jamais de contournement d’un refus micro. Nettoyer les deux modes sur navigation, paysage, arrière-plan et démontage. Pas de sauvegarde de transcription.
+
+```mermaid
+flowchart LR
+  Touch[Toucher orb] --> Supported{STT navigateur disponible ?}
+  Supported -->|Oui| Browser[Reconnaissance française · service navigateur]
+  Browser --> Transcript[Transcription affichée]
+  Transcript -->|Texte seulement · /v1/assistant/questions| Core[Home Core]
+  Supported -->|Non| Audio[Capture audio · /v1/assistant/voice]
+  Audio --> Core
+  Core --> Answer[Réponse affichée]
+```

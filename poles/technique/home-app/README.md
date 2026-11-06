@@ -47,3 +47,11 @@ VITE_BASE_PATH=/HOME-AI/app/ npm run check
 ```
 
 Le build Docker reste à la racine `/` en l’absence de `VITE_BASE_PATH`. Le manifeste utilise des chemins relatifs et le service worker est limité au chemin de Home App. Voir [ADR 002](architecture/adr/002-github-pages.md).
+
+## Dictée navigateur et animations
+
+La dictée utilise en priorité `SpeechRecognition` / `webkitSpeechRecognition` en `fr-FR` et affiche la transcription intermédiaire. Cette reconnaissance dépend du navigateur et peut utiliser le service de son fournisseur ; elle ne garantit ni un traitement sur l’appareil ni un fonctionnement hors ligne. En l’absence d’API, le mode audio Home Core reste disponible. Une erreur de service navigateur permet de réessayer via Home Core ; un refus micro reste un refus.
+
+Le texte reconnu est envoyé à `/v1/assistant/questions` (`{ "text": "…" }`), contrat conversationnel existant. Les commandes métier du flux vocal Home Core restent propres à `/v1/assistant/voice` : la reconnaissance navigateur n’ajoute pas un nouveau routage domotique. Sur Pages sans accès au serveur, la transcription reste affichée et l’indisponibilité de la réponse est explicite.
+
+Animations thinking-orbs : `waiting` pour l’activation, `using/record` pour l’écoute, `working/gyro` pour la finalisation, `reasoning/twins` pour la réflexion, `idle/blink` vert pour la réponse, `waiting` rose pour l’erreur. La préférence système de réduction des animations est respectée par la bibliothèque. Barre flottante à 6 px au-dessus de la zone sûre.
