@@ -1,25 +1,22 @@
-name: Deploy Home Panel to GitHub Pages
+name: Deploy Home Panel and Home App to GitHub Pages
 
 on:
   push:
+    branches: [main]
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.event_name == 'pull_request' && github.ref || 'production' }}
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: poles/technique/home-panel
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,25 +25,57 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: poles/technique/home-panel/package-lock.json
-      - name: Install dependencies
+          cache-dependency-path: |
+            poles/technique/home-panel/package-lock.json
+            poles/technique/home-app/package-lock.json
+      - name: Install Home Panel dependencies
+        working-directory: poles/technique/home-panel
         run: npm ci
-      - name: Build
+      - name: Build Home Panel
+        working-directory: poles/technique/home-panel
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run check
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
+      - name: Install Home App dependencies
+        working-directory: poles/technique/home-app
+        run: npm ci
+      - name: Build Home App
+        working-directory: poles/technique/home-app
+        env:
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/app/
+        run: npm run check
+      - name: Assemble both applications
+        run: |
+          mkdir -p _site/app
+          cp -a poles/technique/home-panel/dist/. _site/
+          cp -a poles/technique/home-app/dist/. _site/app/
+          touch _site/.nojekyll
+          test -f _site/index.html
+          test -f _site/app/index.html
+          test -f _site/app/sw.js
+          test -f _site/app/manifest.webmanifest
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ github.workspace }}/poles/technique/home-panel/dist
+          path: _site
 
   deploy:
+    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy both applications to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Publish application links
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          printf 'Home Panel: %s\n\nHome App: %sapp/\n' "$PAGE_URL" "$PAGE_URL" >> "$GITHUB_STEP_SUMMARY"

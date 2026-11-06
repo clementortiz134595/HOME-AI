@@ -1,0 +1,14 @@
+name: home-app
+services:
+  app:
+    build:
+      context: .
+      target: production
+    image: home-app:local
+    ports:
+      - "8081:80"
+    networks:
+      - home-ai
+networks:
+  home-ai:
+    external: true
