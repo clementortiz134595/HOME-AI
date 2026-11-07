@@ -55,3 +55,18 @@ La dictée utilise en priorité `SpeechRecognition` / `webkitSpeechRecognition` 
 Le texte reconnu est envoyé à `/v1/assistant/questions` (`{ "text": "…" }`), contrat conversationnel existant. Les commandes métier du flux vocal Home Core restent propres à `/v1/assistant/voice` : la reconnaissance navigateur n’ajoute pas un nouveau routage domotique. Sur Pages sans accès au serveur, la transcription reste affichée et l’indisponibilité de la réponse est explicite.
 
 Animations thinking-orbs : `waiting` pour l’activation, `using/record` pour l’écoute, `working/gyro` pour la finalisation, `reasoning/twins` pour la réflexion, `idle/blink` vert pour la réponse, `waiting` rose pour l’erreur. La préférence système de réduction des animations est respectée par la bibliothèque. Barre flottante à 6 px au-dessus de la zone sûre.
+
+
+## Recherche et affichage contextuel
+
+L’accueil conserve le grand orb pour l’écoute. Pendant le traitement, l’orb passe à 52 px et une vue défilante montre la demande, la progression observable et la réponse. Les étapes se replient après affichage et restent consultables.
+
+Cartes disponibles : réponse générale avec titres/listes, biographie avec chronologie des dates effectivement citées, carrousel Gmail adapté du Panel, états domotiques, rappels, tâches, trains et ETF. Les réponses sont toujours conservées comme texte accessible ; les données supplémentaires viennent uniquement de Home Core. Le rendu ne déclenche aucune mutation depuis les mots de la demande. Les confirmations utilisent le jeton opaque renvoyé par Home Core et son contrat existant. Le mode texte conversationnel ne remplace pas le routage métier du mode vocal serveur.
+
+Les ETF sont sélectionnés dans l’inventaire configuré du serveur ; nommer un symbole permet de le cibler. Les variations sont calculées depuis l’historique daté, jamais depuis les cours/variations statiques actuellement présents dans la liste serveur. Aucun rendement de portefeuille n’est calculé sans positions et prix de revient. Les séries indisponibles sont affichées explicitement.
+
+Le backend actuel ne diffuse pas d’événements par appel d’outil : les étapes visibles correspondent à la transcription, la requête assistant, la réception de la réponse et la lecture des sources. Aucun raisonnement interne n’est simulé. Les pièces jointes Gmail s’ouvrent via les liens du serveur ; aucun aperçu Office/PDF n’est ajouté au mobile dans cet incrément.
+
+Tests de contrats : `npm test` (Node 24 ou supérieur) ; inclus dans `npm run check`. Vérifications Chromium effectuées avec sources simulées : carrousel, chronologie, cartes métier, refus/confirmation avant lecture Gmail, recalcul ETF, série indisponible, échec/reprise de source, quatre formats portrait, retour à l’orb. Les données réelles et le micro sur téléphone restent à vérifier sur le déploiement connecté au Home Core du foyer.
+
+Décision et bibliothèque examinée : [ADR 003](architecture/adr/003-reponses-contextuelles.md).

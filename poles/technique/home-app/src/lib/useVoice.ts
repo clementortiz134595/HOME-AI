@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { parseAssistantAnswer, type AssistantAnswer } from "./assistant";
 
 type RecognitionResult = { isFinal: boolean; [index: number]: { transcript: string } };
 type Recognition = {
@@ -23,6 +24,7 @@ type VoiceSession = {
 export function useVoice(enabled: boolean) {
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [message, setMessage] = useState("");
+  const [answer, setAnswer] = useState<AssistantAnswer | null>(null);
   const [transcript, setTranscript] = useState("");
   const [mode, setMode] = useState<"browser" | "core">(() => browserRecognition() ? "browser" : "core");
   const session = useRef<VoiceSession | null>(null);
@@ -59,7 +61,7 @@ export function useVoice(enabled: boolean) {
     if (session.current === current) session.current = null;
     setPhase("error"); setMessage(text);
   };
-  const send = async (current: VoiceSession, audio?: Blob) => {
+  const send = async (current: VoiceSession, audio?: Blob, confirmationId?: string) => {
     if (current.cancelled) return;
     release(current);
     setPhase("thinking");
@@ -68,14 +70,13 @@ export function useVoice(enabled: boolean) {
     try {
       const response = await fetch(audio ? "/v1/assistant/voice" : "/v1/assistant/questions", {
         method: "POST", headers: { "Content-Type": audio ? audio.type || "audio/webm" : "application/json" },
-        body: audio ?? JSON.stringify({ text: current.text }), signal: current.request.signal,
+        body: audio ?? JSON.stringify({ text: current.text, ...(confirmationId ? { confirmationId } : {}) }), signal: current.request.signal,
       });
       if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Votre connexion à Home Core doit être autorisée." : audio ? "Home Core est indisponible pour transcrire et répondre." : "Transcription conservée à l’écran. Home Core est indisponible pour répondre.");
-      const result = await response.json() as { text?: string; transcript?: string; answer?: { text: string } };
+      const result = await response.json() as AssistantAnswer & { transcript?: string; answer?: AssistantAnswer };
       if (!current.cancelled && audio && result.transcript) setTranscript(result.transcript);
-      const answer = audio ? result.answer?.text : result.text;
-      if (!answer) throw new Error("Home Core n’a pas renvoyé de réponse.");
-      if (!current.cancelled) { setMessage(answer); setPhase("answered"); }
+      const received = parseAssistantAnswer(audio ? result.answer : result);
+      if (!current.cancelled) { setAnswer(received); setMessage(received.text); setPhase("answered"); }
     } catch (error) {
       fail(current, error instanceof Error && error.name !== "AbortError" ? error.message : "Le délai de réponse est dépassé. Réessayez.");
     } finally { release(current); if (session.current === current) session.current = null; }
@@ -88,7 +89,7 @@ export function useVoice(enabled: boolean) {
     if (active || !enabled) return;
     const current: VoiceSession = { cancelled: false, text: "" };
     session.current = current;
-    setTranscript(""); setMessage(""); setPhase("requesting");
+    setAnswer(null); setTranscript(""); setMessage(""); setPhase("requesting");
     const Recognition = browserRecognition();
     if (Recognition && mode === "browser") {
       try {
@@ -137,5 +138,13 @@ export function useVoice(enabled: boolean) {
       current.timer = window.setTimeout(() => { if (recorder.state === "recording") { setPhase("transcribing"); recorder.stop(); } }, 20000);
     } catch { release(current); fail(current, "Accès au microphone impossible. Vérifiez les permissions du navigateur."); }
   };
-  return { phase, message, transcript, mode, toggle };
+  const reset = () => { cancel(); setAnswer(null); setTranscript(""); setMessage(""); };
+  const confirm = async () => {
+    if (!answer?.confirmationId || session.current) return;
+    const current: VoiceSession = { cancelled: false, text: transcript };
+    session.current = current;
+    await send(current, undefined, answer.confirmationId);
+  };
+  const dismiss = () => { cancel(); setAnswer({ text: "Vous n’avez pas confirmé cette demande.", status: "refused" }); };
+  return { phase, message, transcript, answer, mode, toggle, reset, confirm, dismiss };
 }
