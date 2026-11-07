@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -36,12 +37,27 @@ func NewService(repositories ...Repository) *Service {
 			}
 		}
 	}
-	if s.repository != nil && len(s.chores) == 0 {
-		for _, chore := range DefaultChores(time.Now()) {
-			_, _ = s.Create(chore)
-		}
+	if s.repository != nil {
+		_ = s.EnsureDefaults()
 	}
 	return s
+}
+
+// EnsureDefaults installs the built-in household catalogue once, without
+// replacing chores already configured by the household.
+func (s *Service) EnsureDefaults() error {
+	s.mu.RLock()
+	empty := len(s.chores) == 0
+	s.mu.RUnlock()
+	if !empty || s.repository == nil {
+		return nil
+	}
+	for _, chore := range DefaultChores(time.Now()) {
+		if _, err := s.Create(chore); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) List() []model.Chore {
@@ -78,12 +94,35 @@ func (s *Service) Weekly(weekStart time.Time) []model.Chore {
 			occurrence.DueDate = day.Format("2006-01-02")
 			occurrence.Completed = false
 			if chore.Alternating && len(chore.Assignees) > 0 {
-				occurrence.Assignees = []string{chore.Assignees[occurrenceIndex(chore, anchor, day)%len(chore.Assignees)]}
+				occurrence.Assignees = []string{chore.Assignees[(occurrenceIndex(chore, anchor, day)+rotationOffset(chore))%len(chore.Assignees)]}
 			}
 			result = append(result, occurrence)
 		}
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].DueDate+result[i].ID < result[j].DueDate+result[j].ID })
+	return result
+}
+
+// Daily returns only the chore occurrences due on the requested calendar day.
+func (s *Service) Daily(day time.Time) []model.Chore {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	day = dateOnly(day)
+	result := make([]model.Chore, 0)
+	for _, chore := range s.chores {
+		anchor, err := time.Parse("2006-01-02", chore.Date)
+		if err != nil || !occursOn(chore, anchor, day) {
+			continue
+		}
+		occurrence := chore
+		occurrence.DueDate = day.Format("2006-01-02")
+		occurrence.Completed = false
+		if chore.Alternating && len(chore.Assignees) > 0 {
+			occurrence.Assignees = []string{chore.Assignees[(occurrenceIndex(chore, anchor, day)+rotationOffset(chore))%len(chore.Assignees)]}
+		}
+		result = append(result, occurrence)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
 	return result
 }
 
@@ -134,6 +173,18 @@ func occurrenceIndex(chore model.Chore, anchor, day time.Time) int {
 		return days / 7
 	}
 	return days
+}
+
+// rotationOffset prevents all daily chores from landing on the same person.
+// Stable IDs make the distribution deterministic across restarts and weeks.
+func rotationOffset(chore model.Chore) int {
+	const prefix = "chore-"
+	if strings.HasPrefix(chore.ID, prefix) {
+		if value, err := strconv.Atoi(strings.TrimPrefix(chore.ID, prefix)); err == nil {
+			return value - 1
+		}
+	}
+	return 0
 }
 
 func (s *Service) Create(chore model.Chore) (model.Chore, error) {

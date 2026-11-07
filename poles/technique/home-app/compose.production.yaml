@@ -6,7 +6,10 @@ services:
       target: production
     image: home-app:local
     ports:
-      - "8081:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
     networks:
       - home-ai
 networks:

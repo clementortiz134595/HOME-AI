@@ -95,6 +95,9 @@ func main() {
 	}
 	defer database.Close()
 	choresService := choresapp.NewService(database)
+	if err := choresService.EnsureDefaults(); err != nil {
+		logger.Error("household chores defaults unavailable", "error", err)
+	}
 	mux.Handle("/v1/chores/", choreshttp.NewHandler(choresService))
 	remindersService := remindersapp.NewService(database)
 	mux.Handle("/v1/reminders", remindershttp.NewHandler(remindersService))

@@ -12,7 +12,7 @@ export function responseKind(question: string, answer?: AssistantAnswer | null):
   if (answer?.gmailQuery) return "mail";
   const text = question.toLocaleLowerCase("fr-FR").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   if (/\b(mail|mails|gmail|courriel|courriels|email|emails)\b/.test(text)) return "mail";
-  if (/\b(etf|etfs|bourse|portefeuille|nasdaq|cac|bnke|panx|pust|psp5|paasi|c50)\b/.test(text)) return "markets";
+  if (/\b(etf|etfs|placement|placements|investissement|investissements|financier|financiers|bourse|portefeuille|epargne|nasdaq|cac|bnke|panx|pust|psp5|paasi|c50)\b/.test(text)) return "markets";
   if (/\b(train|trains|sncf|gare|ter|tgv)\b/.test(text)) return "trains";
   if (/\b(rappel|rappels|rappelle|rappelle-moi)\b/.test(text)) return "reminders";
   if (/\b(menage|menageres|vaisselle|corvees|tache|taches)\b/.test(text)) return "chores";
@@ -25,7 +25,7 @@ export function canReadResults(answer: AssistantAnswer) {
 }
 export function marketPeriod(question: string): "jour" | "mois" | "année" {
   const text = question.toLowerCase();
-  return /ann[ée]|an\b|12 mois/.test(text) ? "année" : /mois|mensuel/.test(text) ? "mois" : "jour";
+  return /ann[ée]|an\b|12 mois/.test(text) ? "année" : /mois|mensuel|semaine|hebdomadaire/.test(text) ? "mois" : "jour";
 }
 export async function readJSON(path: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
   const response = await fetch(path, { signal, cache: "no-store" });

@@ -15,6 +15,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/v1/chores/")
 	if r.Method == http.MethodGet && (path == "" || path == "/") {
 		week := time.Now()
+		if value := r.URL.Query().Get("day"); value != "" {
+			if parsed, err := time.Parse("2006-01-02", value); err == nil {
+				write(w, http.StatusOK, map[string]any{"chores": h.service.Daily(parsed)})
+				return
+			}
+		}
 		if value := r.URL.Query().Get("week"); value != "" {
 			if parsed, err := time.Parse("2006-01-02", value); err == nil {
 				week = parsed
