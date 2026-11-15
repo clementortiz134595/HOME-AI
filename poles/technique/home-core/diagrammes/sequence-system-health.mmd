@@ -1,0 +1,10 @@
+sequenceDiagram
+    participant Panel as Home Panel
+    participant Core as Home Core
+    participant Pi as Raspberry Pi
+    participant Internet as HTTPS connectivity probe
+    Panel->>Core: GET /v1/system/metrics
+    Core->>Pi: Read /proc, statfs and interfaces
+    Core->>Internet: HEAD generate_204 (timeout)
+    Internet-->>Core: Reachability status
+    Core-->>Panel: Snapshot hardware + network

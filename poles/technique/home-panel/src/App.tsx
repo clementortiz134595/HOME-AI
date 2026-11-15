@@ -13,6 +13,7 @@ import {
   Monitor,
   MoreHorizontal,
   Settings,
+  Server,
   Sofa,
   Sparkles,
   Plug,
@@ -41,6 +42,7 @@ import { getWeather, type WeatherReport } from "@/lib/weather";
 import { getDeviceState, getHomeDevices, setDeviceSwitch, type DeviceState, type HomeDevice } from "@/lib/homeControl";
 import { getCalendarEvents, getCalendars, type CalendarEvent } from "@/lib/calendar";
 import { AgentPipeline } from "@/components/ai/agent-pipeline";
+import { SystemHealthView } from "@/SystemHealthView";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
 
@@ -52,7 +54,7 @@ const rooms = [
 ];
 
 type Profile = "Duo";
-type View = "dashboard" | "home" | "agenda" | "profile" | "cost" | "settings";
+type View = "dashboard" | "home" | "agenda" | "profile" | "cost" | "system" | "settings";
 
 const agendaItems = [
   { time: "20:30", title: "Dîner avec Lise", detail: "À la maison", owner: "Duo", tone: "bg-emerald-400" },
@@ -896,7 +898,6 @@ function App() {
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>({ state: "idle" });
   const [overlayOpen, setOverlayOpen] = useState(false);
   const voiceStatusRef = useRef<VoiceStatus>({ state: "idle" });
-  const [mailDebugOpen, setMailDebugOpen] = useState(false);
   const changeTheme = (value: boolean) => { setLightMode(value); window.localStorage.setItem("home-ai:theme", value ? "light" : "dark"); };
   const lastVoiceUpdate = useRef<string | undefined>(undefined);
   voiceStatusRef.current = voiceStatus;
@@ -986,11 +987,11 @@ function App() {
         <aside className="flex h-auto flex-col border-b border-white/10 bg-zinc-900/70 px-5 py-6 lg:h-full lg:border-r lg:border-b-0">
           <div className="flex items-center justify-between lg:block">
             <div className="flex items-center gap-3"><div className="grid size-10 place-items-center rounded-2xl bg-white text-zinc-950"><Sparkles className="size-5" /></div><div><p className="text-sm font-semibold tracking-wide">HOME AI</p><p className="text-xs capitalize text-zinc-500">{todayLabel}</p></div></div>
-            <div className="flex items-center gap-1"><Button variant="ghost" size="icon" aria-label="Ouvrir la prévisualisation des mails" className="lg:hidden" onClick={() => setMailDebugOpen(true)}><Mail /></Button><Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button></div>
+            <div className="flex items-center gap-1"><Button variant="ghost" size="icon" aria-label="Ouvrir la navigation" aria-expanded={navOpen} className="lg:hidden" onClick={() => setNavOpen(!navOpen)}><MoreHorizontal /></Button></div>
           </div>
           <nav className={(navOpen ? "block " : "hidden ") + "mt-6 space-y-1 lg:mt-10 lg:block"}><Button variant={view === "dashboard" ? "secondary" : "ghost"} onClick={() => { setView("dashboard"); setNavOpen(false); }} className={view === "dashboard" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Home /> Tableau de bord</Button><Button variant={view === "home" ? "secondary" : "ghost"} onClick={() => { setView("home"); setNavOpen(false); }} className={view === "home" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><Lightbulb /> Maison</Button><Button variant={view === "agenda" ? "secondary" : "ghost"} onClick={() => { setView("agenda"); setNavOpen(false); }} className={view === "agenda" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><CalendarDays /> Agenda</Button><Button variant={view === "profile" ? "secondary" : "ghost"} onClick={() => { setView("profile"); setNavOpen(false); }} className={view === "profile" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><UserRound /> Profil</Button><Button variant={view === "cost" ? "secondary" : "ghost"} onClick={() => { setView("cost"); setNavOpen(false); }} className={view === "cost" ? "w-full justify-start bg-white/10 text-white hover:bg-white/15" : "w-full justify-start"}><WalletCards /> Coût</Button></nav>
           <div className="mt-5 hidden lg:block"><AssistantOrb compact /></div>
-          <Button variant="ghost" onClick={() => setMailDebugOpen(true)} className="mt-3 w-full justify-start"><Mail /> Debug mails</Button>
+          <Button variant={view === "system" ? "secondary" : "ghost"} onClick={() => { setView("system"); setNavOpen(false); }} className="mt-3 w-full justify-start"><Server /> Ressources serveur</Button>
           <Button variant={view === "settings" ? "secondary" : "ghost"} onClick={() => { setView("settings"); setNavOpen(false); }} className="mt-auto hidden w-full justify-start lg:flex"><Settings /> Réglages</Button>
         </aside>
 
@@ -999,6 +1000,7 @@ function App() {
           {view === "agenda" && <AgendaView profile={profile} />}
           {view === "profile" && <ProfileView profile={profile} />}
           {view === "cost" && <CostView />}
+          {view === "system" && <SystemHealthView />}
           {view === "settings" && <SettingsView lightMode={lightMode} onThemeChange={changeTheme} />}
           <div className={view === "dashboard" ? "dashboard-page block" : "hidden"}>
           <div className="dashboard-overview hidden">
@@ -1028,7 +1030,6 @@ function App() {
       {selectedRoom && <RoomDetailDialog room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
       {selectedReminder && <ReminderDetailDialog reminder={selectedReminder} onClose={() => setSelectedReminder(null)} />}
       <VoiceOverlay status={voiceStatus} open={overlayOpen} onAnswer={(answer) => setVoiceStatus({ state: "answered", answer: answer.text, confirmationId: answer.confirmationId })} onClose={() => { setOverlayOpen(false); setVoiceStatus({ state: "idle" }); void fetch("/v1/assistant/voice/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: "idle" }) }); }} />
-      {mailDebugOpen && <MailDebugDialog onClose={() => setMailDebugOpen(false)} />}
     </main>
   );
 }

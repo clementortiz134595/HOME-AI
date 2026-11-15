@@ -33,6 +33,7 @@ import (
 	remindershttp "github.com/clementortiz/home-ai/home-core/internal/reminders/adapters/inbound/http"
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	"github.com/clementortiz/home-ai/home-core/internal/storage/sqlite"
+	systemhealthhttp "github.com/clementortiz/home-ai/home-core/internal/systemhealth/adapters/inbound/http"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
@@ -53,6 +54,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/healthz", weatherHandler)
 	mux.Handle("/v1/weather/", weatherHandler)
+	mux.Handle("/v1/system/", systemhealthhttp.NewHandler(&http.Client{Timeout: 5 * time.Second}))
 	mux.Handle("/v1/calendars/apple/", agendahttp.NewHandler(calendarRegistry))
 	fixturePath := os.Getenv("HOME_CORE_ZIGBEE_FIXTURE")
 	if fixturePath == "" {
