@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AssistantOrb } from "@/components/AssistantOrb";
-import { Bell, CheckCheck, ChevronRight, Home, Lightbulb, RotateCcw, Smartphone, WifiOff, X } from "lucide-react";
+import { Bell, CheckCheck, ChevronRight, Home, Lightbulb, RotateCcw, Server, Smartphone, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getHomeDevices, getDeviceState, setDeviceSwitch, getChores, type HomeDevice, type DeviceState, type Chore } from "@/lib/homeControl";
 import { useVoice } from "@/lib/useVoice";
@@ -8,13 +8,15 @@ import { responseKind, responseLabels } from "@/lib/assistant";
 import { useResponseData } from "@/lib/useResponseData";
 import { SearchProgress } from "@/components/SearchProgress";
 import { SmartResponse } from "@/components/responses/SmartResponse";
+import { SystemHealth } from "@/components/SystemHealth";
 
-type View = "home" | "devices" | "chores" | "reminders";
+type View = "home" | "devices" | "chores" | "reminders" | "system";
 const navigation = [
   { id: "home", label: "Accueil", icon: Home },
   { id: "devices", label: "Domotique", icon: Lightbulb },
   { id: "chores", label: "Tâches ménagères", icon: CheckCheck },
   { id: "reminders", label: "Rappels", icon: Bell },
+  { id: "system", label: "Système", icon: Server },
 ] as const;
 
 function Devices() {
@@ -89,7 +91,7 @@ export default function App() {
       {voice.phase === "error" && <div className="source-error" role="alert"><p>{voice.message}</p><Button variant="secondary" onClick={() => void voice.toggle()}>Reformuler</Button></div>}
       {voice.answer && <SmartResponse key={voice.answer.text + (voice.answer.gmailQuery ?? "")} kind={kind} answer={voice.answer} question={voice.transcript} source={source} onConfirm={() => void voice.confirm()} confirming={busy} onDismiss={voice.dismiss} />}
       {voice.answer && !busy && <Button variant="secondary" className="new-request" onClick={() => void voice.toggle()}>Une autre question</Button>}
-    </main> : <main className="home-stage"><Button variant="ghost" className={`orb-button orb-${voice.phase}`} data-phase={voice.phase} disabled={busy} aria-label={listening ? "Terminer et envoyer l’enregistrement" : "Parler à Home Core"} aria-pressed={listening} onClick={() => void voice.toggle()}><AssistantOrb phase={voice.phase} /></Button>{(voice.transcript || ["requesting", "listening", "transcribing"].includes(voice.phase)) && <section className="transcript-panel" aria-label="Transcription audio" role="status" aria-live="polite" aria-atomic="true"><p className="transcript-label">Transcription audio{listening && voice.mode === "browser" && <span> · En direct</span>}</p><p className={voice.transcript ? "transcript" : "transcript transcript-placeholder"}>{voice.transcript || (voice.mode === "browser" ? "Vos paroles s’afficheront ici…" : listening || voice.phase === "requesting" ? "La transcription apparaîtra après l’enregistrement." : "Transcription de l’audio en cours…")}</p></section>}<div className="voice-feedback" role="status" aria-live="polite"><p className="voice-hint">{listening ? "Je vous écoute…" : voice.phase === "requesting" ? "Activation du micro…" : voice.phase === "transcribing" ? "Je termine la transcription…" : "Touchez pour parler"}</p>{listening && <p className="voice-detail">Touchez à nouveau pour envoyer</p>}{listening && <p className="voice-privacy">{voice.mode === "browser" ? "Dictée du navigateur · l’audio peut être traité par son fournisseur." : "Audio transmis à Home Core à la fin de l’écoute."}</p>}{voice.phase === "error" && <p className="voice-detail error">{voice.message}</p>}</div></main> : <main className="page" key={view}>{view === "devices" ? <Devices /> : view === "chores" ? <HouseholdList kind="chores" /> : view === "reminders" ? <HouseholdList kind="reminders" /> : null}</main>}
+    </main> : <main className="home-stage"><Button variant="ghost" className={`orb-button orb-${voice.phase}`} data-phase={voice.phase} disabled={busy} aria-label={listening ? "Terminer et envoyer l’enregistrement" : "Parler à Home Core"} aria-pressed={listening} onClick={() => void voice.toggle()}><AssistantOrb phase={voice.phase} /></Button>{(voice.transcript || ["requesting", "listening", "transcribing"].includes(voice.phase)) && <section className="transcript-panel" aria-label="Transcription audio" role="status" aria-live="polite" aria-atomic="true"><p className="transcript-label">Transcription audio{listening && voice.mode === "browser" && <span> · En direct</span>}</p><p className={voice.transcript ? "transcript" : "transcript transcript-placeholder"}>{voice.transcript || (voice.mode === "browser" ? "Vos paroles s’afficheront ici…" : listening || voice.phase === "requesting" ? "La transcription apparaîtra après l’enregistrement." : "Transcription de l’audio en cours…")}</p></section>}<div className="voice-feedback" role="status" aria-live="polite"><p className="voice-hint">{listening ? "Je vous écoute…" : voice.phase === "requesting" ? "Activation du micro…" : voice.phase === "transcribing" ? "Je termine la transcription…" : "Touchez pour parler"}</p>{listening && <p className="voice-detail">Touchez à nouveau pour envoyer</p>}{listening && <p className="voice-privacy">{voice.mode === "browser" ? "Dictée du navigateur · l’audio peut être traité par son fournisseur." : "Audio transmis à Home Core à la fin de l’écoute."}</p>}{voice.phase === "error" && <p className="voice-detail error">{voice.message}</p>}</div></main> : <main className="page" key={view}>{view === "devices" ? <Devices /> : view === "chores" ? <HouseholdList kind="chores" /> : view === "reminders" ? <HouseholdList kind="reminders" /> : view === "system" ? <SystemHealth /> : null}</main>}
     <nav className="bottom-bar" aria-label="Navigation principale">{navigation.map(({ id, label, icon: Icon }) => <Button key={id} variant="ghost" className={"nav-item " + (view === id ? "active" : "")} aria-label={label} aria-current={view === id ? "page" : undefined} onClick={() => setView(id)}><Icon size={21} strokeWidth={1.65} /><span>{id === "chores" ? "Tâches" : label}</span></Button>)}</nav>
   </div><div className="landscape-guard" role="alert"><Smartphone size={38} strokeWidth={1.2} /><h1>Tout simplement, en portrait.</h1><p>Remettez votre téléphone à la verticale<br />pour retrouver votre maison.</p></div></>;
 }
