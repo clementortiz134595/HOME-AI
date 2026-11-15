@@ -6,7 +6,12 @@ export type WeatherReport = {
     apparentCelsius: number;
     weatherCode: number;
     summary: string;
+    humidityPercent?: number;
+    pressureHPa?: number;
+    windSpeedKmh?: number;
   };
+  daily: { date: string; minimumCelsius: number; maximumCelsius: number; precipitationProbabilityPercent?: number; summary: string }[];
+  hourly: { forecastAt: string; temperatureCelsius?: number; precipitationProbabilityPercent?: number; windSpeedKmh?: number; summary: string }[];
 };
 
 export async function getWeather(signal?: AbortSignal): Promise<WeatherReport> {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	weatherha "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/homeassistant"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/model"
@@ -28,7 +29,7 @@ func (handler *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Requ
 		report, err := handler.getWeather.Execute(request.Context(), model.LaCiotat)
 		if err != nil {
 			status := http.StatusBadGateway
-			if !errors.Is(err, openmeteo.ErrUnavailable) {
+			if !errors.Is(err, openmeteo.ErrUnavailable) && !errors.Is(err, weatherha.ErrUnavailable) {
 				status = http.StatusInternalServerError
 			}
 			writeJSON(writer, status, map[string]string{"error": "weather_unavailable"})

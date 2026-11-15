@@ -34,6 +34,7 @@ import (
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	"github.com/clementortiz/home-ai/home-core/internal/storage/sqlite"
 	weatherhttp "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/inbound/http"
+	weatherha "github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/homeassistant"
 	"github.com/clementortiz/home-ai/home-core/internal/weather/adapters/outbound/openmeteo"
 	weatherapp "github.com/clementortiz/home-ai/home-core/internal/weather/application"
 	workspacehttp "github.com/clementortiz/home-ai/home-core/internal/workspace/adapters/inbound/http"
@@ -42,7 +43,10 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	provider := openmeteo.NewClient(&http.Client{Timeout: 10 * time.Second})
+	var provider weatherapp.ForecastProvider = openmeteo.NewClient(&http.Client{Timeout: 10 * time.Second})
+	if url, token, entityID := os.Getenv("HOME_CORE_HOME_ASSISTANT_URL"), os.Getenv("HOME_CORE_HOME_ASSISTANT_TOKEN"), os.Getenv("HOME_CORE_HOME_ASSISTANT_WEATHER_ENTITY_ID"); url != "" && token != "" && entityID != "" {
+		provider = weatherha.NewClient(&http.Client{Timeout: 15 * time.Second}, url, token, entityID)
+	}
 	weatherService := weatherapp.NewGetWeather(provider)
 	calendarRegistry, err := calendarRegistryFromEnvironment()
 	if err != nil {

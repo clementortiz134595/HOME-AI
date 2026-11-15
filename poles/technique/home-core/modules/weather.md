@@ -35,6 +35,12 @@ Il n'y a pas de registre : un seul fournisseur est branché au premier jalon. Si
 
 ## Fournisseur
 
+En production, Home Assistant est la source de vérité lorsque
+`HOME_CORE_HOME_ASSISTANT_URL`, `HOME_CORE_HOME_ASSISTANT_TOKEN` et
+`HOME_CORE_HOME_ASSISTANT_WEATHER_ENTITY_ID` sont configurés. L'adaptateur lit
+l'état courant et demande les prévisions quotidiennes et horaires. Open-Meteo
+reste le fournisseur de développement en l'absence de cette configuration.
+
 L'adaptateur appelle successivement l'API de géocodage Open-Meteo, filtrée sur `FR`, puis l'API de prévision avec le fuseau de la localisation. Aucun jeton n'est nécessaire pour ce scénario public. Les spécifications de référence sont la [documentation de géocodage Open-Meteo](https://open-meteo.com/en/docs/geocoding-api) et la [documentation de prévision](https://open-meteo.com/en/docs).
 
 ## Lancer localement

@@ -597,6 +597,7 @@ function VoiceEnrollment({ profile }: { profile: Profile }) {
 function WeatherCard() {
   const [weather, setWeather] = useState<WeatherReport | null>(null);
   const [unavailable, setUnavailable] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -607,7 +608,7 @@ function WeatherCard() {
   }, []);
 
   return (
-    <Card className="dashboard-weather relative overflow-hidden border-white/10 bg-zinc-950 text-sky-50">
+    <><button type="button" onClick={() => weather && setOpen(true)} className="block w-full text-left" aria-label="Voir les prévisions météo détaillées"><Card className="dashboard-weather relative overflow-hidden border-white/10 bg-zinc-950 text-sky-50 transition hover:ring-2 hover:ring-sky-200/60">
       <div className="weather-landscape" aria-hidden="true">
         <Ascii piece={earthrise} options={{ fps: 8 }} className="weather-landscape-art" style={{ width: "max(100%, 360px)" }} />
       </div>
@@ -615,9 +616,17 @@ function WeatherCard() {
         <div className="flex items-start justify-between"><div><p className="text-sm font-medium text-sky-50">{weather?.location.name ?? "Météo locale"}</p><p className="mt-2 text-5xl font-semibold tracking-[-0.06em]">{weather ? `${Math.round(weather.current.temperatureCelsius)}°` : "—"}</p></div><CloudSun className="size-12 text-sky-100/80" /></div>
         <div className="flex items-end justify-between gap-4"><p className="weather-detail max-w-64 text-sm leading-5 text-sky-50">{weather?.current.summary ?? (unavailable ? "La météo est momentanément indisponible." : "Chargement de la météo…")}</p><span className="shrink-0 rounded-full bg-white/15 px-3 py-2 text-xs font-medium text-sky-50">{weather ? `Ressenti ${Math.round(weather.current.apparentCelsius)}°` : "Home Core"}</span></div>
       </CardContent>
-    </Card>
+    </Card></button>{open && weather && <WeatherDetailDialog weather={weather} onClose={() => setOpen(false)} />}</>
   );
 }
+
+function WeatherDetailDialog({ weather, onClose }: { weather: WeatherReport; onClose: () => void }) {
+  const dailyLabel = (date: string) => new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`));
+  const hourLabel = (date: string) => new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(new Date(date));
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Prévisions météo"><section className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-zinc-950 p-6 text-zinc-50 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-zinc-400">{weather.location.name}</p><h2 className="mt-1 text-3xl font-semibold">{Math.round(weather.current.temperatureCelsius)}° · {weather.current.summary}</h2></div><Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer"><X /></Button></div><div className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><Metric label="Ressenti" value={`${Math.round(weather.current.apparentCelsius)}°`} /><Metric label="Humidité" value={weather.current.humidityPercent == null ? "—" : `${Math.round(weather.current.humidityPercent)} %`} /><Metric label="Pression" value={weather.current.pressureHPa == null ? "—" : `${Math.round(weather.current.pressureHPa)} hPa`} /><Metric label="Vent" value={weather.current.windSpeedKmh == null ? "—" : `${Math.round(weather.current.windSpeedKmh)} km/h`} /></div><h3 className="mt-7 text-lg font-semibold">Prévisions quotidiennes</h3><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{weather.daily.map(day => <div key={day.date} className="rounded-2xl bg-white/8 p-4"><p className="capitalize font-medium">{dailyLabel(day.date)}</p><p className="mt-2 text-zinc-300">{day.summary}</p><p className="mt-2 text-lg">{Math.round(day.minimumCelsius)}° <span className="text-zinc-500">/</span> {Math.round(day.maximumCelsius)}°</p>{day.precipitationProbabilityPercent != null && <p className="text-xs text-sky-300">Pluie {Math.round(day.precipitationProbabilityPercent)} %</p>}</div>)}</div><h3 className="mt-7 text-lg font-semibold">Heure par heure</h3><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">{weather.hourly.map(hour => <div key={hour.forecastAt} className="rounded-2xl bg-white/8 p-3"><p className="font-medium">{hourLabel(hour.forecastAt)}</p><p className="mt-1 text-lg">{hour.temperatureCelsius == null ? "—" : `${Math.round(hour.temperatureCelsius)}°`}</p><p className="truncate text-xs text-zinc-400">{hour.summary}</p></div>)}</div></section></div>;
+}
+
+function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl bg-white/8 p-3"><p className="text-xs text-zinc-400">{label}</p><p className="mt-1 font-medium">{value}</p></div>; }
 
 type DashboardRoom = (typeof rooms)[number];
 type RoomDialogRoom = Pick<DashboardRoom, "name" | "icon" | "tone">;
