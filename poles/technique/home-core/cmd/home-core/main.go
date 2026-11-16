@@ -21,6 +21,8 @@ import (
 	assistantapp "github.com/clementortiz/home-ai/home-core/internal/assistant/application"
 	choreshttp "github.com/clementortiz/home-ai/home-core/internal/chores/adapters/inbound/http"
 	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
+	costshttp "github.com/clementortiz/home-ai/home-core/internal/costs/adapters/inbound/http"
+	costsapp "github.com/clementortiz/home-ai/home-core/internal/costs/application"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/homeassistant"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
@@ -107,6 +109,7 @@ func main() {
 	mux.Handle("/v1/chores/", choreshttp.NewHandler(choresService))
 	remindersService := remindersapp.NewService(database)
 	mux.Handle("/v1/reminders", remindershttp.NewHandler(remindersService))
+	mux.Handle("/v1/costs/", costshttp.NewHandler(costsapp.NewService(database)))
 	choreTool := assistantapp.NewChoreTool(choresService)
 	reminderTool := assistantapp.NewReminderTool(remindersService)
 	for _, name := range []string{"chores.create", "chores.update", "chores.delete"} {

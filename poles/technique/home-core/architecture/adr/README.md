@@ -8,3 +8,5 @@ Les décisions structurantes de Home Core sont consignées ici avant l'implémen
 - [ADR-0004 — API Workspace avant façade MCP](0004-google-workspace-api-before-mcp.md)
 - [ADR-0005 — Module Home Control extensible par protocole](0005-module-home-control-protocoles.md)
 - [ADR-0010 — Secrets locaux persistants hors worktree](0010-secrets-locaux-persistants.md)
+- [ADR-0013 — Accès distant privé par Tailscale](0013-acces-distant-tailscale.md)
+- [ADR-0014 — Suivi local des coûts](0014-suivi-local-des-couts.md)
