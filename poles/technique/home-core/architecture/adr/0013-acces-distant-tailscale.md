@@ -16,16 +16,20 @@ IPv4 publique, y compris derrière un CGNAT.
 
 La Raspberry Pi et les appareils personnels autorisés rejoignent un réseau
 privé Tailscale. Le daemon Tailscale est installé sur l'hôte Raspberry Pi, hors
-du conteneur Home Core. Il publie le point d'entrée HTTPS privé avec
-`tailscale serve` vers le port loopback du Home Panel, en HTTPS sur le port
-`8443`. Le port `443` reste occupé par Home App dans le déploiement actuel ; il
-devra être libéré ou routé explicitement avant de devenir le point d'entrée
-HTTPS unique. Le proxy du Panel dirige les appels `/v1` vers Home Core sur le
-réseau Docker privé.
+des conteneurs. Il publie deux points d'entrée HTTPS privés :
+
+- Home Panel sur `8443`, vers `127.0.0.1:13000` ;
+- Home App sur `8444`, vers `https+insecure://127.0.0.1:13444`.
+
+Le second proxy conserve le certificat local de développement uniquement entre
+Tailscale et le conteneur ; Tailscale Serve fournit le certificat HTTPS valide
+au navigateur. Les deux interfaces dirigent leurs appels `/v1` vers Home Core
+sur le réseau Docker privé.
 
 Les services applicatifs publiés par Docker restent liés à `127.0.0.1` :
 
 - Home Panel : `127.0.0.1:13000` ;
+- Home App : `127.0.0.1:13444` ;
 - Home Core : `127.0.0.1:18080`, pour le diagnostic local seulement.
 
 L'accès est accordé dans la politique Tailscale aux seuls comptes et appareils
@@ -63,11 +67,11 @@ directe de Home Assistant sont exclus du périmètre initial.
 1. Installer Tailscale sur la Raspberry Pi, puis l'autoriser dans le tailnet.
 2. Activer MagicDNS et les certificats HTTPS du tailnet, selon la documentation
    Tailscale.
-3. Configurer `tailscale serve --https=8443 --bg 13000` sur l'hôte et vérifier
-   qu'il redémarre après reboot.
-4. Vérifier depuis un appareil autorisé l'accès HTTPS au Panel et le refus depuis
-   un appareil hors tailnet.
-5. Vérifier qu'aucun port Home Panel, Home Core ou Home Assistant n'écoute sur
+3. Configurer Tailscale Serve sur `8443` pour le Panel et `8444` pour Home App,
+   puis vérifier qu'ils redémarrent après reboot.
+4. Vérifier depuis un appareil autorisé l'accès HTTPS aux deux interfaces et le
+   refus depuis un appareil hors tailnet.
+5. Vérifier qu'aucun port Home Panel, Home App, Home Core ou Home Assistant n'écoute sur
    l'interface réseau publique de la Raspberry Pi.
 
 ## Références

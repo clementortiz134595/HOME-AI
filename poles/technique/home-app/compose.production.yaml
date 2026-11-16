@@ -6,8 +6,7 @@ services:
       target: production
     image: home-app:local
     ports:
-      - "80:80"
-      - "443:443"
+      - "127.0.0.1:${HOME_APP_TLS_PORT:-13444}:443"
     volumes:
       - ./certs:/etc/nginx/certs:ro
     networks:

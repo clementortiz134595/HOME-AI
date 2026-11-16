@@ -6,7 +6,7 @@ Accueil : orb tactile pour démarrer/arrêter la capture. Navigation flottante :
 
 Home Core reste la seule frontière API. Réutilisation des contrats voix et domotique existants ; aucune nouvelle API serveur ni nouveau fournisseur. Tâches et rappels : écrans en attente de contrats authentifiés, aucune donnée fictive. Le micro est ouvert uniquement sur action et fermé en quittant l’accueil, en arrière-plan et en paysage. Audio non mis en cache. Session transmise par la même origine, sans nouvelle politique d’identité.
 
-Livraison : frontend statique autonome, Docker prévu avec proxy /v1 vers Home Core. HTTPS requis sur téléphone pour micro et installation. Service worker limité au shell statique ; API toujours réseau, aucune commande différée.
+Livraison : frontend statique autonome, Docker prévu avec proxy /v1 vers Home Core. HTTPS requis sur téléphone pour micro et installation. Sur la Raspberry Pi, le conteneur ne publie son HTTPS que sur `127.0.0.1:13444` ; Tailscale Serve expose l'URL privée en HTTPS sur le port `8444`. Service worker limité au shell statique ; API toujours réseau, aucune commande différée.
 
 ```mermaid
 flowchart LR

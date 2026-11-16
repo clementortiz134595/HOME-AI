@@ -26,7 +26,7 @@ Vite transmet `/v1` à Home Core sur `127.0.0.1:18080`, comme Home Panel. `npm r
 
 Sur téléphone, servir via HTTPS pour utiliser le micro et installer la PWA. Safari iOS : Partager → Sur l’écran d’accueil ; Chrome Android : Installer l’application. L’installation physique iOS/Android et le microphone réel restent à vérifier sur appareil.
 
-Le Dockerfile fournit une cible de production nginx. `docker compose -f compose.production.yaml up --build` expose le frontend sur le port 8081. Le service `home-core:8080` doit être joignable depuis le réseau Compose (réseau partagé `home-ai`, à créer/configurer avec le déploiement Home Core). Placer un reverse proxy HTTPS devant nginx. Aucune exposition directe de Home Assistant, aucun jeton intégré au frontend. L’authentification et l’accès distant restent ceux du déploiement Home Core ; aucun parcours de connexion nouveau n’est implémenté ici.
+Le Dockerfile fournit une cible de production nginx. `docker compose -f compose.production.yaml up --build` lie le HTTPS du frontend à `127.0.0.1:13444` ; le service `home-core:8080` doit être joignable depuis le réseau Compose (réseau partagé `home-ai`, à créer/configurer avec le déploiement Home Core). Tailscale Serve fournit le HTTPS navigateur sur `https://<raspberry>.tailnet.ts.net:8444/` et transmet en HTTPS interne vers nginx. Aucune exposition directe de Home Assistant, aucun jeton intégré au frontend. L’authentification et l’accès distant restent ceux du déploiement Home Core ; aucun parcours de connexion nouveau n’est implémenté ici.
 
 Décision et flux : [ADR 001](architecture/adr/001-pwa-mobile.md).
 

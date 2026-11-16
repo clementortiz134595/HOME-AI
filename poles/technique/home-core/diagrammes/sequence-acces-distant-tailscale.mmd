@@ -3,17 +3,21 @@ sequenceDiagram
     participant tailnet as Reseau prive Tailscale
     participant pi as Raspberry Pi - Tailscale Serve
     participant panel as Home Panel
+    participant app as Home App
     participant core as Home Core
     participant ha as Home Assistant local
 
     device->>tailnet: Connexion chiffree avec identite Tailscale
     tailnet->>pi: Autorise seulement selon la politique tailnet
     pi->>panel: Proxy HTTPS vers 127.0.0.1:13000
+    pi->>app: Proxy HTTPS vers 127.0.0.1:13444
     panel->>core: /v1 sur le reseau Docker prive
+    app->>core: /v1 sur le reseau Docker prive
     core->>core: Authentification et autorisation Home Core
     core->>ha: Commande autorisee sur le reseau local
     ha-->>core: Etat confirme
     core-->>panel: Resultat explicite
-    panel-->>device: Interface et retour d'etat
+    panel-->>device: Home Panel et retour d'etat
+    app-->>device: Home App et retour d'etat
 
     Note over device,pi: Aucun port entrant routeur, Home Assistant ou Home Core public
