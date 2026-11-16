@@ -14,8 +14,9 @@ Vite transmet `/v1` à Home Core sur `127.0.0.1:18080`, comme Home Panel. `npm r
 ## Première version
 
 - Accueil : orb seul avec indication discrète ; toucher pour parler, toucher de nouveau pour envoyer (limite de 20 secondes). Transcription et réponse rendues par Home Core. Aucun fournisseur de reconnaissance vocale appelé directement depuis le navigateur.
-- Barre flottante : Accueil, Domotique, Tâches ménagères, Rappels.
+- Barre flottante : Accueil, Domotique, Tâches ménagères, Rappels, Système.
 - Domotique : inventaire, état et allumage/extinction via les contrats existants de Home Core ; erreurs et états inconnus explicites. Actualisation manuelle.
+- Système : état de la Raspberry Pi (RAM, stockage, charge CPU, réseau et disponibilité Internet) depuis `GET /v1/system/metrics`, avec actualisation toutes les 5 secondes. Les métriques indisponibles sont signalées sans réutiliser de valeurs périmées.
 - Tâches et rappels : écrans d’attente, à raccorder après définition des contrats API et sessions privées. Aucune donnée de démonstration.
 - Portrait adaptatif, zones sûres iPhone et blocage visuel en paysage. Le manifeste demande le portrait ; iOS peut ignorer le verrouillage système, d’où le blocage visuel.
 - Capture arrêtée en quittant l’accueil, en arrière-plan ou en paysage. Aucun audio conservé dans le stockage navigateur.
