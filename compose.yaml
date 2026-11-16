@@ -40,7 +40,7 @@ services:
       - ${HOME_AI_GOOGLE_ADC_FILE:-/Users/clement/.config/gcloud/application_default_credentials.json}:/run/secrets/google-adc.json:ro
       - home-core-secrets:/var/lib/home-core
     ports:
-      - "127.0.0.1:18080:8080"
+      - "127.0.0.1:${HOME_CORE_HOST_PORT:-18080}:8080"
     expose:
       - "8080"
     read_only: true
@@ -64,7 +64,7 @@ services:
       target: production
     image: home-ai/home-panel:local
     ports:
-      - "${HOME_PANEL_PORT:-3000}:80"
+      - "${HOME_PANEL_PORT:-13000}:80"
     depends_on:
       home-core:
         condition: service_healthy
