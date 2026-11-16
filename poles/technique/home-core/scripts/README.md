@@ -40,7 +40,10 @@ privée :
 ```
 
 Le script vérifie que le Panel répond sur `127.0.0.1:13000`, configure
-`tailscale serve --bg 13000`, puis affiche l'URL privée. Tailscale peut demander
-d'activer MagicDNS et les certificats HTTPS lors de la première exécution.
+`tailscale serve --https=8443 --bg 13000`, puis affiche l'URL privée. Le port
+`8443` évite le conflit avec Home App, qui utilise déjà `443` sur l'hôte. Il peut
+être remplacé par `TAILSCALE_SERVE_PORT` lorsqu'un point d'entrée HTTPS unique
+aura été retenu. Tailscale peut demander d'activer MagicDNS et les certificats
+HTTPS lors de la première exécution.
 L'URL est accessible seulement aux appareils autorisés du tailnet. Ne pas
 activer Funnel ni une redirection de port sur le routeur.
