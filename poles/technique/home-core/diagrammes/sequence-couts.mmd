@@ -1,12 +1,18 @@
 sequenceDiagram
-    participant Source as Relevé fournisseur / import administrateur
-    participant Costs as Module costs Home Core
-    participant DB as SQLite local
     participant Panel as Home Panel
-    Source->>Costs: écriture de coût catégorisée (flux futur authentifié)
-    Costs->>DB: persiste montant en centimes et date
+    participant Costs as Module costs Home Core
+    participant ADC as Identifiants applicatifs Google
+    participant BQ as BigQuery / export détaillé Cloud Billing
+    participant DB as SQLite local (secours)
     Panel->>Costs: GET /v1/costs/summary
-    Costs->>DB: lit les 12 derniers mois
-    DB-->>Costs: écritures disponibles ou aucune donnée
+    alt Table Cloud Billing configurée
+        Costs->>ADC: obtient un jeton OAuth côté serveur
+        ADC-->>Costs: jeton court
+        Costs->>BQ: requête agrégée sur les 12 derniers mois
+        BQ-->>Costs: coûts par mois et service (EUR)
+    else Aucune table GCP configurée
+        Costs->>DB: lit les écritures locales
+        DB-->>Costs: écritures disponibles ou aucune donnée
+    end
     Costs-->>Panel: synthèse, historique et statut de données
-    Note over Panel: Aucun montant n'est inventé si le relevé est absent
+    Note over Panel: Aucun jeton, détail de facture ou montant simulé n'est envoyé au navigateur

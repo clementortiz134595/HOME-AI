@@ -22,6 +22,7 @@ import (
 	choreshttp "github.com/clementortiz/home-ai/home-core/internal/chores/adapters/inbound/http"
 	choresapp "github.com/clementortiz/home-ai/home-core/internal/chores/application"
 	costshttp "github.com/clementortiz/home-ai/home-core/internal/costs/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/costs/adapters/outbound/gcpbilling"
 	costsapp "github.com/clementortiz/home-ai/home-core/internal/costs/application"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/fixture"
@@ -109,7 +110,16 @@ func main() {
 	mux.Handle("/v1/chores/", choreshttp.NewHandler(choresService))
 	remindersService := remindersapp.NewService(database)
 	mux.Handle("/v1/reminders", remindershttp.NewHandler(remindersService))
-	mux.Handle("/v1/costs/", costshttp.NewHandler(costsapp.NewService(database)))
+	var costsRepository costsapp.Repository = database
+	if billingTable := os.Getenv("HOME_CORE_GCP_BILLING_TABLE"); billingTable != "" {
+		billingClient, billingErr := gcpbilling.NewClient(&http.Client{Timeout: 30 * time.Second}, billingTable)
+		if billingErr != nil {
+			logger.Error("GCP billing is configured but unavailable", "error", billingErr)
+			os.Exit(1)
+		}
+		costsRepository = billingClient
+	}
+	mux.Handle("/v1/costs/", costshttp.NewHandler(costsapp.NewService(costsRepository)))
 	choreTool := assistantapp.NewChoreTool(choresService)
 	reminderTool := assistantapp.NewReminderTool(remindersService)
 	for _, name := range []string{"chores.create", "chores.update", "chores.delete"} {
