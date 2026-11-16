@@ -42,8 +42,8 @@ export function useResponseData(kind: ResponseKind, answer: AssistantAnswer | nu
         case "home": {
           const devices = await getHomeDevices(signal);
           return { devices: await Promise.all(devices.map(async device => {
-            try { const state = await getDeviceState(device.id, signal); return { ...device, online: state.online, on: state.switchOn }; }
-            catch { return { ...device }; }
+            try { const state = await getDeviceState(device.id, signal); return { ...device, room: device.room ?? "Tous les appareils", online: state.online, on: state.switchOn }; }
+            catch { return { ...device, room: device.room ?? "Tous les appareils" }; }
           })) };
         }
         case "markets": {

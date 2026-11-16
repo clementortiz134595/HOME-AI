@@ -1,7 +1,7 @@
 export type HomeDevice = {
   id: string;
   name: string;
-  room: string;
+  room?: string;
   kind: string;
   capabilities: string[];
 };
