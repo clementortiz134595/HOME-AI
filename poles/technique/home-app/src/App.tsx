@@ -47,13 +47,16 @@ function Devices() {
     catch { setError("La commande n’a pas été confirmée. Actualisez l’état avant de réessayer."); setStates(items => { const next = { ...items }; delete next[device.id]; return next; }); }
     finally { setPending(items => items.filter(id => id !== device.id)); }
   };
-  const rooms = Array.from(new Set(devices.map(device => device.room))).sort();
-  const visibleDevices = selectedRoom ? devices.filter(device => device.room === selectedRoom) : [];
+  // Home Assistant's state endpoint does not always include an area. Keep
+  // these devices reachable instead of producing an empty, untappable room.
+  const roomName = (device: HomeDevice) => device.room.trim() || "Tous les appareils";
+  const rooms = Array.from(new Set(devices.map(roomName))).sort();
+  const visibleDevices = selectedRoom === null ? [] : devices.filter(device => roomName(device) === selectedRoom);
   return <section className="content"><div className="section-heading"><div><p className="eyebrow">Votre maison</p><h1>Domotique</h1></div><Button variant="ghost" size="icon" aria-label="Actualiser les appareils" onClick={() => setAttempt(value => value + 1)}><RotateCcw size={19} /></Button></div>
     {error && <p role="alert" className="notice">{error}</p>}
     {loading ? <p className="empty">Chargement des appareils…</p> : !error && !devices.length ? <div className="empty"><Lightbulb /><h2>Aucun appareil</h2><p>Les appareils autorisés par Home Core apparaîtront ici.</p></div> : null}
-    {!loading && !error && devices.length > 0 && !selectedRoom && <div className="room-list">{rooms.map(room => <button className="room-card" key={room} onClick={() => setSelectedRoom(room)}><div><p className="room-label">Pièce</p><h2>{room}</h2><span>{devices.filter(device => device.room === room).length} appareils</span></div><ChevronRight size={20} /></button>)}</div>}
-    {selectedRoom && <><button className="back-link" onClick={() => setSelectedRoom(null)}>← Toutes les pièces</button><h2 className="room-title">{selectedRoom}</h2></>}
+    {!loading && !error && devices.length > 0 && selectedRoom === null && <div className="room-list">{rooms.map(room => <button type="button" className="room-card" key={room} onClick={() => setSelectedRoom(room)} aria-label={`Ouvrir ${room}`}><div><p className="room-label">Pièce</p><h2>{room}</h2><span>{devices.filter(device => roomName(device) === room).length} appareils</span></div><ChevronRight aria-hidden="true" size={20} /></button>)}</div>}
+    {selectedRoom !== null && <><button type="button" className="back-link" onClick={() => setSelectedRoom(null)}>← Toutes les pièces</button><h2 className="room-title">{selectedRoom}</h2></>}
     <div className="device-list">{visibleDevices.map(device => {
       const state = states[device.id]; const busy = pending.includes(device.id);
       const controllable = device.capabilities.includes("switch") && state?.online && typeof state.switchOn === "boolean";
