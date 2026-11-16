@@ -49,7 +49,7 @@ function Devices() {
   };
   // Home Assistant's state endpoint does not always include an area. Keep
   // these devices reachable instead of producing an empty, untappable room.
-  const roomName = (device: HomeDevice) => device.room.trim() || "Tous les appareils";
+  const roomName = (device: HomeDevice) => device.room?.trim() || "Tous les appareils";
   const rooms = Array.from(new Set(devices.map(roomName))).sort();
   const visibleDevices = selectedRoom === null ? [] : devices.filter(device => roomName(device) === selectedRoom);
   return <section className="content"><div className="section-heading"><div><p className="eyebrow">Votre maison</p><h1>Domotique</h1></div><Button variant="ghost" size="icon" aria-label="Actualiser les appareils" onClick={() => setAttempt(value => value + 1)}><RotateCcw size={19} /></Button></div>
