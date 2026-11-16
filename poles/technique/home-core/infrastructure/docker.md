@@ -25,7 +25,7 @@ Raspberry Pi ou serveur local
 - Une image multi-architecture compatible avec la cible matérielle réelle (notamment ARM64 si Raspberry Pi compatible).
 - Un volume persistant dédié aux données dès qu'un module stocke un état ; un chemin de sauvegarde documenté, exportable et restaurable.
 - Variables non sensibles dans un fichier d'exemple versionné. Secrets injectés à l'exécution, absents du dépôt et des logs.
-- Réseau Compose privé par défaut. Les ports publiés sont réduits à l'API Home Panel, avec une exposition réseau explicitement décidée.
+- Réseau Compose privé par défaut. Les ports publiés sont liés à la boucle locale ; l'accès distant privé est assuré par Tailscale Serve sur l'hôte, conformément à l'[ADR-0013](../architecture/adr/0013-acces-distant-tailscale.md).
 - `healthcheck`, politique de redémarrage, utilisateur non privilégié et système de fichiers en lecture seule lorsque le runtime le permet.
 - Limites CPU/mémoire fondées sur des mesures de la machine cible, non sur des valeurs supposées.
 - Journaux structurés vers la sortie standard, avec filtrage des secrets et des données sensibles.
@@ -35,7 +35,7 @@ Raspberry Pi ou serveur local
 - Déployer Home Assistant dans la même pile Docker.
 - Publier Home Assistant sur Internet ou contourner son contrôle d'accès.
 - Ajouter Redis, un bus de messages, une base séparée ou une plateforme d'orchestration sans besoin mesuré et ADR.
-- Choisir prématurément l'accès distant : VPN privé et HTTPS restent à étudier.
+- Exposer Home Panel, Home Core, SSH ou Home Assistant à Internet public, y compris via Tailscale Funnel ou une redirection de port.
 
 ## Validation avant livraison Docker
 
@@ -44,3 +44,4 @@ Raspberry Pi ou serveur local
 3. Restaurer une sauvegarde dans un environnement de test.
 4. Vérifier l'absence de secret dans l'image, la configuration affichée et les journaux.
 5. Simuler l'indisponibilité de Home Assistant, Internet et IA ; les commandes locales déterministes doivent annoncer leur état réel.
+6. Vérifier que le Panel est lié à `127.0.0.1:13000` puis le rendre accessible uniquement via `tailscale serve --bg 13000` depuis un appareil autorisé.
