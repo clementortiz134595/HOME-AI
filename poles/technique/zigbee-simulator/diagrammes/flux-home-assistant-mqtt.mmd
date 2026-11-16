@@ -1,0 +1,11 @@
+sequenceDiagram
+  participant Sim as Simulateur Zigbee
+  participant MQTT as Mosquitto local
+  participant HA as Home Assistant
+  participant Apple as Apple Maison
+  Sim->>MQTT: MQTT Discovery + états retenus
+  MQTT->>HA: Entités simulées
+  HA->>MQTT: Commande simulée
+  MQTT->>Sim: Commande
+  Sim->>MQTT: État confirmé
+  HA->>Apple: HomeKit Bridge (optionnel)

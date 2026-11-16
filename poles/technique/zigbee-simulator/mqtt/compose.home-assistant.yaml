@@ -1,0 +1,31 @@
+services:
+  mqtt:
+    image: eclipse-mosquitto:2.0.21
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - ../home-ai/poles/technique/zigbee-simulator/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  zigbee-simulator:
+    build:
+      context: ../home-ai/poles/technique/zigbee-simulator
+      dockerfile: mqtt/Dockerfile
+    image: home-ai/zigbee-mqtt-simulator:local
+    network_mode: host
+    depends_on:
+      mqtt:
+        condition: service_started
+    environment:
+      MQTT_HOST: 127.0.0.1
+      MQTT_PORT: "1883"
+      ZIGBEE_SIMULATOR_FIXTURE: /app/fixtures/maison-demo.json
+    volumes:
+      - ../home-ai/poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
