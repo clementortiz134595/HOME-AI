@@ -8,6 +8,7 @@ sequenceDiagram
     participant ha as Adaptateur Home Assistant
     participant homeAssistant as Home Assistant
 
+    Note over api,ha: Raspberry Pi : mode home_assistant + URL et jeton injectés hors dépôt
     utilisateur->>panel: Demande allumer salon
     panel->>api: Commande avec session et cle idempotence
     api->>access: Authentifier et charger le contexte

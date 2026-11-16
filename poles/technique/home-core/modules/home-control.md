@@ -4,7 +4,7 @@ Le module porte l'inventaire, les capacités, l'état confirmé et les commandes
 
 ## Adaptateur Home Assistant
 
-Home Core peut utiliser Home Assistant comme passerelle domotique en configurant `HOME_CORE_HOME_ASSISTANT_URL` et `HOME_CORE_HOME_ASSISTANT_TOKEN`. L'adaptateur utilise l'API REST Home Assistant, conserve les `entity_id` comme identifiants de périphériques et relit l'état après chaque commande pour ne jamais annoncer une réussite supposée. Les entités `light`, `switch` et `sensor` sont actuellement inventoriées ; les commandes `turn_on` et `turn_off` sont supportées pour les lumières et interrupteurs.
+Home Core peut utiliser Home Assistant comme passerelle domotique en configurant `HOME_CORE_HOME_CONTROL_MODE=home_assistant`, `HOME_CORE_HOME_ASSISTANT_URL` et `HOME_CORE_HOME_ASSISTANT_TOKEN`. Ce mode échoue au démarrage si l'URL ou le jeton manquent, afin de ne jamais commander le simulateur par erreur. L'adaptateur utilise l'API REST Home Assistant, conserve les `entity_id` comme identifiants de périphériques et relit l'état après chaque commande pour ne jamais annoncer une réussite supposée. Les entités `light`, `switch` et `sensor` sont actuellement inventoriées ; les commandes `turn_on` et `turn_off` sont supportées pour les lumières et interrupteurs.
 
 - `model.Device` décrit un appareil et ses capacités (`switch`, `current`, `power`).
 - `model.DeviceState` distingue l'état observé de l'action demandée.
