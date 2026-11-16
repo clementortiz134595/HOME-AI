@@ -75,3 +75,8 @@ services:
 
 volumes:
   home-core-secrets:
+
+networks:
+  default:
+    external: true
+    name: home-ai

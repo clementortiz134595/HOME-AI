@@ -24,13 +24,17 @@ des conteneurs. Il publie deux points d'entrée HTTPS privés :
 Le second proxy conserve le certificat local de développement uniquement entre
 Tailscale et le conteneur ; Tailscale Serve fournit le certificat HTTPS valide
 au navigateur. Les deux interfaces dirigent leurs appels `/v1` vers Home Core
-sur le réseau Docker privé.
+sur le réseau Docker privé partagé `home-ai`.
 
 Les services applicatifs publiés par Docker restent liés à `127.0.0.1` :
 
 - Home Panel : `127.0.0.1:13000` ;
 - Home App : `127.0.0.1:13444` ;
 - Home Core : `127.0.0.1:18080`, pour le diagnostic local seulement.
+
+Home Core, Home Panel et Home App rejoignent le réseau Docker externe `home-ai`.
+Il est créé une fois sur l'hôte et reste le seul réseau partagé entre les deux
+projets Compose ; aucune API n'est publiée par ce réseau sur le LAN.
 
 L'accès est accordé dans la politique Tailscale aux seuls comptes et appareils
 personnels autorisés. Home Core conserve sa propre authentification et ses

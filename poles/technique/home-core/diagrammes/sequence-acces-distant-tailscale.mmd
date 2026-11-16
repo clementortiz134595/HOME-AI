@@ -11,8 +11,8 @@ sequenceDiagram
     tailnet->>pi: Autorise seulement selon la politique tailnet
     pi->>panel: Proxy HTTPS vers 127.0.0.1:13000
     pi->>app: Proxy HTTPS vers 127.0.0.1:13444
-    panel->>core: /v1 sur le reseau Docker prive
-    app->>core: /v1 sur le reseau Docker prive
+    panel->>core: /v1 sur le reseau Docker prive home-ai
+    app->>core: /v1 sur le reseau Docker prive home-ai
     core->>core: Authentification et autorisation Home Core
     core->>ha: Commande autorisee sur le reseau local
     ha-->>core: Etat confirme

@@ -25,7 +25,7 @@ Raspberry Pi ou serveur local
 - Une image multi-architecture compatible avec la cible matérielle réelle (notamment ARM64 si Raspberry Pi compatible).
 - Un volume persistant dédié aux données dès qu'un module stocke un état ; un chemin de sauvegarde documenté, exportable et restaurable.
 - Variables non sensibles dans un fichier d'exemple versionné. Secrets injectés à l'exécution, absents du dépôt et des logs.
-- Réseau Compose privé par défaut. Les ports publiés sont liés à la boucle locale ; l'accès distant privé est assuré par Tailscale Serve sur l'hôte, conformément à l'[ADR-0013](../architecture/adr/0013-acces-distant-tailscale.md).
+- Réseau Docker privé partagé `home-ai`, créé une fois avec `docker network create home-ai`. Il relie Home Core, Home Panel et Home App sans publier d'API sur le LAN. Les ports publiés sont liés à la boucle locale ; l'accès distant privé est assuré par Tailscale Serve sur l'hôte, conformément à l'[ADR-0013](../architecture/adr/0013-acces-distant-tailscale.md).
 - `healthcheck`, politique de redémarrage, utilisateur non privilégié et système de fichiers en lecture seule lorsque le runtime le permet.
 - Limites CPU/mémoire fondées sur des mesures de la machine cible, non sur des valeurs supposées.
 - Journaux structurés vers la sortie standard, avec filtrage des secrets et des données sensibles.
