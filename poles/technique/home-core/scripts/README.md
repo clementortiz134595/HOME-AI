@@ -24,3 +24,23 @@ docker compose up -d --build
 
 Ouvrir ensuite Home Panel sur le port publié par Compose et autoriser le
 microphone dans le navigateur.
+
+## Accès distant privé Tailscale
+
+Sur la Raspberry Pi, installer le client Tailscale selon la
+[documentation officielle](https://tailscale.com/download/linux), puis connecter
+l'hôte au tailnet avec `sudo tailscale up`. Cette étape ouvre une authentification
+dans le navigateur ; ne pas enregistrer de clé d'authentification dans le dépôt.
+
+Une fois la pile démarrée depuis la racine du dépôt, activer l'entrée HTTPS
+privée :
+
+```bash
+./poles/technique/home-core/scripts/configure-tailscale-serve.sh
+```
+
+Le script vérifie que le Panel répond sur `127.0.0.1:13000`, configure
+`tailscale serve --bg 13000`, puis affiche l'URL privée. Tailscale peut demander
+d'activer MagicDNS et les certificats HTTPS lors de la première exécution.
+L'URL est accessible seulement aux appareils autorisés du tailnet. Ne pas
+activer Funnel ni une redirection de port sur le routeur.
