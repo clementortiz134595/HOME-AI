@@ -12,6 +12,20 @@ Sur la Raspberry Pi, le fichier référencé par `HOME_AI_SECRETS_FILE` doit aus
 
 Le fichier de déploiement par défaut est `/etc/home-ai/home-core.env`. Pour un autre emplacement, exporter `HOME_AI_SECRETS_FILE` avant `docker compose up`; le script local `scripts/bootstrap-secrets.sh` conserve, lui, son fichier dans `~/.config/home-ai/home-core.env`.
 
+## Ports de déploiement stables
+
+La pile Home AI réserve les ports d'hôte suivants. Les valeurs peuvent être remplacées explicitement, mais ne doivent pas être laissées à une publication Docker aléatoire.
+
+| Service | Port | Exposition |
+| --- | ---: | --- |
+| Home Panel | `13000` (`HOME_PANEL_PORT`) | réseau local |
+| Home Core | `18080` (`HOME_CORE_HOST_PORT`) | boucle locale de la Raspberry Pi |
+| Home Assistant | `8123` | réseau local, géré par sa pile dédiée |
+| Home App | `13444` (`HOME_APP_TLS_PORT`) | boucle locale, relayée par Tailscale |
+| Relais Tailscale Panel / Home App | `8443` / `8444` | tailnet |
+
+Home Core reste local : Home Panel y accède sur le réseau Docker. Le port du Panel est publié sur le LAN pour les appareils du foyer.
+
 ```text
 Raspberry Pi ou serveur local
 └── projet Docker Compose home-core

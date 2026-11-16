@@ -1,4 +1,5 @@
 flowchart TB
+    lan[Appareil du réseau local]
     panel[Home Panel]
     core[Home Core Docker]
     api[Adaptateur entrant API]
@@ -16,6 +17,7 @@ flowchart TB
     ai[IA autorisee]
     weather[Source meteo]
 
+    lan -->|HTTP :13000| panel
     panel --> api
     api --> auth
     api --> controls

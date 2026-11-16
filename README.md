@@ -23,7 +23,7 @@ Le Compose racine lance Home Core, Home Panel et monte la fixture du [Zigbee Sim
 docker compose up --build
 ```
 
-Le panel est disponible sur `http://localhost:3000`. Le port peut être changé avec `HOME_PANEL_PORT=5173`. Home Core reste accessible uniquement par le réseau Docker ; le Panel relaie ses appels `/v1/` vers le service `home-core`.
+Le Panel est disponible sur `http://localhost:13000` et, sur la Raspberry Pi, sur `http://<adresse-lan-de-la-pi>:13000`. `HOME_PANEL_PORT` permet un remplacement explicite. Home Core est publié seulement sur la boucle locale de l'hôte, au port stable `18080` (`HOME_CORE_HOST_PORT`) ; le Panel relaie ses appels `/v1/` vers le service `home-core`.
 
 ## Règle de travail
 

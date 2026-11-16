@@ -81,6 +81,7 @@ Le flux des trains SNCF est décrit dans [sequence-trains-sncf.mmd](../diagramme
 La décision de structure est consignée dans l'[ADR-0001](adr/0001-monolithe-modulaire-docker.md).
 Le runtime du premier incrément est consigné dans l'[ADR-0002](adr/0002-runtime-go.md).
 Le socle d'appareils extensible par protocole est consigné dans l'[ADR-0005](adr/0005-module-home-control-protocoles.md).
+Les ports de déploiement stables sont consignés dans l'[ADR-0014](adr/0014-ports-deploiement-stables.md).
 Le premier contrat IA texte est consigné dans l'[ADR-0006](adr/0006-assistant-fournisseur-ia.md) et son flux dans [sequence-assistant-question.mmd](../diagrammes/sequence-assistant-question.mmd).
 L'orchestration vocale et les outils contrôlés sont consignés dans l'[ADR-0005](adr/0005-assistant-vocal-outils-controles.md) et son flux dans [sequence-assistant-vocal-outil.mmd](../diagrammes/sequence-assistant-vocal-outil.mmd).
 L’historique des ETF est décrit dans [sequence-historique-etf.mmd](../diagrammes/sequence-historique-etf.mmd) et la décision dans l'[ADR-0012](adr/0012-integration-historique-etf-twelve-data.md).
