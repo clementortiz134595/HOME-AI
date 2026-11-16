@@ -15,6 +15,14 @@ export type DeviceState = {
   observedAt: string;
 };
 
+export type Chore = {
+  id: string;
+  dueDate: string;
+  objective: string;
+  assignees: string[];
+  completed: boolean;
+};
+
 export async function getHomeDevices(signal?: AbortSignal): Promise<HomeDevice[]> {
   const response = await fetch("/v1/home-control/devices", { signal });
   if (!response.ok) throw new Error("home_control_unavailable");
@@ -36,4 +44,14 @@ export async function setDeviceSwitch(deviceId: string, on: boolean): Promise<De
   if (!response.ok) throw new Error("device_command_failed");
   const result = await response.json() as { state: DeviceState };
   return result.state;
+}
+
+export async function setChoreCompleted(id: string, completed: boolean): Promise<Chore> {
+  const response = await fetch(`/v1/chores/${encodeURIComponent(id)}/completion`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ completed }),
+  });
+  if (!response.ok) throw new Error("chore_update_failed");
+  return response.json() as Promise<Chore>;
 }

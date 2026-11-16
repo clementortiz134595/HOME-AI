@@ -31,19 +31,16 @@ import {
 import { Orb } from "@yogesharc/thinking-orbs";
 import { Ascii } from "ascii.rest/react";
 import * as earthrise from "ascii.rest/pieces/earthrise";
-import { GlobalWorkerOptions, getDocument } from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getWeather, type WeatherReport } from "@/lib/weather";
-import { getDeviceState, getHomeDevices, setDeviceSwitch, type DeviceState, type HomeDevice } from "@/lib/homeControl";
+import { getDeviceState, getHomeDevices, setChoreCompleted, setDeviceSwitch, type Chore, type DeviceState, type HomeDevice } from "@/lib/homeControl";
 import { getCalendarEvents, getCalendars, type CalendarEvent } from "@/lib/calendar";
 import { getCostSummary, type CostSummary } from "@/lib/costs";
+import { loadDashboardRooms, type DashboardRoom as DashboardHomeRoom } from "@/lib/dashboard";
 import { AgentPipeline } from "@/components/ai/agent-pipeline";
-
-GlobalWorkerOptions.workerSrc = pdfWorker;
 
 const rooms = [
   { name: "Salon", detail: "2 lumières · 21°", icon: Sofa, active: true, tone: "bg-sky-100 text-sky-700" },
@@ -55,14 +52,6 @@ const rooms = [
 type Profile = "Duo";
 type View = "dashboard" | "home" | "agenda" | "profile" | "cost" | "settings";
 
-const agendaItems = [
-  { time: "20:30", title: "Dîner avec Lise", detail: "À la maison", owner: "Duo", tone: "bg-emerald-400" },
-  { time: "Demain · 09:00", title: "Point projet", detail: "Visioconférence", owner: "Clément", tone: "bg-sky-400" },
-  { time: "Demain · 18:30", title: "Courses", detail: "Liste partagée", owner: "Duo", tone: "bg-amber-400" },
-  { time: "Jeudi · 19:00", title: "Cours de yoga", detail: "Agenda de Lise", owner: "Lise", tone: "bg-violet-400" },
-];
-
-type WeeklyChore = { id: string; dueDate: string; objective: string; assignees: string[]; completed: boolean };
 type Market = { symbol: string; name: string; isin: string; change: number; price: number };
 type MarketDetail = { etf: Market; history: { label: string | number; value: number }[]; dataStatus: string };
 type Train = { id: string; departure: string; arrival?: string; scheduledDeparture: string; lastUpdated?: string; destination: string; trainNumber: string; commercialMode: string; platform?: string; status: "on_time" | "delayed" | "cancelled"; delayMinutes: number; disruption?: { title: string; cause?: string; effect?: string; information?: string } };
@@ -577,39 +566,6 @@ function AssistantOrb({ compact = false }: { compact?: boolean }) {
   </Card>;
 }
 
-function VoiceEnrollment({ profile }: { profile: Profile }) {
-  const [enrolling, setEnrolling] = useState(false);
-  const [status, setStatus] = useState("");
-
-  const enroll = async () => {
-    setEnrolling(true);
-    setStatus("Parlez pendant 4 secondes…");
-    let capturedStream: MediaStream | null = null;
-    try {
-      capturedStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const chunks: Blob[] = [];
-      const recorder = new MediaRecorder(capturedStream);
-      recorder.ondataavailable = (event) => { if (event.data.size > 0) chunks.push(event.data); };
-      const stopped = new Promise<void>((resolve) => { recorder.onstop = () => resolve(); });
-      recorder.start();
-      await new Promise((resolve) => window.setTimeout(resolve, 4000));
-      recorder.stop();
-      await stopped;
-      const profileID = profile.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      const response = await fetch(`/v1/assistant/voice-profiles/${encodeURIComponent(profileID)}`, { method: "POST", headers: { "Content-Type": recorder.mimeType || "audio/webm" }, body: new Blob(chunks, { type: recorder.mimeType || "audio/webm" }) });
-      if (!response.ok) throw new Error("enrollment_failed");
-      setStatus("Voix enregistrée");
-    } catch {
-      setStatus("Enrôlement indisponible");
-    } finally {
-      capturedStream?.getTracks().forEach((track) => track.stop());
-      setEnrolling(false);
-    }
-  };
-
-  return <button type="button" disabled={enrolling} onClick={enroll} className="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs text-zinc-400 hover:bg-white/10 disabled:opacity-60"><Mic className="size-3.5" />{enrolling ? status : status || "Enrôler ma voix"}</button>;
-}
-
 function WeatherCard() {
   const [weather, setWeather] = useState<WeatherReport | null>(null);
   const [unavailable, setUnavailable] = useState(false);
@@ -705,12 +661,28 @@ function ReminderDetailDialog({ reminder, onClose }: { reminder: Reminder; onClo
 }
 
 function WeeklyChoresCard() {
-  const [tasks, setTasks] = useState<WeeklyChore[]>([]); const [unavailable, setUnavailable] = useState(false);
+  const [tasks, setTasks] = useState<Chore[]>([]); const [unavailable, setUnavailable] = useState(false); const [pending, setPending] = useState<string | null>(null);
   useEffect(() => { const controller = new AbortController(); const today = new Date().toISOString().slice(0, 10); fetch(`/v1/chores/?day=${today}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => setTasks(Array.isArray(data.chores) ? data.chores : [])).catch(() => setUnavailable(true)); return () => controller.abort(); }, []);
-  const toggle = (id: string) => { const task = tasks.find((item) => item.id === id); if (!task) return; setTasks((current) => current.map((item) => item.id === id ? { ...item, completed: !item.completed } : item)); void fetch(`/v1/chores/${encodeURIComponent(id)}/completion`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ completed: !task.completed }) }); };
-  const assigneeTone = (task: WeeklyChore) => task.assignees.length > 1 ? "chore-duo" : task.assignees[0] === "Lise" ? "chore-lise" : "chore-clement";
+  const toggle = async (task: Chore) => { setPending(task.id); try { const updated = await setChoreCompleted(task.id, !task.completed); setTasks((current) => current.map((item) => item.id === task.id ? updated : item)); } catch { setUnavailable(true); } finally { setPending(null); } };
+  const assigneeTone = (task: Chore) => task.assignees.length > 1 ? "chore-duo" : task.assignees[0] === "Lise" ? "chore-lise" : "chore-clement";
   const completedCount = tasks.filter((task) => task.completed).length;
-  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">{completedCount} tâche{completedCount > 1 ? "s" : ""} réalisée{completedCount > 1 ? "s" : ""} sur {tasks.length} aujourd’hui</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{unavailable ? <p className="text-sm text-amber-300">Tâches ménagères indisponibles.</p> : tasks.length === 0 ? <p className="text-sm text-slate-500">Aucune tâche aujourd’hui.</p> : tasks.map((task) => <button type="button" onClick={() => toggle(task.id)} key={`${task.id}-${task.dueDate}`} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className={`chore-person-icon grid size-7 shrink-0 place-items-center rounded-lg ${assigneeTone(task)}`}><UtensilsCrossed className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{new Date(`${task.dueDate}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} · {task.assignees.join(" & ")}</p></div></button>)}</CardContent></Card>;
+  return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">{completedCount} tâche{completedCount > 1 ? "s" : ""} réalisée{completedCount > 1 ? "s" : ""} sur {tasks.length} aujourd’hui</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{unavailable ? <p className="text-sm text-amber-300">Tâches ménagères indisponibles.</p> : tasks.length === 0 ? <p className="text-sm text-slate-500">Aucune tâche aujourd’hui.</p> : tasks.map((task) => <button type="button" disabled={pending === task.id} onClick={() => void toggle(task)} key={`${task.id}-${task.dueDate}`} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left disabled:opacity-60"}><span className={`chore-person-icon grid size-7 shrink-0 place-items-center rounded-lg ${assigneeTone(task)}`}><UtensilsCrossed className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{new Date(`${task.dueDate}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} · {task.assignees.join(" & ")}</p></div></button>)}</CardContent></Card>;
+}
+
+function DashboardRoomsCard({ onSelect }: { onSelect: (room: DashboardRoom) => void }) {
+  const [result, setResult] = useState<{ status: "loading"; rooms: [] } | { status: "ready" | "unavailable"; rooms: DashboardHomeRoom[] }>({ status: "loading", rooms: [] });
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
+    void loadDashboardRooms(getHomeDevices, getDeviceState, controller.signal).then((next) => { if (active) setResult(next); });
+    return () => { active = false; controller.abort(); };
+  }, []);
+
+  return <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{result.status === "unavailable" ? <p role="alert" className="col-span-2 text-sm text-amber-300">État de la maison indisponible.</p> : result.status === "loading" ? <p className="col-span-2 text-sm text-slate-500">Chargement de l’état de la maison…</p> : result.rooms.map((room) => {
+    const presentation = rooms.find((item) => item.name === room.name) ?? rooms[0];
+    const Icon = presentation.icon;
+    return <button key={room.name} type="button" onClick={() => onSelect({ ...presentation, detail: room.detail, active: room.active })} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={`grid size-8 shrink-0 place-items-center rounded-lg ${presentation.tone}`}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={room.active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{room.name}</span><span className="block truncate text-xs text-slate-500">{room.detail}</span></span></button>;
+  })}</CardContent></Card>;
 }
 
 function TrainsCard() {
@@ -730,7 +702,7 @@ function MarketsCard() {
   const [detail, setDetail] = useState<MarketDetail | null>(null);
   const [detailError, setDetailError] = useState(false);
   const [news, setNews] = useState(["Les marchés européens ouvrent en hausse.", "La BCE maintient ses taux directeurs.", "Les valeurs technologiques restent soutenues."]);
-  useEffect(() => { const controller = new AbortController(); setMarketsError(false); fetch(`/v1/insights/markets?period=${period.toLowerCase()}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => { if (!Array.isArray(data.etfs) || data.etfs.length !== 6) throw new Error("invalid market response"); setMarkets(data.etfs); if (Array.isArray(data.news)) setNews(data.news); }).catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) { setMarkets([]); setSelected(null); setMarketsError(true); } }); return () => controller.abort(); }, [period]);
+  useEffect(() => { const controller = new AbortController(); setMarketsError(false); fetch(`/v1/insights/markets?period=${period.toLowerCase()}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data) => { if (!Array.isArray(data.etfs)) throw new Error("invalid market response"); setMarkets(data.etfs); if (Array.isArray(data.news)) setNews(data.news); }).catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) { setMarkets([]); setSelected(null); setMarketsError(true); } }); return () => controller.abort(); }, [period]);
   useEffect(() => { if (!selected) { setDetail(null); setDetailError(false); return; } const controller = new AbortController(); setDetail(null); setDetailError(false); fetch(`/v1/insights/markets/${selected.symbol}?period=${period.toLowerCase()}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : Promise.reject()).then((data: MarketDetail) => { setDetail(data); setDetailError(data.dataStatus === "unavailable" || data.history.length === 0); }).catch((error: unknown) => { if (!(error instanceof DOMException && error.name === "AbortError")) setDetailError(true); }); return () => controller.abort(); }, [selected, period]);
   return <><Card className="dashboard-markets-card"><CardHeader><div><p className="text-lg font-semibold">Marchés & actualités</p><div className="mt-2 flex gap-1">{["Jour", "Mois", "Année"].map((item) => <Button key={item} type="button" variant={period === item ? "secondary" : "ghost"} className="h-6 px-2 text-[10px]" onClick={() => setPeriod(item)}>{item}</Button>)}</div></div><TrendingUp className="size-5 text-slate-400" /></CardHeader><CardContent>{marketsError ? <p role="alert" className="rounded-xl bg-rose-400/10 p-3 text-xs text-rose-200">Backend marchés indisponible.</p> : <div className="grid grid-cols-2 gap-1">{markets.map((market) => <button type="button" key={market.symbol} onClick={() => setSelected(market)} className="rounded-lg bg-white/[0.04] p-1.5 text-left transition hover:bg-white/[0.1]"><p className="truncate text-[10px] text-slate-300">{market.symbol}</p><p className="truncate text-[9px] text-slate-500">{market.name.replace("Amundi ", "")}</p><p className={market.change >= 0 ? "text-xs font-semibold text-emerald-400" : "text-xs font-semibold text-rose-400"}>{market.change >= 0 ? "+" : ""}{market.change}%</p></button>)}</div>}<ol className="mt-2 space-y-1.5">{news.slice(0, 3).map((item) => <li key={item} className="text-xs leading-4 text-slate-300">• {item}</li>)}</ol></CardContent></Card>{selected && <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4" onMouseDown={() => setSelected(null)}><section role="dialog" aria-modal="true" aria-labelledby="market-dialog-title" className="w-full max-w-lg rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-slate-400">ETF suivi · {selected.symbol}</p><h2 id="market-dialog-title" className="mt-1 text-xl font-semibold">{selected.name}</h2><p className="mt-1 text-xs text-slate-500">ISIN {selected.isin}</p></div><Button variant="ghost" size="icon" aria-label="Fermer" onClick={() => setSelected(null)}><X /></Button></div><div className="mt-5 grid grid-cols-2 gap-3"><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Cours indicatif</p><p className="mt-1 font-semibold">{selected.price.toFixed(2)} €</p></div><div className="rounded-2xl bg-white/[0.05] p-3"><p className="text-xs text-slate-500">Variation</p><p className={selected.change >= 0 ? "mt-1 font-semibold text-emerald-400" : "mt-1 font-semibold text-rose-400"}>{selected.change >= 0 ? "+" : ""}{selected.change}%</p></div></div><div className="mt-5 rounded-2xl bg-white/[0.04] p-3"><p className="mb-2 text-xs text-slate-500">Évolution · {period.toLowerCase()}</p>{detailError ? <p role="alert" className="py-10 text-center text-sm text-amber-200">Historique indisponible avec la source de données actuelle.</p> : detail?.history?.length ? <svg viewBox="0 0 360 120" className="h-32 w-full" role="img" aria-label={`Évolution de ${selected.symbol}`}><polyline fill="none" stroke="rgb(110 231 183)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={detail.history.map((point, index) => `${(index / (detail.history.length - 1)) * 340 + 10},${110 - ((point.value - Math.min(...detail.history.map((item) => item.value))) / (Math.max(...detail.history.map((item) => item.value)) - Math.min(...detail.history.map((item) => item.value)) || 1)) * 90}`).join(" ")} /></svg> : <p className="py-10 text-center text-sm text-slate-500">Chargement de l’historique…</p>}</div></section></div>}</>;
 }
@@ -765,8 +737,12 @@ function PDFPreview({ url, name }: { url: string; name: string }) {
   const [state, setState] = useState<{ pages?: number; error?: boolean }>({});
   useEffect(() => {
     let active = true;
-    const task = getDocument(url);
-    void task.promise.then(async (document) => {
+    let destroy: (() => Promise<void>) | undefined;
+    void Promise.all([import("pdfjs-dist"), import("pdfjs-dist/build/pdf.worker.min.mjs?url")]).then(async ([pdfjs, worker]) => {
+      pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+      const task = pdfjs.getDocument(url);
+      destroy = () => task.destroy();
+      const document = await task.promise;
       const page = await document.getPage(1);
       const canvas = canvasRef.current;
       if (!canvas || !active) return;
@@ -778,7 +754,7 @@ function PDFPreview({ url, name }: { url: string; name: string }) {
       await page.render({ canvas, canvasContext: context, viewport }).promise;
       if (active) setState({ pages: document.numPages });
     }).catch(() => { if (active) setState({ error: true }); });
-    return () => { active = false; void task.destroy(); };
+    return () => { active = false; void destroy?.(); };
   }, [url]);
   if (state.error) return <p role="alert" className="mt-6 rounded-xl bg-rose-400/10 p-4 text-sm text-rose-200">Impossible d’afficher ce PDF.</p>;
   return <div className="mt-6"><canvas ref={canvasRef} className="min-h-48 w-full rounded-xl bg-white shadow-sm" aria-label={`Première page de ${name}`} />{state.pages && <p className="mt-2 text-center text-xs text-slate-500">Page 1 sur {state.pages}</p>}</div>;
@@ -945,6 +921,7 @@ function App() {
         });
       } catch { /* Home Core may be restarting. */ }
     };
+    let timer: number | undefined;
     const poll = async () => {
       try {
         const response = await fetch("/v1/assistant/voice/state", { cache: "no-store" });
@@ -961,10 +938,10 @@ function App() {
           }
         }
       } catch { /* Home Core may be restarting. */ }
+      if (active) timer = window.setTimeout(poll, voiceStatusRef.current.state === "idle" ? 5000 : 500);
     };
     void resetVoiceState().then(() => { if (active) void poll(); });
-    const timer = window.setInterval(poll, 300);
-    return () => { active = false; window.clearInterval(timer); };
+    return () => { active = false; if (timer !== undefined) window.clearTimeout(timer); };
   }, []);
 
   useEffect(() => {
@@ -1026,7 +1003,7 @@ function App() {
 
           <div className="dashboard-compact-grid grid">
             <WeatherCard />
-            <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map((room) => { const Icon = room.icon; return <button key={room.name} type="button" onClick={() => setSelectedRoom(room)} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + room.tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={room.active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{room.name}</span><span className="block truncate text-xs text-slate-500">{room.detail}</span></span></button>; })}</CardContent></Card>
+            <DashboardRoomsCard onSelect={setSelectedRoom} />
             <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappels</p><p className="mt-1 text-sm text-slate-400">À venir</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{reminders.length === 0 ? <p className="text-sm text-slate-500">Aucun rappel enregistré.</p> : reminders.slice(0, 3).map((reminder) => <button key={reminder.id} type="button" onClick={() => setSelectedReminder(reminder)} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"size-2 shrink-0 rounded-full " + reminder.tone} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reminder.title}</span><span className="block text-xs text-slate-500">{reminder.time}</span></span></button>)}</CardContent></Card>
             <WeeklyChoresCard />
             <TrainsCard />
