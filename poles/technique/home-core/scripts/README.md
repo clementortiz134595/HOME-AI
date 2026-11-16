@@ -22,6 +22,26 @@ Depuis la racine du dépôt :
 docker compose up -d --build
 ```
 
+## Déployer une release GitHub sur le Raspberry Pi
+
+Depuis un clone de déploiement propre sur la Raspberry Pi, après avoir créé un
+tag Git validé par la CI :
+
+```bash
+./poles/technique/home-core/scripts/deploy-release.sh <tag>
+```
+
+Le script ne déploie que des tags présents sur `origin`, attend la santé de
+Home Core et annule vers la révision précédente en cas d'échec. Pour demander
+ce retour manuellement :
+
+```bash
+./poles/technique/home-core/scripts/deploy-release.sh --rollback
+```
+
+Le clone doit rester sans modification locale. Les secrets et données
+persistantes ne doivent jamais être stockés dans ce checkout.
+
 Ouvrir ensuite Home Panel sur le port publié par Compose et autoriser le
 microphone dans le navigateur.
 

@@ -1,0 +1,66 @@
+name: Verify HOME AI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  home-core:
+    name: Home Core
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: poles/technique/home-core
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23.x"
+          cache-dependency-path: poles/technique/home-core/go.sum
+      - name: Run tests
+        run: go test ./...
+
+  web-applications:
+    name: Home Panel and Home App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            poles/technique/home-panel/package-lock.json
+            poles/technique/home-app/package-lock.json
+      - name: Verify Home Panel
+        working-directory: poles/technique/home-panel
+        run: |
+          npm ci
+          npm run check
+      - name: Verify Home App
+        working-directory: poles/technique/home-app
+        run: |
+          npm ci
+          npm run check
+
+  compose:
+    name: Docker Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Validate root Compose file
+        env:
+          HOME_AI_SECRETS_FILE: /tmp/home-core.env
+          HOME_AI_GOOGLE_ADC_FILE: /tmp/google-adc.json
+        run: docker compose config --quiet

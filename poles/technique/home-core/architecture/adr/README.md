@@ -10,3 +10,4 @@ Les décisions structurantes de Home Core sont consignées ici avant l'implémen
 - [ADR-0010 — Secrets locaux persistants hors worktree](0010-secrets-locaux-persistants.md)
 - [ADR-0013 — Accès distant privé par Tailscale](0013-acces-distant-tailscale.md)
 - [ADR-0014 — Suivi local des coûts](0014-suivi-local-des-couts.md)
+- [ADR-0015 — Releases GitHub déployées par le Raspberry Pi](0015-deploiement-release-github-pi.md)

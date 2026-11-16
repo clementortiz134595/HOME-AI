@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Deploy a Git tag from a clean clone on the Raspberry Pi. This script is
+# intentionally pull-based: GitHub validates the release, while the Pi keeps
+# no inbound deployment endpoint and remains the builder for its ARM64 image.
+
+usage() {
+  printf '%s\n' "Usage: $0 <git-tag> | --rollback"
+}
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repository_root="$(cd "$script_dir/../../../.." && pwd)"
+state_dir="${HOME_AI_DEPLOY_STATE_DIR:-$HOME/.local/state/home-ai}"
+last_success_file="$state_dir/last-successful-revision"
+previous_success_file="$state_dir/previous-successful-revision"
+health_url="${HOME_AI_HEALTH_URL:-http://127.0.0.1:18080/healthz}"
+wait_timeout="${HOME_AI_DEPLOY_WAIT_TIMEOUT:-180}"
+
+if [[ $# -ne 1 ]]; then
+  usage
+  exit 2
+fi
+
+cd "$repository_root"
+
+if ! command -v docker >/dev/null 2>&1; then
+  printf '%s\n' "Docker est requis pour déployer HOME AI." >&2
+  exit 1
+fi
+
+if ! command -v curl >/dev/null 2>&1; then
+  printf '%s\n' "curl est requis pour vérifier Home Core après le déploiement." >&2
+  exit 1
+fi
+
+if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+  printf '%s\n' "Le clone de déploiement contient des modifications. Abandon du déploiement pour ne rien écraser." >&2
+  exit 1
+fi
+
+mkdir -p "$state_dir"
+
+deploy_revision() {
+  local revision="$1"
+
+  git checkout --detach "$revision"
+  if ! docker network inspect home-ai >/dev/null 2>&1; then
+    docker network create home-ai >/dev/null
+  fi
+
+  docker compose --project-name home-ai up -d --build --wait --wait-timeout "$wait_timeout"
+  curl --fail --silent --show-error --output /dev/null "$health_url"
+}
+
+current_revision="$(git rev-parse HEAD)"
+current_success="$current_revision"
+if [[ -f "$last_success_file" ]]; then
+  current_success="$(<"$last_success_file")"
+fi
+
+if [[ "$1" == "--rollback" ]]; then
+  if [[ ! -s "$previous_success_file" ]]; then
+    printf '%s\n' "Aucune révision précédente enregistrée pour le rollback." >&2
+    exit 1
+  fi
+  target_revision="$(<"$previous_success_file")"
+else
+  git fetch --prune --tags origin
+  if ! git show-ref --verify --quiet "refs/tags/$1"; then
+    printf 'Le tag Git "%s" est introuvable sur origin.\n' "$1" >&2
+    exit 1
+  fi
+  target_revision="$(git rev-parse "$1^{commit}")"
+fi
+
+if ! deploy_revision "$target_revision"; then
+  printf '%s\n' "Le déploiement a échoué ; retour à la révision précédente." >&2
+  deploy_revision "$current_revision"
+  exit 1
+fi
+
+printf '%s\n' "$current_success" > "$previous_success_file"
+printf '%s\n' "$target_revision" > "$last_success_file"
+printf 'HOME AI est déployé sur %s.\n' "$target_revision"

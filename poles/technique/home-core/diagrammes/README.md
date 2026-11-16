@@ -16,3 +16,4 @@ Ces diagrammes Mermaid sont des sources versionnables : ils décrivent les flux 
 - [Métriques système Raspberry Pi](sequence-system-health.mmd)
 - [Contrôle d'un appareil Zigbee](sequence-commande-zigbee.mmd)
 - [Lecture du suivi des coûts](sequence-couts.mmd)
+- [Déploiement d'une release GitHub sur la Raspberry Pi](deploiement-release-pi.mmd)

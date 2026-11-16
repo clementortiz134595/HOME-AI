@@ -30,6 +30,34 @@ Raspberry Pi ou serveur local
 - Limites CPU/mémoire fondées sur des mesures de la machine cible, non sur des valeurs supposées.
 - Journaux structurés vers la sortie standard, avec filtrage des secrets et des données sensibles.
 
+## Déploiement de release sur Raspberry Pi
+
+GitHub est la source de vérité du code. Après le succès de la CI, une release
+est identifiée par un tag Git. La Raspberry Pi conserve un clone de déploiement
+propre et récupère ce tag avec
+[`scripts/deploy-release.sh`](../scripts/deploy-release.sh) :
+
+```bash
+./poles/technique/home-core/scripts/deploy-release.sh <tag>
+```
+
+Le script refuse tout clone contenant des modifications locales, construit
+l'image ARM64 avec Compose, attend le `healthcheck` de Home Core, et restaure
+le commit précédemment exécuté si le démarrage échoue. Le rollback manuel est :
+
+```bash
+./poles/technique/home-core/scripts/deploy-release.sh --rollback
+```
+
+Le clone de production est du code exécutable, jamais un espace de travail :
+ne pas y éditer de fichiers ni y créer de `.env`. Les secrets restent dans
+`~/.config/home-ai/` (ou le chemin défini par `HOME_AI_SECRETS_FILE`) et les
+données applicatives dans les volumes Docker.
+
+La sauvegarde automatique de la Pi n'est pas encore configurée. Cette absence
+est un risque accepté provisoirement, pas une garantie de récupération après
+une migration de données destructive.
+
 ## Hors périmètre de la première configuration
 
 - Déployer Home Assistant dans la même pile Docker.

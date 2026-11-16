@@ -1,0 +1,12 @@
+flowchart LR
+    mac[Mac\nDéveloppement] -->|commit et push| github[GitHub\nsource de vérité]
+    github --> ci[GitHub Actions\ntests et validation Compose]
+    ci -->|succès| tag[Tag de release]
+    tag -->|git fetch et checkout du tag| pi[Pi : clone propre]
+    secrets[Secrets hors Git] --> pi
+    pi --> compose[Docker Compose\nbuild ARM64 et démarrage]
+    compose --> health{Home Core\nhealthy ?}
+    health -->|oui| running[Home Core + Home Panel]
+    health -->|non| rollback[Commit précédemment réussi]
+    rollback --> compose
+    data[(Volumes persistants)] <--> compose
