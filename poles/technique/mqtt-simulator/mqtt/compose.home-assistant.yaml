@@ -4,13 +4,13 @@ services:
     network_mode: host
     restart: unless-stopped
     volumes:
-      - ../home-ai/poles/technique/zigbee-simulator/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ../home-ai/poles/technique/mqtt-simulator/mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
 
-  zigbee-simulator:
+  mqtt-simulator:
     build:
-      context: ../home-ai/poles/technique/zigbee-simulator
+      context: ../home-ai/poles/technique/mqtt-simulator
       dockerfile: mqtt/Dockerfile
-    image: home-ai/zigbee-mqtt-simulator:local
+    image: home-ai/mqtt-simulator:local
     network_mode: host
     depends_on:
       mqtt:
@@ -18,9 +18,9 @@ services:
     environment:
       MQTT_HOST: 127.0.0.1
       MQTT_PORT: "1883"
-      ZIGBEE_SIMULATOR_FIXTURE: /app/fixtures/maison-demo.json
+      MQTT_SIMULATOR_FIXTURE: /app/fixtures/maison-demo.json
     volumes:
-      - ../home-ai/poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
+      - ../home-ai/poles/technique/mqtt-simulator/code/fixtures:/app/fixtures:ro
     restart: unless-stopped
     read_only: true
     tmpfs:

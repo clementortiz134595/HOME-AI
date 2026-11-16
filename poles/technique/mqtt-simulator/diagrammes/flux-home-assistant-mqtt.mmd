@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant Fixture as Fixture maison-demo.json
+    participant Simulator as Simulateur MQTT
+    participant MQTT as Mosquitto local
+    participant HA as Home Assistant
+    participant HomeKit as HomeKit Bridge
+    participant Apple as Apple Maison
+
+    Simulator->>Fixture: Charge les appareils et états initiaux
+    Simulator->>MQTT: Discovery + états retenus
+    MQTT-->>HA: Configurations et états MQTT
+    HA->>HA: Crée ou met à jour les entités
+    HA->>HomeKit: Expose les entités sélectionnées
+    HomeKit-->>Apple: Notifie l'état HomeKit
+
+    Apple->>HomeKit: Commande une entité
+    HomeKit->>HA: Commande HomeKit
+    HA->>MQTT: Publie sur le topic de commande
+    MQTT-->>Simulator: Livre la commande MQTT
+    Simulator->>MQTT: Republie l'état confirmé
+    MQTT-->>HA: Nouvel état
+    HA-->>HomeKit: Met à jour la caractéristique
+    HomeKit-->>Apple: Actualise l'accessoire

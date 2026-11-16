@@ -7,9 +7,9 @@ Le pôle technique conçoit, réalise et exploite le socle local, les applicatio
 - [Home Panel](home-panel/README.md) : interface tablette de l'appartement.
 - [Home Core](home-core/README.md) : serveur, assistant IA et intégrations locales.
 - [Home App](home-app/README.md) : application mobile.
-- [Zigbee Simulator](zigbee-simulator/README.md) : pièces, appareils et réseau Zigbee simulés en attendant le matériel.
+- [Simulateur MQTT](mqtt-simulator/README.md) : maison de démonstration publiée par MQTT pour Home Assistant et Apple Maison.
 
-La découpe est volontairement limitée à ces trois projets. Le cadrage de leurs parcours, architecture, intégrations et code vient dans un second temps.
+La découpe est volontairement limitée à ces quatre projets. Le cadrage de leurs parcours, architecture, intégrations et code vient dans un second temps.
 
 ## Règle d'architecture
 

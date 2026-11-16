@@ -9,15 +9,15 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
+	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/fixture"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/model"
 )
 
-func TestSimulatorToCoreToPanelFlow(t *testing.T) {
-	fixture := filepath.Join("..", "..", "..", "..", "..", "..", "zigbee-simulator", "code", "fixtures", "maison-demo.json")
-	transport, err := simulated.NewTransportFromFile(fixture)
+func TestFixtureToCoreToPanelFlow(t *testing.T) {
+	fixturePath := filepath.Join("..", "..", "..", "..", "..", "..", "mqtt-simulator", "code", "fixtures", "maison-demo.json")
+	transport, err := fixture.NewTransportFromFile(fixturePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestSimulatorToCoreToPanelFlow(t *testing.T) {
 		t.Fatal(err)
 	}
 	if initial.SwitchOn == nil || *initial.SwitchOn {
-		t.Fatalf("initial simulator state = %+v, want switch off", initial)
+		t.Fatalf("initial fixture state = %+v, want switch off", initial)
 	}
 
 	// Use a real request body while keeping the test focused on the HTTP contract.

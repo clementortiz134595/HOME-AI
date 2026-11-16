@@ -17,7 +17,7 @@ Le document de cadrage v0.1 est synthétisé dans [la vision produit](gouvernanc
 
 ## Lancer l'environnement local
 
-Le Compose racine lance Home Core, Home Panel et monte la fixture du [Zigbee Simulator](poles/technique/zigbee-simulator/README.md) dans le réseau interne :
+Le Compose racine lance Home Core, Home Panel et monte la fixture du [simulateur MQTT](poles/technique/mqtt-simulator/README.md) dans le réseau interne :
 
 ```bash
 docker compose up --build

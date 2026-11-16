@@ -21,7 +21,7 @@ services:
         required: false
     environment:
       HOME_CORE_PORT: "8080"
-      HOME_CORE_ZIGBEE_FIXTURE: /app/fixtures/maison-demo.json
+      HOME_CORE_FIXTURE_PATH: /app/fixtures/maison-demo.json
       HOME_CORE_HOME_ASSISTANT_URL: ${HOME_CORE_HOME_ASSISTANT_URL:-}
       HOME_CORE_HOME_ASSISTANT_TOKEN: ${HOME_CORE_HOME_ASSISTANT_TOKEN:-}
       HOME_CORE_HOME_ASSISTANT_WEATHER_ENTITY_ID: ${HOME_CORE_HOME_ASSISTANT_WEATHER_ENTITY_ID:-}
@@ -39,7 +39,7 @@ services:
       HOME_CORE_SNCF_BASE_URL: ${HOME_CORE_SNCF_BASE_URL:-https://api.trainnomade.fr}
       HOME_CORE_SNCF_STOP_AREA: ${HOME_CORE_SNCF_STOP_AREA:-87751784}
     volumes:
-      - ./poles/technique/zigbee-simulator/code/fixtures:/app/fixtures:ro
+      - ./poles/technique/mqtt-simulator/code/fixtures:/app/fixtures:ro
       - ${HOME_AI_GOOGLE_ADC_FILE:-${HOME}/.config/gcloud/application_default_credentials.json}:/run/secrets/google-adc.json:ro
       - home-core-secrets:/var/lib/home-core
     ports:

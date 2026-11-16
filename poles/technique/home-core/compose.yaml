@@ -8,7 +8,7 @@ services:
     environment:
       HOME_CORE_PORT: "8080"
       APPLE_CALDAV_ACCOUNTS_JSON: ${APPLE_CALDAV_ACCOUNTS_JSON:-}
-      HOME_CORE_ZIGBEE_FIXTURE: /app/fixtures/maison-demo.json
+      HOME_CORE_FIXTURE_PATH: /app/fixtures/maison-demo.json
       HOME_CORE_HOME_ASSISTANT_URL: ${HOME_CORE_HOME_ASSISTANT_URL:-}
       HOME_CORE_HOME_ASSISTANT_TOKEN: ${HOME_CORE_HOME_ASSISTANT_TOKEN:-}
       HOME_CORE_HOME_ASSISTANT_WEATHER_ENTITY_ID: ${HOME_CORE_HOME_ASSISTANT_WEATHER_ENTITY_ID:-}
@@ -36,7 +36,7 @@ services:
     ports:
       - "127.0.0.1:18080:8080"
     volumes:
-      - ../zigbee-simulator/code/fixtures:/app/fixtures:ro
+      - ../mqtt-simulator/code/fixtures:/app/fixtures:ro
       - home-core-secrets:/var/lib/home-core
     read_only: true
     tmpfs:

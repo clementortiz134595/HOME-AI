@@ -1,4 +1,6 @@
-package simulated
+// Package fixture exposes versioned test data through the Zigbee transport port.
+// It does not emulate the Zigbee radio protocol or a mesh network.
+package fixture
 
 import (
 	"context"
@@ -12,7 +14,7 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/model"
 )
 
-var ErrRouteUnavailable = errors.New("simulated zigbee route unavailable")
+var ErrDeviceUnavailable = errors.New("simulated device unavailable")
 
 type fixture struct {
 	Rooms   []struct{ ID, Name string } `json:"rooms"`
@@ -36,11 +38,11 @@ type Transport struct {
 func NewTransportFromFile(path string) (*Transport, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read zigbee fixture: %w", err)
+		return nil, fmt.Errorf("read home-control fixture: %w", err)
 	}
 	var source fixture
 	if err := json.Unmarshal(data, &source); err != nil {
-		return nil, fmt.Errorf("decode zigbee fixture: %w", err)
+		return nil, fmt.Errorf("decode home-control fixture: %w", err)
 	}
 	t := &Transport{devices: make(map[string]fixtureDevice), rooms: make(map[string]string), observed: make(map[string]model.DeviceState)}
 	for _, room := range source.Rooms {
@@ -96,7 +98,7 @@ func (t *Transport) WriteSwitch(_ context.Context, deviceID string, on bool) (mo
 		return model.DeviceState{}, fmt.Errorf("device not found: %s", deviceID)
 	}
 	if !device.Available {
-		return model.DeviceState{}, ErrRouteUnavailable
+		return model.DeviceState{}, ErrDeviceUnavailable
 	}
 	state := t.observed[deviceID]
 	state.SwitchOn = &on

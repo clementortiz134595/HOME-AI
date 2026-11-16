@@ -24,8 +24,8 @@ import (
 	costshttp "github.com/clementortiz/home-ai/home-core/internal/costs/adapters/inbound/http"
 	costsapp "github.com/clementortiz/home-ai/home-core/internal/costs/application"
 	homecontrolhttp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/fixture"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/homeassistant"
-	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/zigbee"
 	homecontrolapp "github.com/clementortiz/home-ai/home-core/internal/homecontrol/application"
 	insightshttp "github.com/clementortiz/home-ai/home-core/internal/insights/adapters/inbound/http"
@@ -62,13 +62,13 @@ func main() {
 	mux.Handle("/v1/weather/", weatherHandler)
 	mux.Handle("/v1/system/", systemhealthhttp.NewHandler(&http.Client{Timeout: 5 * time.Second}))
 	mux.Handle("/v1/calendars/apple/", agendahttp.NewHandler(calendarRegistry))
-	fixturePath := os.Getenv("HOME_CORE_ZIGBEE_FIXTURE")
+	fixturePath := os.Getenv("HOME_CORE_FIXTURE_PATH")
 	if fixturePath == "" {
-		fixturePath = "../zigbee-simulator/code/fixtures/maison-demo.json"
+		fixturePath = "../mqtt-simulator/code/fixtures/maison-demo.json"
 	}
-	zigbeeTransport, err := simulated.NewTransportFromFile(fixturePath)
+	zigbeeTransport, err := fixture.NewTransportFromFile(fixturePath)
 	if err != nil {
-		logger.Error("invalid Zigbee fixture", "error", err)
+		logger.Error("invalid home-control fixture", "error", err)
 		os.Exit(1)
 	}
 	var homeService homecontrolapp.Service

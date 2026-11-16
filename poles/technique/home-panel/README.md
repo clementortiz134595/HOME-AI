@@ -33,7 +33,7 @@ navigateur.
 La vue Maison lit l'inventaire via `/v1/home-control/devices`, les états via
 `/v1/home-control/devices/:id/state` et envoie les commandes d'interrupteur via
 `/v1/home-control/devices/:id/commands`. Le compose Home Core monte la fixture
-du projet [Zigbee Simulator](../zigbee-simulator/code/fixtures/maison-demo.json).
+du projet [simulateur MQTT](../mqtt-simulator/code/fixtures/maison-demo.json).
 
 La vue Coût lit `GET /v1/costs/summary`. Si Home Core ne possède aucune
 écriture de coût, le Panel l'affiche explicitement : il ne remplace jamais ces

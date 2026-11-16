@@ -1,21 +1,21 @@
-package simulated_test
+package fixture_test
 
 import (
 	"context"
 	"path/filepath"
 	"testing"
 
-	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/simulated"
+	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/fixture"
 )
 
 func TestTransportLoadsRoomsDevicesAndConfirmedState(t *testing.T) {
-	path := filepath.Join("..", "..", "..", "..", "..", "..", "zigbee-simulator", "code", "fixtures", "maison-demo.json")
-	transport, err := simulated.NewTransportFromFile(path)
+	path := filepath.Join("..", "..", "..", "..", "..", "..", "mqtt-simulator", "code", "fixtures", "maison-demo.json")
+	transport, err := fixture.NewTransportFromFile(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	devices, err := transport.ListDevices(context.Background())
-	if err != nil || len(devices) != 8 {
+	if err != nil || len(devices) != 14 {
 		t.Fatalf("unexpected devices: %d, err=%v", len(devices), err)
 	}
 	byID := make(map[string]struct {

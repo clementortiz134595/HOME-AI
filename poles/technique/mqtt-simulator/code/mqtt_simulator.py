@@ -1,4 +1,4 @@
-"""Expose the deterministic Zigbee fixture as Home Assistant MQTT Discovery."""
+"""Expose a deterministic home fixture through Home Assistant MQTT Discovery."""
 import json
 import os
 import signal
@@ -8,7 +8,7 @@ from pathlib import Path
 import paho.mqtt.client as mqtt
 
 ROOT = "home-ai/simulator"
-fixture = json.loads(Path(os.getenv("ZIGBEE_SIMULATOR_FIXTURE", "/app/fixtures/maison-demo.json")).read_text())
+fixture = json.loads(Path(os.getenv("MQTT_SIMULATOR_FIXTURE", "/app/fixtures/maison-demo.json")).read_text())
 devices = {device["id"]: device for device in fixture["devices"]}
 rooms = {room["id"]: room["name"] for room in fixture["rooms"]}
 
@@ -55,7 +55,7 @@ def discovery(client, device):
         "availability_topic": f"{ROOT}/availability",
         "state_topic": f"{ROOT}/{device['id']}/state",
         "device": {"identifiers": [identity], "name": name(device),
-                   "manufacturer": "HOME AI", "model": "Zigbee simulator",
+                   "manufacturer": "HOME AI", "model": "MQTT simulator",
                    "suggested_area": rooms.get(device["roomId"], "")},
     }
     if domain == "light":
@@ -100,6 +100,10 @@ def on_message(client, userdata, message):
             device["state"]["mode"] = payload
         else:
             return
+    elif parts[3:] != ["set"]:
+        # Retained state messages are received through the same subscription.
+        # They are observations, never commands.
+        return
     elif device["kind"] == "light":
         try:
             command = json.loads(payload)
@@ -118,7 +122,7 @@ def on_message(client, userdata, message):
     state(client, device)
 
 
-client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="home-ai-zigbee-simulator")
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="home-ai-mqtt-simulator")
 client.will_set(f"{ROOT}/availability", "offline", qos=1, retain=True)
 client.on_connect = on_connect
 client.on_message = on_message
