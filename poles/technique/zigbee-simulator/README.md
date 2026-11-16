@@ -10,6 +10,23 @@ Permettre de valider les parcours Home Core suivants sans Home Assistant ni mat�
 
 Le simulateur est un adaptateur de développement et de test. Il ne remplace ni Home Assistant ni le futur coordinateur Zigbee.
 
+## Pont MQTT vers Home Assistant
+
+`mqtt/mqtt_bridge.py` publie automatiquement la fixture par MQTT Discovery.
+Il est exécuté avec un Mosquitto local limité à `127.0.0.1`, afin que les
+lumières, prises et capteurs soient visibles dans Home Assistant sans exposer
+le broker au réseau. La surcharge Compose à lancer avec Home Assistant est
+`mqtt/compose.home-assistant.yaml`. Voir l'ADR-0002 et
+`diagrammes/flux-home-assistant-mqtt.mmd`.
+
+La maison de démonstration comprend aussi un rideau pilotable et un capteur
+d'ouverture de fenêtre, afin de visualiser les cartes et commandes Home
+Assistant et Apple Maison au-delà des éclairages et prises.
+
+Dans Home Assistant, ajouter une seule fois l'intégration **MQTT** depuis
+**Paramètres > Appareils et services**, avec l'hôte `127.0.0.1` et le port
+`1883`. Les entités Discovery de la fixture apparaissent alors automatiquement.
+
 ## Structure
 
 - [specification.md](specification.md) — périmètre et critères d'acceptation ;
