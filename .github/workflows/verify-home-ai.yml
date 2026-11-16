@@ -64,3 +64,18 @@ jobs:
           HOME_AI_SECRETS_FILE: /tmp/home-core.env
           HOME_AI_GOOGLE_ADC_FILE: /tmp/google-adc.json
         run: docker compose config --quiet
+
+  docker-images:
+    name: Docker images for release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [home-core, web-applications, compose]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build Home Core and Home Panel images
+        run: docker compose --project-name home-ai build
+      - name: Build Home App image
+        run: >-
+          docker compose --project-name home-app
+          --file poles/technique/home-app/compose.production.yaml build

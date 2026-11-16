@@ -34,15 +34,27 @@ Raspberry Pi ou serveur local
 
 GitHub est la source de vérité du code. Après le succès de la CI, une release
 est identifiée par un tag Git. La Raspberry Pi conserve un clone de déploiement
-propre et récupère ce tag avec
-[`scripts/deploy-release.sh`](../scripts/deploy-release.sh) :
+propre et le minuteur systemd `home-ai-release-watcher.timer` recherche les
+tags `v*` toutes les cinq minutes. Lorsqu'il en trouve un nouveau, il lance
+[`scripts/deploy-latest-release.sh`](../scripts/deploy-latest-release.sh), qui
+appelle [`scripts/deploy-release.sh`](../scripts/deploy-release.sh).
+
+L'installation du minuteur est une action d'administration unique :
+
+```bash
+./poles/technique/home-core/scripts/install-release-watcher.sh
+```
+
+Le script sélectionne exactement le commit du tag, reconstruit sur la Pi les
+images ARM64 de Home Core, Home Panel et Home App, vérifie Home Core et Home
+App, puis conserve les deux dernières révisions réussies. Le déploiement
+manuel d'un tag précis reste possible :
 
 ```bash
 ./poles/technique/home-core/scripts/deploy-release.sh <tag>
 ```
 
-Le script refuse tout clone contenant des modifications locales, construit
-l'image ARM64 avec Compose, attend le `healthcheck` de Home Core, et restaure
+Le script refuse tout clone contenant des modifications locales et restaure
 le commit précédemment exécuté si le démarrage échoue. Le rollback manuel est :
 
 ```bash
@@ -52,7 +64,8 @@ le commit précédemment exécuté si le démarrage échoue. Le rollback manuel 
 Le clone de production est du code exécutable, jamais un espace de travail :
 ne pas y éditer de fichiers ni y créer de `.env`. Les secrets restent dans
 `~/.config/home-ai/` (ou le chemin défini par `HOME_AI_SECRETS_FILE`) et les
-données applicatives dans les volumes Docker.
+données applicatives dans les volumes Docker. L'override local optionnel de
+Home App est chargé depuis `~/.config/home-ai/home-app.compose.override.yaml`.
 
 La sauvegarde automatique de la Pi n'est pas encore configurée. Cette absence
 est un risque accepté provisoirement, pas une garantie de récupération après

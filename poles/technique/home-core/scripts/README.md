@@ -24,8 +24,28 @@ docker compose up -d --build
 
 ## Déployer une release GitHub sur le Raspberry Pi
 
-Depuis un clone de déploiement propre sur la Raspberry Pi, après avoir créé un
-tag Git validé par la CI :
+La Pi surveille les tags `v*` toutes les cinq minutes. Lorsqu'un nouveau tag
+est détecté, elle sélectionne son commit, reconstruit localement les images
+ARM64 de Home Core, Home Panel et Home App, puis vérifie les trois services.
+Le déploiement reste pull-based : GitHub ne peut pas se connecter au
+réseau domestique.
+
+Installer cette surveillance une seule fois, depuis le clone de déploiement
+propre sur la Raspberry Pi :
+
+```bash
+./poles/technique/home-core/scripts/install-release-watcher.sh
+```
+
+Le minuteur `home-ai-release-watcher.timer` est persistant : un tag manqué
+pendant un arrêt de la Pi est traité à son redémarrage. Pour déclencher une
+vérification sans attendre :
+
+```bash
+sudo systemctl start home-ai-release-watcher.service
+```
+
+Le déploiement manuel reste disponible pour une release précise :
 
 ```bash
 ./poles/technique/home-core/scripts/deploy-release.sh <tag>
@@ -39,8 +59,11 @@ ce retour manuellement :
 ./poles/technique/home-core/scripts/deploy-release.sh --rollback
 ```
 
-Le clone doit rester sans modification locale. Les secrets et données
-persistantes ne doivent jamais être stockés dans ce checkout.
+Le clone doit rester sans modification locale. Le minuteur comme le script
+manuel refusent de déployer si le checkout a été modifié. Les secrets et
+données persistantes ne doivent jamais être stockés dans ce checkout.
+L'override local de Home App (`~/.config/home-ai/home-app.compose.override.yaml`)
+est conservé et chargé lorsqu'il existe.
 
 Ouvrir ensuite Home Panel sur le port publié par Compose et autoriser le
 microphone dans le navigateur.

@@ -15,6 +15,9 @@ state_dir="${HOME_AI_DEPLOY_STATE_DIR:-$HOME/.local/state/home-ai}"
 last_success_file="$state_dir/last-successful-revision"
 previous_success_file="$state_dir/previous-successful-revision"
 health_url="${HOME_AI_HEALTH_URL:-http://127.0.0.1:18080/healthz}"
+home_panel_health_url="${HOME_AI_HOME_PANEL_HEALTH_URL:-http://127.0.0.1:${HOME_PANEL_PORT:-13000}/}"
+home_app_health_url="${HOME_AI_HOME_APP_HEALTH_URL:-https://127.0.0.1:${HOME_APP_TLS_PORT:-13444}/}"
+home_app_override="${HOME_AI_HOME_APP_COMPOSE_OVERRIDE:-$HOME/.config/home-ai/home-app.compose.override.yaml}"
 wait_timeout="${HOME_AI_DEPLOY_WAIT_TIMEOUT:-180}"
 
 if [[ $# -ne 1 ]]; then
@@ -51,6 +54,18 @@ deploy_revision() {
 
   docker compose --project-name home-ai up -d --build --wait --wait-timeout "$wait_timeout"
   curl --fail --silent --show-error --output /dev/null "$health_url"
+  curl --fail --silent --show-error --output /dev/null "$home_panel_health_url"
+
+  local -a home_app_compose=(
+    docker compose
+    --project-name home-app
+    --file poles/technique/home-app/compose.production.yaml
+  )
+  if [[ -f "$home_app_override" ]]; then
+    home_app_compose+=(--file "$home_app_override")
+  fi
+  "${home_app_compose[@]}" up -d --build --wait --wait-timeout "$wait_timeout"
+  curl --insecure --fail --silent --show-error --output /dev/null "$home_app_health_url"
 }
 
 current_revision="$(git rev-parse HEAD)"
@@ -76,7 +91,7 @@ fi
 
 if ! deploy_revision "$target_revision"; then
   printf '%s\n' "Le déploiement a échoué ; retour à la révision précédente." >&2
-  deploy_revision "$current_revision"
+  deploy_revision "$current_success"
   exit 1
 fi
 
