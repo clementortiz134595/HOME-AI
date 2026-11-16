@@ -11,6 +11,8 @@ Home Core doit piloter des appareils, commencer par Zigbee, puis intégrer d'aut
 
 Home Assistant est retenu comme passerelle d'intégration pour le premier déploiement domotique. L'adaptateur REST utilise `HOME_CORE_HOME_ASSISTANT_URL` et `HOME_CORE_HOME_ASSISTANT_TOKEN`, inventorie les entités `light`, `switch` et `sensor`, exécute `turn_on`/`turn_off`, puis relit l'état avant de retourner un succès.
 
+Le mode de contrôle est explicite via `HOME_CORE_HOME_CONTROL_MODE`. La valeur `home_assistant` exige les deux variables Home Assistant et arrête Home Core si elles sont absentes ; elle est requise sur la Raspberry Pi. `simulated` reste réservé au développement local. Le mode `auto`, conservé pour compatibilité, sélectionne Home Assistant seulement lorsque les deux variables sont présentes.
+
 Le module `home-control` définit un modèle commun d'appareil, de capacité, d'état confirmé et de commande. L'application dépend d'un port `Connector`; chaque protocole implémente ce port dans son adaptateur. L'adaptateur Zigbee expose un port `Transport` minimal, sans dépendance à un fournisseur.
 
 Les mesures électriques sont optionnelles et l'état retourné par l'intégration est la seule confirmation d'une action.
@@ -19,4 +21,5 @@ Les mesures électriques sont optionnelles et l'état retourné par l'intégrati
 
 - Ajouter Matter, Z-Wave ou une intégration Home Assistant ne modifie pas le modèle métier.
 - Le choix concret du coordinateur et de la découverte des appareils reste à documenter avant une connexion réelle.
+- Le déploiement Raspberry Pi doit charger un fichier de secrets hors dépôt et fixer `HOME_CORE_HOME_CONTROL_MODE=home_assistant`; il ne peut pas retomber silencieusement sur le simulateur.
 - Une future API entrante devra passer par l'authentification, l'autorisation et l'idempotence transverses de Home Core.

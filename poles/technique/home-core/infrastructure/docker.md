@@ -8,6 +8,10 @@ Home Core est livré comme **un conteneur applicatif unique** dans un projet Doc
 
 Pour activer la passerelle domotique, injecter `HOME_CORE_HOME_ASSISTANT_URL` et `HOME_CORE_HOME_ASSISTANT_TOKEN` dans Home Core. Le jeton doit provenir d'un secret d'environnement ou d'un gestionnaire de secrets et ne doit jamais être committé.
 
+Sur la Raspberry Pi, le fichier référencé par `HOME_AI_SECRETS_FILE` doit aussi contenir `HOME_CORE_HOME_CONTROL_MODE=home_assistant`. Dans ce mode, Home Core refuse de démarrer si l'URL ou le jeton sont absents : le simulateur ne doit servir qu'au développement local.
+
+Le fichier de déploiement par défaut est `/etc/home-ai/home-core.env`. Pour un autre emplacement, exporter `HOME_AI_SECRETS_FILE` avant `docker compose up`; le script local `scripts/bootstrap-secrets.sh` conserve, lui, son fichier dans `~/.config/home-ai/home-core.env`.
+
 ```text
 Raspberry Pi ou serveur local
 └── projet Docker Compose home-core

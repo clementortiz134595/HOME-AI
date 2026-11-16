@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -65,11 +66,10 @@ func main() {
 		logger.Error("invalid Zigbee fixture", "error", err)
 		os.Exit(1)
 	}
-	var homeService homecontrolapp.Service
-	if url, token := os.Getenv("HOME_CORE_HOME_ASSISTANT_URL"), os.Getenv("HOME_CORE_HOME_ASSISTANT_TOKEN"); url != "" && token != "" {
-		homeService = homecontrolapp.NewService(homeassistant.NewClient(&http.Client{Timeout: 10 * time.Second}, url, token))
-	} else {
-		homeService = homecontrolapp.NewService(zigbee.NewAdapter(zigbeeTransport))
+	homeService, err := homeServiceFromEnvironment(zigbeeTransport)
+	if err != nil {
+		logger.Error("invalid home control configuration", "error", err)
+		os.Exit(1)
 	}
 	mux.Handle("/v1/home-control/", homecontrolhttp.NewHandler(homeService))
 	trainsProvider := navitia.NewClient(&http.Client{Timeout: 10 * time.Second}, envOr("HOME_CORE_SNCF_BASE_URL", "https://api.trainnomade.fr"), envOr("HOME_CORE_SNCF_STOP_AREA", "87751784"))
@@ -201,4 +201,25 @@ func listenAddress() string {
 		return ":" + port
 	}
 	return ":8080"
+}
+
+func homeServiceFromEnvironment(transport *simulated.Transport) (homecontrolapp.Service, error) {
+	url, token := os.Getenv("HOME_CORE_HOME_ASSISTANT_URL"), os.Getenv("HOME_CORE_HOME_ASSISTANT_TOKEN")
+	mode := os.Getenv("HOME_CORE_HOME_CONTROL_MODE")
+	switch mode {
+	case "", "auto":
+		if url != "" && token != "" {
+			return homecontrolapp.NewService(homeassistant.NewClient(&http.Client{Timeout: 10 * time.Second}, url, token)), nil
+		}
+		return homecontrolapp.NewService(zigbee.NewAdapter(transport)), nil
+	case "home_assistant":
+		if url == "" || token == "" {
+			return homecontrolapp.Service{}, errors.New("HOME_CORE_HOME_ASSISTANT_URL and HOME_CORE_HOME_ASSISTANT_TOKEN are required when HOME_CORE_HOME_CONTROL_MODE=home_assistant")
+		}
+		return homecontrolapp.NewService(homeassistant.NewClient(&http.Client{Timeout: 10 * time.Second}, url, token)), nil
+	case "simulated":
+		return homecontrolapp.NewService(zigbee.NewAdapter(transport)), nil
+	default:
+		return homecontrolapp.Service{}, fmt.Errorf("unknown HOME_CORE_HOME_CONTROL_MODE %q", mode)
+	}
 }
