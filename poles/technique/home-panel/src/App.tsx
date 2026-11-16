@@ -41,6 +41,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { getWeather, type WeatherReport } from "@/lib/weather";
 import { getDeviceState, getHomeDevices, setDeviceSwitch, type DeviceState, type HomeDevice } from "@/lib/homeControl";
 import { getCalendarEvents, getCalendars, type CalendarEvent } from "@/lib/calendar";
+import { getCostSummary, type CostSummary } from "@/lib/costs";
 import { AgentPipeline } from "@/components/ai/agent-pipeline";
 import { SystemHealthView } from "@/SystemHealthView";
 
@@ -174,13 +175,28 @@ function ProfileView({ profile }: { profile: Profile }) {
 }
 
 function CostView() {
-  const points = [38, 42, 35, 52, 48, 61, 58, 72, 66, 78, 74, 86];
+  const [summary, setSummary] = useState<CostSummary | null>(null);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "unavailable">("loading");
+  useEffect(() => {
+    const controller = new AbortController();
+    getCostSummary(controller.signal).then((value) => { setSummary(value); setLoadState("ready"); }).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setLoadState("unavailable");
+    });
+    return () => controller.abort();
+  }, []);
+  const formatAmount = (cents: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
+  const change = summary && summary.previousMonthCents > 0 ? Math.round(((summary.monthAmountCents - summary.previousMonthCents) / summary.previousMonthCents) * 100) : null;
+  const maxAmount = Math.max(...(summary?.history.map((point) => point.amountCents) ?? []), 1);
+  const points = summary?.history ?? [];
+  const labels = points.length > 0 ? [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]].map((point) => new Date(point.start).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" })) : [];
+  const isEmpty = loadState === "ready" && summary?.dataStatus === "empty";
   return (
     <div className="cost-page mt-2">
-      <div><p className="text-sm text-slate-500">Pilotage de Home AI</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Coût</h2><p className="cost-description mt-2 max-w-2xl text-sm leading-6 text-slate-500">Suivez les dépenses estimées liées aux modèles IA, à l’hébergement et aux services connectés.</p></div>
-      <div className="grid gap-4 sm:grid-cols-3"><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Ce mois-ci</p><p className="mt-2 text-3xl font-semibold">12,40 €</p><p className="mt-1 text-sm text-emerald-400">−8 % vs. mois dernier</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Projection</p><p className="mt-2 text-3xl font-semibold">18,70 €</p><p className="mt-1 text-sm text-slate-500">Estimation mensuelle</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Principal poste</p><p className="mt-2 text-lg font-semibold">Modèles IA</p><p className="mt-1 text-sm text-slate-500">72 % du total estimé</p></CardContent></Card></div>
-      <Card><CardHeader><div><p className="text-lg font-semibold">Évolution des coûts</p><p className="mt-1 text-sm text-slate-500">12 derniers mois · données estimatives</p></div><WalletCards className="size-5 text-slate-400" /></CardHeader><CardContent><div className="cost-chart" role="img" aria-label="Graphique de l’évolution estimée des coûts sur douze mois">{points.map((height, index) => <div key={index} className="cost-bar" style={{ height: `${height}%` }}><span /></div>)}</div><div className="mt-3 flex justify-between text-[11px] text-slate-500"><span>Déc. 25</span><span>Juin 26</span><span>Nov. 26</span></div></CardContent></Card>
-      <Card className="cost-breakdown"><CardHeader><div><p className="text-lg font-semibold">Répartition</p><p className="mt-1 text-sm text-slate-500">À connecter aux métriques Home Core</p></div></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-sky-400/10 p-4"><p className="text-sm text-sky-200">Modèles IA</p><p className="mt-2 text-xl font-semibold">8,90 €</p></div><div className="rounded-2xl bg-violet-400/10 p-4"><p className="text-sm text-violet-200">Hébergement</p><p className="mt-2 text-xl font-semibold">2,50 €</p></div><div className="rounded-2xl bg-teal-400/10 p-4"><p className="text-sm text-teal-200">Services</p><p className="mt-2 text-xl font-semibold">1,00 €</p></div></CardContent></Card>
+      <div><p className="text-sm text-slate-500">Pilotage de Home AI</p><h2 className="mt-1 text-3xl font-semibold tracking-[-0.04em]">Coût</h2><p className="cost-description mt-2 max-w-2xl text-sm leading-6 text-slate-500">Suivez les dépenses enregistrées et les estimations mensuelles de Home Core.</p></div>
+      {loadState === "unavailable" && <p className="text-sm text-amber-300">Les données de coût sont indisponibles.</p>}
+      <div className="grid gap-4 sm:grid-cols-3"><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Ce mois-ci</p><p className="mt-2 text-3xl font-semibold">{summary ? formatAmount(summary.monthAmountCents) : "—"}</p><p className={(change !== null && change <= 0 ? "text-emerald-400" : "text-slate-500") + " mt-1 text-sm"}>{change === null ? "Comparaison indisponible" : `${change > 0 ? "+" : ""}${change} % vs. mois dernier`}</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Projection</p><p className="mt-2 text-3xl font-semibold">{summary ? formatAmount(summary.projectionCents) : "—"}</p><p className="mt-1 text-sm text-slate-500">Estimation au rythme constaté</p></CardContent></Card><Card><CardContent className="p-5"><p className="text-sm text-slate-400">Principal poste</p><p className="mt-2 text-lg font-semibold">{summary?.largestCategory?.category ?? "—"}</p><p className="mt-1 text-sm text-slate-500">{summary?.largestCategory ? `${formatAmount(summary.largestCategory.amountCents)} ce mois-ci` : "Aucune dépense enregistrée"}</p></CardContent></Card></div>
+      <Card><CardHeader><div><p className="text-lg font-semibold">Évolution des coûts</p><p className="mt-1 text-sm text-slate-500">12 derniers mois · données Home Core</p></div><WalletCards className="size-5 text-slate-400" /></CardHeader><CardContent>{isEmpty ? <p className="rounded-2xl bg-white/[0.04] p-4 text-sm text-slate-500">Aucune dépense ni estimation n’est encore enregistrée. Les montants ne sont jamais simulés.</p> : <><div className="cost-chart" role="img" aria-label="Graphique de l’évolution des coûts sur douze mois">{points.map((point) => <div key={point.start} className="cost-bar" style={{ height: `${Math.max(0, (point.amountCents / maxAmount) * 100)}%` }}><span /></div>)}</div><div className="mt-3 flex justify-between text-[11px] text-slate-500"><span>{labels[0]}</span><span>{labels[1]}</span><span>{labels[2]}</span></div></>}</CardContent></Card>
+      {summary && summary.breakdown.length > 0 && <Card className="cost-breakdown"><CardHeader><div><p className="text-lg font-semibold">Répartition</p><p className="mt-1 text-sm text-slate-500">Dépenses de ce mois</p></div></CardHeader><CardContent className="grid gap-3 sm:grid-cols-3">{summary.breakdown.map((item) => <div key={item.category} className="rounded-2xl bg-sky-400/10 p-4"><p className="text-sm text-sky-200">{item.category}</p><p className="mt-2 text-xl font-semibold">{formatAmount(item.amountCents)}</p></div>)}</CardContent></Card>}
     </div>
   );
 }

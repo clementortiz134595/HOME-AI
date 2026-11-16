@@ -9,6 +9,7 @@ flowchart TB
     assistant[assistant]
     memory[memory-preferences]
     health[system-health]
+    costs[costs]
     storage[(Stockage local)]
     homeAssistant[Home Assistant]
     google[Google Calendar]
@@ -23,6 +24,7 @@ flowchart TB
     api --> assistant
     api --> memory
     api --> health
+    api --> costs
     assistant --> controls
     assistant --> routines
     assistant --> agenda
@@ -31,6 +33,7 @@ flowchart TB
     agenda --> storage
     memory --> storage
     health --> storage
+    costs --> storage
     controls --> homeAssistant
     agenda --> google
     assistant --> ai

@@ -14,3 +14,4 @@ Ces diagrammes Mermaid sont des sources versionnables : ils décrivent les flux 
 - [Gmail et Google Drive pour les futurs agents](sequence-google-workspace.mmd)
 - [Métriques système Raspberry Pi](sequence-system-health.mmd)
 - [Contrôle d'un appareil Zigbee](sequence-commande-zigbee.mmd)
+- [Lecture du suivi des coûts](sequence-couts.mmd)

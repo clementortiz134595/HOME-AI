@@ -4,7 +4,7 @@
 - Statut : première interface statique
 - Rôle : interface tablette dédiée à l'appartement.
 
-Ce projet accueille l'expérience murale : informations du foyer, scènes, commandes domestiques et vues de suivi. La première interface est volontairement sans données réelles ni actions câblées ; elle adopte une palette claire et une trame de points sur les panneaux de synthèse.
+Ce projet accueille l'expérience murale : informations du foyer, scènes, commandes domestiques et vues de suivi. Il adopte une palette claire et une trame de points sur les panneaux de synthèse.
 
 Le design system de référence est [shadcn/ui avec Geist](../../design/design-system/dossier.md).
 
@@ -34,3 +34,7 @@ La vue Maison lit l'inventaire via `/v1/home-control/devices`, les états via
 `/v1/home-control/devices/:id/state` et envoie les commandes d'interrupteur via
 `/v1/home-control/devices/:id/commands`. Le compose Home Core monte la fixture
 du projet [Zigbee Simulator](../zigbee-simulator/code/fixtures/maison-demo.json).
+
+La vue Coût lit `GET /v1/costs/summary`. Si Home Core ne possède aucune
+écriture de coût, le Panel l'affiche explicitement : il ne remplace jamais ces
+données par une maquette.
