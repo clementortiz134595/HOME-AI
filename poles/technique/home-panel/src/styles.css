@@ -197,7 +197,7 @@ button { font: inherit; }
 
 .home-view {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 1rem;
 }
 .home-view > * { min-height: 0; }
@@ -279,13 +279,8 @@ button { font: inherit; }
 .dashboard-compact-grid > button { height: 100%; }
 .dashboard-compact-grid > button > section { height: 100%; }
 .dashboard-compact-grid .weather-content { min-height: 0; height: 100%; }
-.dashboard-compact-grid .dashboard-rooms-card > div:last-child { padding-top: 0; }
-.dashboard-compact-grid .dashboard-rooms-card button { min-height: 3.25rem; }
-.dashboard-rooms-card { display: flex; flex-direction: column; }
-.dashboard-rooms-card > div:last-child { flex: 1; grid-template-rows: repeat(2, minmax(0, 1fr)); }
-.dashboard-rooms-card button { height: 100%; min-height: 0 !important; padding: .75rem; }
-.dashboard-rooms-card .size-8 { width: 2.25rem; height: 2.25rem; }
-.dashboard-rooms-card .size-4 { width: 1.1rem; height: 1.1rem; }
+.dashboard-devices-card { display: flex; flex-direction: column; }
+.dashboard-devices-card > div:last-child { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-top: 0; }
 .dashboard-reminder-card,
 .dashboard-chores-card { display: flex; flex-direction: column; }
 .dashboard-reminder-card > div:last-child,
@@ -305,9 +300,7 @@ button { font: inherit; }
   .dashboard-compact-grid .weather-content span { display: none; }
   .dashboard-assistant-card .orb { transform: scale(.55); }
   .dashboard-compact-grid .weather-content .text-5xl { font-size: 2rem; }
-  .dashboard-compact-grid .dashboard-rooms-card button { min-height: 2.5rem; padding: .25rem; }
-  .dashboard-compact-grid .dashboard-rooms-card .text-xs { display: none; }
-  .dashboard-compact-grid .dashboard-rooms-card .size-8 { width: 1.5rem; height: 1.5rem; }
+  .dashboard-compact-grid .dashboard-devices-card .text-xs { display: none; }
   .dashboard-compact-grid .text-lg { font-size: .875rem; }
   .dashboard-compact-grid .text-xl { font-size: 1rem; }
   .dashboard-compact-grid .text-4xl { font-size: 1.5rem; }
@@ -320,8 +313,7 @@ button { font: inherit; }
   .dashboard-compact-grid .weather-detail,
   .dashboard-compact-grid .weather-content span { display: none; }
   .dashboard-compact-grid .weather-content .text-5xl { font-size: 2.25rem; }
-  .dashboard-compact-grid .dashboard-rooms-card button { min-height: 2.75rem; padding: .375rem; }
-  .dashboard-compact-grid .dashboard-rooms-card .text-xs { display: none; }
+  .dashboard-compact-grid .dashboard-devices-card .text-xs { display: none; }
 }
 @keyframes profile-menu-in {
   from { opacity: 0; transform: translateX(5px) scale(0.96); }
