@@ -13,3 +13,4 @@ Ces diagrammes Mermaid sont des sources versionnables : ils décrivent les flux 
 - [Lecture d'un calendrier Apple iCloud](sequence-apple-icloud-calendar.mmd)
 - [Gmail et Google Drive pour les futurs agents](sequence-google-workspace.mmd)
 - [Contrôle d'un appareil Zigbee](sequence-commande-zigbee.mmd)
+- [Lecture du suivi des coûts](sequence-couts.mmd)

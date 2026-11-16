@@ -1,0 +1,12 @@
+sequenceDiagram
+    participant Source as Relevé fournisseur / import administrateur
+    participant Costs as Module costs Home Core
+    participant DB as SQLite local
+    participant Panel as Home Panel
+    Source->>Costs: écriture de coût catégorisée (flux futur authentifié)
+    Costs->>DB: persiste montant en centimes et date
+    Panel->>Costs: GET /v1/costs/summary
+    Costs->>DB: lit les 12 derniers mois
+    DB-->>Costs: écritures disponibles ou aucune donnée
+    Costs-->>Panel: synthèse, historique et statut de données
+    Note over Panel: Aucun montant n'est inventé si le relevé est absent

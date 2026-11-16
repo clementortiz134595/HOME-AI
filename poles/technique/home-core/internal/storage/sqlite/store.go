@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	choresmodel "github.com/clementortiz/home-ai/home-core/internal/chores/model"
+	costsmodel "github.com/clementortiz/home-ai/home-core/internal/costs/model"
 	remindersmodel "github.com/clementortiz/home-ai/home-core/internal/reminders/model"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -17,7 +19,7 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err = db.Exec(`CREATE TABLE IF NOT EXISTS chores (id TEXT PRIMARY KEY, objective TEXT NOT NULL, date TEXT, assignees TEXT NOT NULL, frequency TEXT, interval_weeks INTEGER, alternating INTEGER NOT NULL, completed INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, title TEXT NOT NULL, date TEXT NOT NULL, details TEXT);`); err != nil {
+	if _, err = db.Exec(`CREATE TABLE IF NOT EXISTS chores (id TEXT PRIMARY KEY, objective TEXT NOT NULL, date TEXT, assignees TEXT NOT NULL, frequency TEXT, interval_weeks INTEGER, alternating INTEGER NOT NULL, completed INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, title TEXT NOT NULL, date TEXT NOT NULL, details TEXT); CREATE TABLE IF NOT EXISTS cost_entries (id TEXT PRIMARY KEY, occurred_at TEXT NOT NULL, category TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0), estimated INTEGER NOT NULL CHECK(estimated IN (0, 1))); CREATE INDEX IF NOT EXISTS cost_entries_occurred_at ON cost_entries(occurred_at);`); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate household database: %w", err)
 	}
@@ -79,4 +81,27 @@ func (s *Store) SaveReminder(r remindersmodel.Reminder) error {
 func (s *Store) DeleteReminder(id string) error {
 	_, err := s.db.Exec(`DELETE FROM reminders WHERE id=?`, id)
 	return err
+}
+
+func (s *Store) ListCostEntries(from, to time.Time) ([]costsmodel.Entry, error) {
+	rows, err := s.db.Query(`SELECT id, occurred_at, category, amount_cents, estimated FROM cost_entries WHERE occurred_at >= ? AND occurred_at < ? ORDER BY occurred_at, id`, from.UTC().Format(time.RFC3339), to.UTC().Format(time.RFC3339))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	entries := []costsmodel.Entry{}
+	for rows.Next() {
+		var entry costsmodel.Entry
+		var occurredAt string
+		var estimated int
+		if err := rows.Scan(&entry.ID, &occurredAt, &entry.Category, &entry.AmountCents, &estimated); err != nil {
+			return nil, err
+		}
+		if entry.OccurredAt, err = time.Parse(time.RFC3339, occurredAt); err != nil {
+			return nil, fmt.Errorf("parse cost entry %q: %w", entry.ID, err)
+		}
+		entry.Estimated = estimated != 0
+		entries = append(entries, entry)
+	}
+	return entries, rows.Err()
 }
