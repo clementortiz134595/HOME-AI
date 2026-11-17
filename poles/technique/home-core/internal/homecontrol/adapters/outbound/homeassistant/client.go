@@ -40,7 +40,7 @@ func (client *Client) ListDevices(ctx context.Context) ([]model.Device, error) {
 	}
 	devices := make([]model.Device, 0, len(states))
 	for _, item := range states {
-		kind, capabilities, ok := deviceKind(item.EntityID)
+		kind, capabilities, ok := deviceKind(item.EntityID, item.Attributes)
 		if !ok {
 			continue
 		}
@@ -113,13 +113,16 @@ func (client *Client) do(ctx context.Context, method, path string, body, target 
 	return json.NewDecoder(resp.Body).Decode(target)
 }
 
-func deviceKind(entityID string) (model.DeviceKind, []model.Capability, bool) {
+func deviceKind(entityID string, attributes map[string]any) (model.DeviceKind, []model.Capability, bool) {
 	switch strings.SplitN(entityID, ".", 2)[0] {
 	case "light":
 		return model.DeviceKindLight, []model.Capability{model.CapabilitySwitch, model.CapabilityBrightness}, true
 	case "switch":
 		return model.DeviceKindPlug, []model.Capability{model.CapabilitySwitch}, true
 	case "sensor":
+		if attributeString(attributes, "device_class", "") != "temperature" {
+			return "", nil, false
+		}
 		return model.DeviceKindTemperatureSensor, []model.Capability{model.CapabilityTemperature}, true
 	default:
 		return "", nil, false
