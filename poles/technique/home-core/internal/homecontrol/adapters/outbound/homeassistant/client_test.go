@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/homeassistant"
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/model"
@@ -57,7 +58,7 @@ func TestListDevicesOmitsSystemSensors(t *testing.T) {
 func TestTemperatureSensorStateIncludesMeasurementsWithoutSwitchState(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/api/states/sensor.chambre_temperature" {
-			_, _ = w.Write([]byte(`{"entity_id":"sensor.chambre_temperature","state":"20.6","last_changed":"2026-11-17T18:00:00Z","attributes":{"device_class":"temperature"}}`))
+			_, _ = w.Write([]byte(`{"entity_id":"sensor.chambre_temperature","state":"20.6","last_changed":"2026-11-17T18:00:00Z","last_updated":"2026-11-17T18:05:00Z","attributes":{"device_class":"temperature"}}`))
 			return
 		}
 		_, _ = w.Write([]byte(`[
@@ -69,7 +70,7 @@ func TestTemperatureSensorStateIncludesMeasurementsWithoutSwitchState(t *testing
 	defer server.Close()
 
 	state, err := homeassistant.NewClient(server.Client(), server.URL, "secret").GetState(context.Background(), "sensor.chambre_temperature")
-	if err != nil || state.SwitchOn != nil || state.TemperatureC == nil || *state.TemperatureC != 20.6 || state.HumidityPercent == nil || *state.HumidityPercent != 53.7 || state.BatteryPercent == nil || *state.BatteryPercent != 100 {
+	if err != nil || state.SwitchOn != nil || state.TemperatureC == nil || *state.TemperatureC != 20.6 || state.ObservedAt.Format(time.RFC3339) != "2026-11-17T18:05:00Z" || state.HumidityPercent == nil || *state.HumidityPercent != 53.7 || state.BatteryPercent == nil || *state.BatteryPercent != 100 {
 		t.Fatalf("state=%+v err=%v", state, err)
 	}
 }
