@@ -64,7 +64,7 @@ services:
       target: production
     image: home-ai/home-panel:local
     ports:
-      - "127.0.0.1:${HOME_PANEL_PORT:-13000}:80"
+      - "${HOME_PANEL_BIND_ADDRESS:-127.0.0.1}:${HOME_PANEL_PORT:-13000}:80"
     depends_on:
       home-core:
         condition: service_healthy

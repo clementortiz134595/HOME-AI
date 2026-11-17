@@ -18,6 +18,7 @@ health_url="${HOME_AI_HEALTH_URL:-http://127.0.0.1:18080/healthz}"
 home_panel_health_url="${HOME_AI_HOME_PANEL_HEALTH_URL:-http://127.0.0.1:${HOME_PANEL_PORT:-13000}/}"
 home_app_health_url="${HOME_AI_HOME_APP_HEALTH_URL:-https://127.0.0.1:${HOME_APP_TLS_PORT:-13444}/}"
 home_app_override="${HOME_AI_HOME_APP_COMPOSE_OVERRIDE:-$HOME/.config/home-ai/home-app.compose.override.yaml}"
+deploy_env_file="${HOME_AI_DEPLOY_ENV_FILE:-$HOME/.config/home-ai/deploy.env}"
 wait_timeout="${HOME_AI_DEPLOY_WAIT_TIMEOUT:-180}"
 
 if [[ $# -ne 1 ]]; then
@@ -52,7 +53,12 @@ deploy_revision() {
     docker network create home-ai >/dev/null
   fi
 
-  docker compose --project-name home-ai up -d --build --wait --wait-timeout "$wait_timeout"
+  local -a home_ai_compose=(docker compose)
+  if [[ -f "$deploy_env_file" ]]; then
+    home_ai_compose+=(--env-file "$deploy_env_file")
+  fi
+  home_ai_compose+=(--project-name home-ai)
+  "${home_ai_compose[@]}" up -d --build --wait --wait-timeout "$wait_timeout"
   curl --fail --silent --show-error --output /dev/null "$health_url"
   curl --fail --silent --show-error --output /dev/null "$home_panel_health_url"
 
