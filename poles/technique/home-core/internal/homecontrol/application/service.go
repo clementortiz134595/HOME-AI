@@ -21,6 +21,9 @@ type Connector interface {
 }
 
 type Service struct{ connector Connector }
+type HistoryReader interface {
+	GetHistory(context.Context, string) ([]model.Measurement, error)
+}
 
 func NewService(connector Connector) Service { return Service{connector: connector} }
 func (service Service) ListDevices(ctx context.Context) ([]model.Device, error) {
@@ -31,6 +34,13 @@ func (service Service) GetState(ctx context.Context, deviceID string) (model.Dev
 		return model.DeviceState{}, fmt.Errorf("device id is required")
 	}
 	return service.connector.GetState(ctx, deviceID)
+}
+func (service Service) GetHistory(ctx context.Context, deviceID string) ([]model.Measurement, error) {
+	reader, ok := service.connector.(HistoryReader)
+	if !ok {
+		return nil, ErrUnavailable
+	}
+	return reader.GetHistory(ctx, deviceID)
 }
 func (service Service) Execute(ctx context.Context, deviceID string, action model.Action) (model.CommandResult, error) {
 	if deviceID == "" {

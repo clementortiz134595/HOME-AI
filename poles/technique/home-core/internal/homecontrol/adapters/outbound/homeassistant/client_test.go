@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/clementortiz/home-ai/home-core/internal/homecontrol/adapters/outbound/homeassistant"
@@ -48,5 +49,53 @@ func TestListDevicesOmitsSystemSensors(t *testing.T) {
 	}
 	if len(devices) != 2 || devices[0].ID != "sensor.cuisine_temperature" || devices[1].ID != "light.cuisine" {
 		t.Fatalf("unexpected devices: %#v", devices)
+	}
+}
+
+func TestTemperatureSensorStateIncludesMeasurementsWithoutSwitchState(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/states/sensor.chambre_temperature" {
+			_, _ = w.Write([]byte(`{"entity_id":"sensor.chambre_temperature","state":"20.6","last_changed":"2026-11-17T18:00:00Z","attributes":{"device_class":"temperature"}}`))
+			return
+		}
+		_, _ = w.Write([]byte(`[
+			{"entity_id":"sensor.chambre_temperature","state":"20.6","attributes":{"device_class":"temperature"}},
+			{"entity_id":"sensor.chambre_humidite","state":"53.7","attributes":{"device_class":"humidity"}},
+			{"entity_id":"sensor.chambre_batterie","state":"100","attributes":{"device_class":"battery"}}
+		]`))
+	}))
+	defer server.Close()
+
+	state, err := homeassistant.NewClient(server.Client(), server.URL, "secret").GetState(context.Background(), "sensor.chambre_temperature")
+	if err != nil || state.SwitchOn != nil || state.TemperatureC == nil || *state.TemperatureC != 20.6 || state.HumidityPercent == nil || *state.HumidityPercent != 53.7 || state.BatteryPercent == nil || *state.BatteryPercent != 100 {
+		t.Fatalf("state=%+v err=%v", state, err)
+	}
+}
+
+func TestTemperatureSensorHistoryReturnsSeparateTemperatureAndHumiditySeries(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/states" {
+			_, _ = w.Write([]byte(`[
+				{"entity_id":"sensor.chambre_temperature","state":"20.6","attributes":{"device_class":"temperature"}},
+				{"entity_id":"sensor.chambre_humidity","state":"53.7","attributes":{"device_class":"humidity"}}
+			]`))
+			return
+		}
+		if !strings.HasPrefix(r.URL.Path, "/api/history/period/") {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		if got := r.URL.Query().Get("filter_entity_id"); got != "sensor.chambre_temperature,sensor.chambre_humidity" {
+			t.Fatalf("filter_entity_id=%q", got)
+		}
+		_, _ = w.Write([]byte(`[
+			[{"entity_id":"sensor.chambre_temperature","state":"20.6","last_changed":"2026-11-17T18:00:00Z"}],
+			[{"entity_id":"sensor.chambre_humidity","state":"53.7","last_changed":"2026-11-17T18:05:00Z"}]
+		]`))
+	}))
+	defer server.Close()
+
+	history, err := homeassistant.NewClient(server.Client(), server.URL, "secret").GetHistory(context.Background(), "sensor.chambre_temperature")
+	if err != nil || len(history) != 2 || history[0].TemperatureC == nil || *history[0].TemperatureC != 20.6 || history[1].HumidityPercent == nil || *history[1].HumidityPercent != 53.7 {
+		t.Fatalf("history=%+v err=%v", history, err)
 	}
 }

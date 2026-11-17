@@ -12,6 +12,8 @@ export type DeviceState = {
   switchOn?: boolean;
   brightness?: number;
   temperatureC?: number;
+  humidityPercent?: number;
+  batteryPercent?: number;
   observedAt: string;
 };
 
@@ -28,6 +30,8 @@ export async function getDeviceState(deviceId: string, signal?: AbortSignal): Pr
   if (!response.ok) throw new Error("device_state_unavailable");
   return response.json() as Promise<DeviceState>;
 }
+export type Measurement = { observedAt: string; temperatureC?: number; humidityPercent?: number };
+export async function getDeviceHistory(deviceId: string, signal?: AbortSignal): Promise<Measurement[]> { const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/history`, { signal }); if (!response.ok) throw new Error("device_history_unavailable"); return (await response.json() as { measurements: Measurement[] }).measurements; }
 
 export async function setDeviceSwitch(deviceId: string, on: boolean): Promise<DeviceState> {
   const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/commands`, {
