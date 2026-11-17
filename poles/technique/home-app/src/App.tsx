@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { AssistantOrb } from "@/components/AssistantOrb";
-import { Bell, CheckCheck, ChevronLeft, ChevronRight, Home, Lightbulb, Pencil, RotateCcw, Server, Smartphone, WifiOff, X } from "lucide-react";
+import { Bell, CheckCheck, ChevronRight, Home, Lightbulb, Pencil, RotateCcw, Server, Smartphone, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getHomeDevices, getDeviceHistory, getDeviceState, setDeviceSwitch, getChores, updateHomeDevice, type HomeDevice, type DeviceState, type Chore, type Measurement } from "@/lib/homeControl";
 import { useVoice } from "@/lib/useVoice";
@@ -26,6 +26,14 @@ const measurementTime = (value?: string) => {
   return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(date);
 };
 
+const measurementAge = (value?: string) => {
+  if (!value) return "heure inconnue";
+  const ageSeconds = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 1000));
+  if (ageSeconds < 60) return "à l’instant";
+  if (ageSeconds < 3600) return `il y a ${Math.floor(ageSeconds / 60)} min`;
+  return `il y a ${Math.floor(ageSeconds / 3600)} h ${Math.floor((ageSeconds % 3600) / 60)} min`;
+};
+
 function Devices() {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [states, setStates] = useState<Record<string, DeviceState>>({});
@@ -38,7 +46,9 @@ function Devices() {
   const [editingDevice, setEditingDevice] = useState<HomeDevice | null>(null);
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setError(""); setDevices([]); setStates({});
+    const initialLoad = devices.length === 0;
+    setLoading(initialLoad); setError("");
+    if (initialLoad) { setDevices([]); setStates({}); }
     void getHomeDevices(controller.signal).then(async inventory => {
       if (controller.signal.aborted) return;
       setDevices(inventory);
@@ -50,6 +60,14 @@ function Devices() {
     }).catch(() => { if (!controller.signal.aborted) setError("Impossible de joindre Home Core. Vérifiez votre connexion et vos autorisations."); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
   }, [attempt]);
+  useEffect(() => {
+    const refresh = () => setAttempt(value => value + 1);
+    const refreshWhenVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    const timer = window.setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 30_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => { window.clearInterval(timer); window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refreshWhenVisible); };
+  }, []);
   const toggle = async (device: HomeDevice) => {
     setPending(items => [...items, device.id]); setError("");
     try { const state = await setDeviceSwitch(device.id, !states[device.id]?.switchOn); setStates(items => ({ ...items, [device.id]: state })); }
@@ -77,7 +95,7 @@ function Devices() {
     <div className="device-list">{visibleDevices.map(device => {
       const state = states[device.id]; const busy = pending.includes(device.id);
       const controllable = device.capabilities.includes("switch") && state?.online && typeof state.switchOn === "boolean";
-      const sensorDetails = state?.temperatureC == null ? "Mesure indisponible" : `${state.temperatureC.toFixed(1)} °C${state.humidityPercent == null ? "" : ` · ${Math.round(state.humidityPercent)} %`}${state.batteryPercent == null ? "" : ` · batterie ${Math.round(state.batteryPercent)} %`} · mesuré à ${measurementTime(state.observedAt)}`;
+      const sensorDetails = state?.temperatureC == null ? "Mesure indisponible" : `${state.temperatureC.toFixed(1)} °C${state.humidityPercent == null ? "" : ` · ${Math.round(state.humidityPercent)} %`}${state.batteryPercent == null ? "" : ` · batterie ${Math.round(state.batteryPercent)} %`} · ${measurementAge(state.observedAt)}`;
       const opensHistory = device.kind === "temperature_sensor";
       return <article className="device" key={device.id} onClick={() => opensHistory && setSelectedSensor(device)} role={opensHistory ? "button" : undefined} tabIndex={opensHistory ? 0 : undefined} onKeyDown={event => { if (opensHistory && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedSensor(device); } }}><div className={"device-icon " + (state?.switchOn ? "on" : "")}><Lightbulb size={22} /></div><div className="device-description"><h2>{device.name}</h2><p>{device.kind === "temperature_sensor" ? sensorDetails : !state ? "État inconnu" : !state.online ? "Connecté" : state.switchOn ? "Allumé" : "Éteint"}</p></div><Button variant="ghost" size="icon" className="device-edit" onClick={event => { event.stopPropagation(); setEditingDevice(device); }} aria-label={`Modifier ${device.name}`}><Pencil size={16} /></Button>{device.capabilities.includes("switch") && <button type="button" className={"switch " + (state?.switchOn ? "checked" : "")} disabled={!controllable || busy} onClick={event => { event.stopPropagation(); void toggle(device); }} role="switch" aria-checked={Boolean(state?.switchOn)} aria-label={`${state?.switchOn ? "Éteindre" : "Allumer"} ${device.name}`}><span /></button>}</article>;
     })}</div>
@@ -87,7 +105,7 @@ function Devices() {
 function DeviceEditor({ device, rooms, onClose, onSave }: { device: HomeDevice; rooms: string[]; onClose: () => void; onSave: (device: HomeDevice, patch: { name: string; room: string }) => Promise<void> }) {
   const [name, setName] = useState(device.name); const [room, setRoom] = useState(device.room ?? ""); const [saving, setSaving] = useState(false); const [error, setError] = useState("");
   const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); setError(""); try { await onSave(device, { name: name.trim(), room: room.trim() }); } catch { setError("La modification n’a pas été confirmée par Home Assistant."); } finally { setSaving(false); } };
-  return <section className="device-detail"><button type="button" className="detail-back" onClick={onClose}><ChevronLeft size={19} /> Retour aux appareils</button><p className="eyebrow">Appareil</p><h1>Modifier l’appareil</h1><form className="device-form" onSubmit={submit}><label>Nom<input value={name} onChange={event => setName(event.target.value)} required autoFocus /></label><label>Pièce<input value={room} onChange={event => setRoom(event.target.value)} list="rooms" placeholder="Ex. Chambre" /><datalist id="rooms">{rooms.map(item => <option key={item} value={item} />)}</datalist></label><p>Les modifications sont enregistrées dans Home Assistant.</p>{error && <p className="notice" role="alert">{error}</p>}<Button type="submit" disabled={saving || !name.trim()}>{saving ? "Enregistrement…" : "Enregistrer"}</Button></form></section>;
+  return <section className="device-detail"><button type="button" className="detail-back" onClick={onClose}>← Retour aux appareils</button><p className="eyebrow">Appareil</p><h1>Modifier l’appareil</h1><form className="device-form" onSubmit={submit}><label>Nom<input value={name} onChange={event => setName(event.target.value)} required autoFocus /></label><label>Pièce<input value={room} onChange={event => setRoom(event.target.value)} list="rooms" placeholder="Ex. Chambre" /><datalist id="rooms">{rooms.map(item => <option key={item} value={item} />)}</datalist></label><p>Les modifications sont enregistrées dans Home Assistant.</p>{error && <p className="notice" role="alert">{error}</p>}<Button type="submit" disabled={saving || !name.trim()}>{saving ? "Enregistrement…" : "Enregistrer"}</Button></form></section>;
 }
 
 function SensorHistory({ sensor, onClose }: { sensor: HomeDevice; onClose: () => void }) {
@@ -105,7 +123,7 @@ function SensorHistory({ sensor, onClose }: { sensor: HomeDevice; onClose: () =>
     return values.map((value, index) => `${10 + index * 320 / Math.max(values.length - 1, 1)},${100 - (value - min) * 80 / (max - min || 1)}`).join(" ");
   };
   const hasHistory = temperature.length > 0 || humidity.length > 0;
-  return <section className="device-detail sensor-history" aria-label={`Historique ${sensor.name}`}><button type="button" className="detail-back" onClick={onClose}><ChevronLeft size={19} /> Retour aux appareils</button><p className="eyebrow">Capteur</p><h1>{sensor.name}</h1><p>Historique sur 24 heures{latest ? ` · dernier relevé à ${measurementTime(latest.observedAt)}` : ""}</p>{hasHistory ? <><svg viewBox="0 0 340 120" role="img" aria-label="Historique de température et humidité">{temperature.length > 0 && <polyline points={polyline(temperature)} fill="none" stroke="#a78bfa" strokeWidth="3" />}{humidity.length > 0 && <polyline points={polyline(humidity)} fill="none" stroke="#67e8f9" strokeWidth="3" />}</svg><p className="history-legend"><span className="temperature">Température · {temperature.length} relevés</span><span className="humidity">Humidité · {humidity.length} relevés</span></p></> : <p>Historique indisponible pour le moment.</p>}</section>;
+  return <section className="device-detail sensor-history" aria-label={`Historique ${sensor.name}`}><button type="button" className="detail-back" onClick={onClose}>← Retour aux appareils</button><p className="eyebrow">Capteur</p><h1>{sensor.name}</h1><p>Historique sur 24 heures{latest ? ` · dernier relevé à ${measurementTime(latest.observedAt)}` : ""}</p>{hasHistory ? <><svg viewBox="0 0 340 120" role="img" aria-label="Historique de température et humidité">{temperature.length > 0 && <polyline points={polyline(temperature)} fill="none" stroke="#a78bfa" strokeWidth="3" />}{humidity.length > 0 && <polyline points={polyline(humidity)} fill="none" stroke="#67e8f9" strokeWidth="3" />}</svg><p className="history-legend"><span className="temperature">Température · {temperature.length} relevés</span><span className="humidity">Humidité · {humidity.length} relevés</span></p></> : <p>Historique indisponible pour le moment.</p>}</section>;
 }
 
 function HouseholdList({ kind }: { kind: "chores" | "reminders" }) {
