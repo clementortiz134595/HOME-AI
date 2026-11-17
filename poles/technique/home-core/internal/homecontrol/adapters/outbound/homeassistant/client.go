@@ -35,6 +35,7 @@ type state struct {
 	State       string         `json:"state"`
 	Attributes  map[string]any `json:"attributes"`
 	LastChanged time.Time      `json:"last_changed"`
+	LastUpdated time.Time      `json:"last_updated"`
 }
 
 type entityRegistryEntry struct {
@@ -198,10 +199,10 @@ func (client *Client) GetHistory(ctx context.Context, deviceID string) ([]model.
 				continue
 			}
 			if item.EntityID == deviceID {
-				points = append(points, model.Measurement{ObservedAt: item.LastChanged, TemperatureC: &value})
+				points = append(points, model.Measurement{ObservedAt: observationTime(item), TemperatureC: &value})
 			}
 			if item.EntityID == humidityID {
-				points = append(points, model.Measurement{ObservedAt: item.LastChanged, HumidityPercent: &value})
+				points = append(points, model.Measurement{ObservedAt: observationTime(item), HumidityPercent: &value})
 			}
 		}
 	}
@@ -399,7 +400,7 @@ func deviceKind(entityID string, attributes map[string]any) (model.DeviceKind, [
 }
 
 func toDeviceState(item state) model.DeviceState {
-	state := model.DeviceState{DeviceID: item.EntityID, Online: item.State != "unavailable" && item.State != "unknown", ObservedAt: item.LastChanged}
+	state := model.DeviceState{DeviceID: item.EntityID, Online: item.State != "unavailable" && item.State != "unknown", ObservedAt: observationTime(item)}
 	if !strings.HasPrefix(item.EntityID, "sensor.") {
 		on := item.State == "on"
 		state.SwitchOn = &on
@@ -417,6 +418,13 @@ func toDeviceState(item state) model.DeviceState {
 		}
 	}
 	return state
+}
+
+func observationTime(item state) time.Time {
+	if !item.LastUpdated.IsZero() {
+		return item.LastUpdated
+	}
+	return item.LastChanged
 }
 
 func attributeString(attributes map[string]any, key, fallback string) string {
