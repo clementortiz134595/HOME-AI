@@ -33,6 +33,11 @@ type Device struct {
 	Capabilities []Capability `json:"capabilities"`
 }
 
+type DevicePatch struct {
+	Name *string `json:"name,omitempty"`
+	Room *string `json:"room,omitempty"`
+}
+
 type DeviceState struct {
 	DeviceID        string    `json:"deviceId"`
 	Online          bool      `json:"online"`

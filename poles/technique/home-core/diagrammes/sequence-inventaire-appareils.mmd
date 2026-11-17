@@ -1,0 +1,13 @@
+sequenceDiagram
+    participant App as Home App
+    participant Core as Home Core / home-control
+    participant HA as Home Assistant
+
+    App->>Core: PATCH /devices/{id} (nom, pièce)
+    Core->>HA: WebSocket : liste des entités et zones
+    alt La pièce n’existe pas
+        Core->>HA: WebSocket : création de la zone
+    end
+    Core->>HA: WebSocket : mise à jour du registre d’entité ou appareil
+    HA-->>Core: Inventaire confirmé
+    Core-->>App: Appareil avec nom et pièce confirmés

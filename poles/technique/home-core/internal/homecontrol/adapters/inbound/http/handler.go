@@ -39,6 +39,27 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"measurements": history})
+	case r.Method == http.MethodPatch && strings.HasPrefix(path, "/devices/"):
+		id := strings.TrimPrefix(path, "/devices/")
+		var patch model.DevicePatch
+		if json.NewDecoder(r.Body).Decode(&patch) != nil {
+			writeError(w, http.StatusBadRequest, "invalid_device_update")
+			return
+		}
+		if patch.Name != nil {
+			name := strings.TrimSpace(*patch.Name)
+			patch.Name = &name
+		}
+		if patch.Room != nil {
+			room := strings.TrimSpace(*patch.Room)
+			patch.Room = &room
+		}
+		device, err := h.service.UpdateDevice(r.Context(), id, patch)
+		if err != nil {
+			writeError(w, http.StatusBadGateway, "device_update_unavailable")
+			return
+		}
+		writeJSON(w, http.StatusOK, device)
 	case r.Method == http.MethodPost && strings.HasPrefix(path, "/devices/") && strings.HasSuffix(path, "/commands"):
 		id := strings.TrimSuffix(strings.TrimPrefix(path, "/devices/"), "/commands")
 		var body struct {

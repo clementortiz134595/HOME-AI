@@ -5,6 +5,7 @@ export type HomeDevice = {
   kind: string;
   capabilities: string[];
 };
+export type DevicePatch = { name?: string; room?: string };
 
 export type DeviceState = {
   deviceId: string;
@@ -29,6 +30,11 @@ export async function getDeviceState(deviceId: string, signal?: AbortSignal): Pr
   const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/state`, { signal });
   if (!response.ok) throw new Error("device_state_unavailable");
   return response.json() as Promise<DeviceState>;
+}
+export async function updateHomeDevice(deviceId: string, patch: DevicePatch): Promise<HomeDevice> {
+  const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+  if (!response.ok) throw new Error("device_update_failed");
+  return response.json() as Promise<HomeDevice>;
 }
 export type Measurement = { observedAt: string; temperatureC?: number; humidityPercent?: number };
 export async function getDeviceHistory(deviceId: string, signal?: AbortSignal): Promise<Measurement[]> { const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/history`, { signal }); if (!response.ok) throw new Error("device_history_unavailable"); return (await response.json() as { measurements: Measurement[] }).measurements; }
