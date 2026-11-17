@@ -21,13 +21,13 @@ export type DeviceState = {
 export type Chore = { id: string; objective: string; assignees: string[]; completed: boolean; date?: string; dueDate?: string };
 
 export async function getHomeDevices(signal?: AbortSignal): Promise<HomeDevice[]> {
-  const response = await fetch("/v1/home-control/devices", { signal });
+  const response = await fetch("/v1/home-control/devices", { signal, cache: "no-store" });
   if (!response.ok) throw new Error("home_control_unavailable");
   return response.json() as Promise<HomeDevice[]>;
 }
 
 export async function getDeviceState(deviceId: string, signal?: AbortSignal): Promise<DeviceState> {
-  const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/state`, { signal });
+  const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/state`, { signal, cache: "no-store" });
   if (!response.ok) throw new Error("device_state_unavailable");
   return response.json() as Promise<DeviceState>;
 }
@@ -37,7 +37,7 @@ export async function updateHomeDevice(deviceId: string, patch: DevicePatch): Pr
   return response.json() as Promise<HomeDevice>;
 }
 export type Measurement = { observedAt: string; temperatureC?: number; humidityPercent?: number };
-export async function getDeviceHistory(deviceId: string, signal?: AbortSignal): Promise<Measurement[]> { const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/history`, { signal }); if (!response.ok) throw new Error("device_history_unavailable"); return (await response.json() as { measurements: Measurement[] }).measurements; }
+export async function getDeviceHistory(deviceId: string, signal?: AbortSignal): Promise<Measurement[]> { const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/history`, { signal, cache: "no-store" }); if (!response.ok) throw new Error("device_history_unavailable"); return (await response.json() as { measurements: Measurement[] }).measurements; }
 
 export async function setDeviceSwitch(deviceId: string, on: boolean): Promise<DeviceState> {
   const response = await fetch(`/v1/home-control/devices/${encodeURIComponent(deviceId)}/commands`, {
