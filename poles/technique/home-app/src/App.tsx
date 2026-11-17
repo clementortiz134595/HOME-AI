@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { AssistantOrb } from "@/components/AssistantOrb";
 import { Bell, CheckCheck, ChevronRight, Home, Lightbulb, RotateCcw, Server, Smartphone, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getHomeDevices, getDeviceState, setDeviceSwitch, getChores, type HomeDevice, type DeviceState, type Chore } from "@/lib/homeControl";
+import { getHomeDevices, getDeviceHistory, getDeviceState, setDeviceSwitch, getChores, type HomeDevice, type DeviceState, type Chore, type Measurement } from "@/lib/homeControl";
 import { useVoice } from "@/lib/useVoice";
 import { responseKind, responseLabels } from "@/lib/assistant";
 import { useResponseData } from "@/lib/useResponseData";
@@ -27,6 +27,7 @@ function Devices() {
   const [pending, setPending] = useState<string[]>([]);
   const [attempt, setAttempt] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [selectedSensor, setSelectedSensor] = useState<HomeDevice | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(""); setDevices([]); setStates({});
@@ -60,9 +61,29 @@ function Devices() {
     <div className="device-list">{visibleDevices.map(device => {
       const state = states[device.id]; const busy = pending.includes(device.id);
       const controllable = device.capabilities.includes("switch") && state?.online && typeof state.switchOn === "boolean";
-      return <article className="device" key={device.id}><div className={"device-icon " + (state?.switchOn ? "on" : "")}><Lightbulb size={22} /></div><div className="device-description"><h2>{device.name}</h2><p>{!state ? "État inconnu" : !state.online ? "Hors ligne" : state.switchOn === undefined ? "Connecté" : state.switchOn ? "Allumé" : "Éteint"}</p></div>{device.capabilities.includes("switch") && <button type="button" className={"switch " + (state?.switchOn ? "checked" : "")} disabled={!controllable || busy} onClick={() => void toggle(device)} role="switch" aria-checked={Boolean(state?.switchOn)} aria-label={`${state?.switchOn ? "Éteindre" : "Allumer"} ${device.name}`}><span /></button>}</article>;
+      const sensorDetails = state?.temperatureC == null ? "Mesure indisponible" : `${state.temperatureC.toFixed(1)} °C${state.humidityPercent == null ? "" : ` · ${Math.round(state.humidityPercent)} %`}${state.batteryPercent == null ? "" : ` · batterie ${Math.round(state.batteryPercent)} %`}`;
+      const opensHistory = device.kind === "temperature_sensor";
+      return <article className="device" key={device.id} onClick={() => opensHistory && setSelectedSensor(device)} role={opensHistory ? "button" : undefined} tabIndex={opensHistory ? 0 : undefined} onKeyDown={event => { if (opensHistory && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedSensor(device); } }}><div className={"device-icon " + (state?.switchOn ? "on" : "")}><Lightbulb size={22} /></div><div className="device-description"><h2>{device.name}</h2><p>{device.kind === "temperature_sensor" ? sensorDetails : !state ? "État inconnu" : !state.online ? "Hors ligne" : state.switchOn === undefined ? "Connecté" : state.switchOn ? "Allumé" : "Éteint"}</p></div>{device.capabilities.includes("switch") && <button type="button" className={"switch " + (state?.switchOn ? "checked" : "")} disabled={!controllable || busy} onClick={() => void toggle(device)} role="switch" aria-checked={Boolean(state?.switchOn)} aria-label={`${state?.switchOn ? "Éteindre" : "Allumer"} ${device.name}`}><span /></button>}</article>;
     })}</div>
+    {selectedSensor && <SensorHistory sensor={selectedSensor} onClose={() => setSelectedSensor(null)} />}
   </section>;
+}
+
+function SensorHistory({ sensor, onClose }: { sensor: HomeDevice; onClose: () => void }) {
+  const [points, setPoints] = useState<Measurement[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void getDeviceHistory(sensor.id, controller.signal).then(setPoints).catch(() => setPoints([]));
+    return () => controller.abort();
+  }, [sensor.id]);
+  const temperature = points.flatMap(point => point.temperatureC == null ? [] : [point.temperatureC]);
+  const humidity = points.flatMap(point => point.humidityPercent == null ? [] : [point.humidityPercent]);
+  const polyline = (values: number[]) => {
+    const min = Math.min(...values); const max = Math.max(...values);
+    return values.map((value, index) => `${10 + index * 320 / Math.max(values.length - 1, 1)},${100 - (value - min) * 80 / (max - min || 1)}`).join(" ");
+  };
+  const hasHistory = temperature.length > 0 || humidity.length > 0;
+  return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Historique ${sensor.name}`}><section className="sensor-history"><Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer"><X /></Button><h2>{sensor.name}</h2><p>Historique sur 24 heures</p>{hasHistory ? <><svg viewBox="0 0 340 120" role="img" aria-label="Historique de température et humidité">{temperature.length > 0 && <polyline points={polyline(temperature)} fill="none" stroke="#a78bfa" strokeWidth="3" />}{humidity.length > 0 && <polyline points={polyline(humidity)} fill="none" stroke="#67e8f9" strokeWidth="3" />}</svg><p className="history-legend"><span className="temperature">Température · {temperature.length} relevés</span><span className="humidity">Humidité · {humidity.length} relevés</span></p></> : <p>Historique indisponible pour le moment.</p>}</section></div>;
 }
 
 function HouseholdList({ kind }: { kind: "chores" | "reminders" }) {

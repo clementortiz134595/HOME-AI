@@ -31,6 +31,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSON(w, http.StatusOK, state)
+	case r.Method == http.MethodGet && strings.HasPrefix(path, "/devices/") && strings.HasSuffix(path, "/history"):
+		id := strings.TrimSuffix(strings.TrimPrefix(path, "/devices/"), "/history")
+		history, err := h.service.GetHistory(r.Context(), id)
+		if err != nil {
+			writeError(w, http.StatusBadGateway, "device_history_unavailable")
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"measurements": history})
 	case r.Method == http.MethodPost && strings.HasPrefix(path, "/devices/") && strings.HasSuffix(path, "/commands"):
 		id := strings.TrimSuffix(strings.TrimPrefix(path, "/devices/"), "/commands")
 		var body struct {

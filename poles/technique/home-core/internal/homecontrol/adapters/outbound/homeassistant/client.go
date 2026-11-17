@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,7 +59,73 @@ func (client *Client) GetState(ctx context.Context, deviceID string) (model.Devi
 	if err := client.get(ctx, "/api/states/"+deviceID, &item); err != nil {
 		return model.DeviceState{}, err
 	}
-	return toDeviceState(item), nil
+	result := toDeviceState(item)
+	if strings.HasPrefix(deviceID, "sensor.") && attributeString(item.Attributes, "device_class", "") == "temperature" {
+		var states []state
+		if err := client.get(ctx, "/api/states", &states); err != nil {
+			return model.DeviceState{}, err
+		}
+		prefix := strings.TrimSuffix(deviceID, "_temperature")
+		for _, sibling := range states {
+			if !strings.HasPrefix(sibling.EntityID, prefix+"_") {
+				continue
+			}
+			value, err := strconv.ParseFloat(sibling.State, 64)
+			if err != nil {
+				continue
+			}
+			switch attributeString(sibling.Attributes, "device_class", "") {
+			case "humidity":
+				result.HumidityPercent = &value
+			case "battery":
+				result.BatteryPercent = &value
+			}
+		}
+	}
+	return result, nil
+}
+
+func (client *Client) GetHistory(ctx context.Context, deviceID string) ([]model.Measurement, error) {
+	if !strings.HasPrefix(deviceID, "sensor.") {
+		return nil, fmt.Errorf("history unsupported for %s", deviceID)
+	}
+	var states []state
+	if err := client.get(ctx, "/api/states", &states); err != nil {
+		return nil, err
+	}
+	humidityID := ""
+	prefix := strings.TrimSuffix(deviceID, "_temperature") + "_"
+	for _, item := range states {
+		if strings.HasPrefix(item.EntityID, prefix) && attributeString(item.Attributes, "device_class", "") == "humidity" {
+			humidityID = item.EntityID
+			break
+		}
+	}
+	if humidityID == "" {
+		return nil, fmt.Errorf("humidity sensor unavailable for %s", deviceID)
+	}
+	var series [][]state
+	from := time.Now().Add(-24 * time.Hour).UTC().Format(time.RFC3339)
+	if err := client.get(ctx, "/api/history/period/"+from+"?filter_entity_id="+deviceID+","+humidityID, &series); err != nil {
+		return nil, err
+	}
+	points := make([]model.Measurement, 0)
+	for _, entries := range series {
+		for _, item := range entries {
+			value, err := strconv.ParseFloat(item.State, 64)
+			if err != nil {
+				continue
+			}
+			if item.EntityID == deviceID {
+				points = append(points, model.Measurement{ObservedAt: item.LastChanged, TemperatureC: &value})
+			}
+			if item.EntityID == humidityID {
+				points = append(points, model.Measurement{ObservedAt: item.LastChanged, HumidityPercent: &value})
+			}
+		}
+	}
+	sort.Slice(points, func(i, j int) bool { return points[i].ObservedAt.Before(points[j].ObservedAt) })
+	return points, nil
 }
 
 func (client *Client) Execute(ctx context.Context, deviceID string, action model.Action) (model.CommandResult, error) {
@@ -130,14 +198,22 @@ func deviceKind(entityID string, attributes map[string]any) (model.DeviceKind, [
 }
 
 func toDeviceState(item state) model.DeviceState {
-	on := item.State == "on"
-	state := model.DeviceState{DeviceID: item.EntityID, Online: item.State != "unavailable" && item.State != "unknown", SwitchOn: &on, ObservedAt: item.LastChanged}
+	state := model.DeviceState{DeviceID: item.EntityID, Online: item.State != "unavailable" && item.State != "unknown", ObservedAt: item.LastChanged}
+	if !strings.HasPrefix(item.EntityID, "sensor.") {
+		on := item.State == "on"
+		state.SwitchOn = &on
+	}
 	if brightness, ok := item.Attributes["brightness"].(float64); ok {
 		value := int(brightness)
 		state.Brightness = &value
 	}
 	if temperature, ok := item.Attributes["temperature"].(float64); ok {
 		state.TemperatureC = &temperature
+	}
+	if attributeString(item.Attributes, "device_class", "") == "temperature" {
+		if value, err := strconv.ParseFloat(item.State, 64); err == nil {
+			state.TemperatureC = &value
+		}
 	}
 	return state
 }
