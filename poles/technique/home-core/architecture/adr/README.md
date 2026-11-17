@@ -14,3 +14,4 @@ Les décisions structurantes de Home Core sont consignées ici avant l'implémen
 - [ADR-0016 — Coûts GCP via l’export Cloud Billing BigQuery](0016-couts-gcp-bigquery.md)
 - [ADR-0017 — Accès LAN explicite au Home Panel](0017-acces-lan-home-panel.md)
 - [ADR-0018 — Historique des capteurs via Home Core](0018-historique-capteurs-home-assistant.md)
+- [ADR-0019 — Inventaire des appareils administré via Home Core](0019-inventaire-appareils-home-assistant.md)

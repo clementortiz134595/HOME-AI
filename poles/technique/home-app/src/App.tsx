@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { AssistantOrb } from "@/components/AssistantOrb";
-import { Bell, CheckCheck, ChevronRight, Home, Lightbulb, RotateCcw, Server, Smartphone, WifiOff, X } from "lucide-react";
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, Home, Lightbulb, Pencil, RotateCcw, Server, Smartphone, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getHomeDevices, getDeviceHistory, getDeviceState, setDeviceSwitch, getChores, type HomeDevice, type DeviceState, type Chore, type Measurement } from "@/lib/homeControl";
+import { getHomeDevices, getDeviceHistory, getDeviceState, setDeviceSwitch, getChores, updateHomeDevice, type HomeDevice, type DeviceState, type Chore, type Measurement } from "@/lib/homeControl";
 import { useVoice } from "@/lib/useVoice";
 import { responseKind, responseLabels } from "@/lib/assistant";
 import { useResponseData } from "@/lib/useResponseData";
@@ -19,6 +19,13 @@ const navigation = [
   { id: "system", label: "Système", icon: Server },
 ] as const;
 
+const measurementTime = (value?: string) => {
+  if (!value) return "heure inconnue";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "heure inconnue";
+  return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(date);
+};
+
 function Devices() {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [states, setStates] = useState<Record<string, DeviceState>>({});
@@ -28,6 +35,7 @@ function Devices() {
   const [attempt, setAttempt] = useState(0);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedSensor, setSelectedSensor] = useState<HomeDevice | null>(null);
+  const [editingDevice, setEditingDevice] = useState<HomeDevice | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true); setError(""); setDevices([]); setStates({});
@@ -53,6 +61,14 @@ function Devices() {
   const roomName = (device: HomeDevice) => device.room?.trim() || "Tous les appareils";
   const rooms = Array.from(new Set(devices.map(roomName))).sort();
   const visibleDevices = selectedRoom === null ? [] : devices.filter(device => roomName(device) === selectedRoom);
+  const saveDevice = async (device: HomeDevice, patch: { name: string; room: string }) => {
+    const updated = await updateHomeDevice(device.id, patch);
+    setDevices(items => items.map(item => item.id === updated.id ? updated : item));
+    setEditingDevice(null);
+    if (selectedRoom !== null && roomName(updated) !== selectedRoom) setSelectedRoom(roomName(updated));
+  };
+  if (selectedSensor) return <SensorHistory sensor={selectedSensor} onClose={() => setSelectedSensor(null)} />;
+  if (editingDevice) return <DeviceEditor device={editingDevice} rooms={rooms.filter(room => room !== "Tous les appareils")} onClose={() => setEditingDevice(null)} onSave={saveDevice} />;
   return <section className="content"><div className="section-heading"><div><p className="eyebrow">Votre maison</p><h1>Domotique</h1></div><Button variant="ghost" size="icon" aria-label="Actualiser les appareils" onClick={() => setAttempt(value => value + 1)}><RotateCcw size={19} /></Button></div>
     {error && <p role="alert" className="notice">{error}</p>}
     {loading ? <p className="empty">Chargement des appareils…</p> : !error && !devices.length ? <div className="empty"><Lightbulb /><h2>Aucun appareil</h2><p>Les appareils autorisés par Home Core apparaîtront ici.</p></div> : null}
@@ -61,12 +77,17 @@ function Devices() {
     <div className="device-list">{visibleDevices.map(device => {
       const state = states[device.id]; const busy = pending.includes(device.id);
       const controllable = device.capabilities.includes("switch") && state?.online && typeof state.switchOn === "boolean";
-      const sensorDetails = state?.temperatureC == null ? "Mesure indisponible" : `${state.temperatureC.toFixed(1)} °C${state.humidityPercent == null ? "" : ` · ${Math.round(state.humidityPercent)} %`}${state.batteryPercent == null ? "" : ` · batterie ${Math.round(state.batteryPercent)} %`}`;
+      const sensorDetails = state?.temperatureC == null ? "Mesure indisponible" : `${state.temperatureC.toFixed(1)} °C${state.humidityPercent == null ? "" : ` · ${Math.round(state.humidityPercent)} %`}${state.batteryPercent == null ? "" : ` · batterie ${Math.round(state.batteryPercent)} %`} · mesuré à ${measurementTime(state.observedAt)}`;
       const opensHistory = device.kind === "temperature_sensor";
-      return <article className="device" key={device.id} onClick={() => opensHistory && setSelectedSensor(device)} role={opensHistory ? "button" : undefined} tabIndex={opensHistory ? 0 : undefined} onKeyDown={event => { if (opensHistory && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedSensor(device); } }}><div className={"device-icon " + (state?.switchOn ? "on" : "")}><Lightbulb size={22} /></div><div className="device-description"><h2>{device.name}</h2><p>{device.kind === "temperature_sensor" ? sensorDetails : !state ? "État inconnu" : !state.online ? "Hors ligne" : state.switchOn === undefined ? "Connecté" : state.switchOn ? "Allumé" : "Éteint"}</p></div>{device.capabilities.includes("switch") && <button type="button" className={"switch " + (state?.switchOn ? "checked" : "")} disabled={!controllable || busy} onClick={() => void toggle(device)} role="switch" aria-checked={Boolean(state?.switchOn)} aria-label={`${state?.switchOn ? "Éteindre" : "Allumer"} ${device.name}`}><span /></button>}</article>;
+      return <article className="device" key={device.id} onClick={() => opensHistory && setSelectedSensor(device)} role={opensHistory ? "button" : undefined} tabIndex={opensHistory ? 0 : undefined} onKeyDown={event => { if (opensHistory && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedSensor(device); } }}><div className={"device-icon " + (state?.switchOn ? "on" : "")}><Lightbulb size={22} /></div><div className="device-description"><h2>{device.name}</h2><p>{device.kind === "temperature_sensor" ? sensorDetails : !state ? "État inconnu" : !state.online ? "Connecté" : state.switchOn ? "Allumé" : "Éteint"}</p></div><Button variant="ghost" size="icon" className="device-edit" onClick={event => { event.stopPropagation(); setEditingDevice(device); }} aria-label={`Modifier ${device.name}`}><Pencil size={16} /></Button>{device.capabilities.includes("switch") && <button type="button" className={"switch " + (state?.switchOn ? "checked" : "")} disabled={!controllable || busy} onClick={event => { event.stopPropagation(); void toggle(device); }} role="switch" aria-checked={Boolean(state?.switchOn)} aria-label={`${state?.switchOn ? "Éteindre" : "Allumer"} ${device.name}`}><span /></button>}</article>;
     })}</div>
-    {selectedSensor && <SensorHistory sensor={selectedSensor} onClose={() => setSelectedSensor(null)} />}
   </section>;
+}
+
+function DeviceEditor({ device, rooms, onClose, onSave }: { device: HomeDevice; rooms: string[]; onClose: () => void; onSave: (device: HomeDevice, patch: { name: string; room: string }) => Promise<void> }) {
+  const [name, setName] = useState(device.name); const [room, setRoom] = useState(device.room ?? ""); const [saving, setSaving] = useState(false); const [error, setError] = useState("");
+  const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); setError(""); try { await onSave(device, { name: name.trim(), room: room.trim() }); } catch { setError("La modification n’a pas été confirmée par Home Assistant."); } finally { setSaving(false); } };
+  return <section className="device-detail"><button type="button" className="detail-back" onClick={onClose}><ChevronLeft size={19} /> Retour aux appareils</button><p className="eyebrow">Appareil</p><h1>Modifier l’appareil</h1><form className="device-form" onSubmit={submit}><label>Nom<input value={name} onChange={event => setName(event.target.value)} required autoFocus /></label><label>Pièce<input value={room} onChange={event => setRoom(event.target.value)} list="rooms" placeholder="Ex. Chambre" /><datalist id="rooms">{rooms.map(item => <option key={item} value={item} />)}</datalist></label><p>Les modifications sont enregistrées dans Home Assistant.</p>{error && <p className="notice" role="alert">{error}</p>}<Button type="submit" disabled={saving || !name.trim()}>{saving ? "Enregistrement…" : "Enregistrer"}</Button></form></section>;
 }
 
 function SensorHistory({ sensor, onClose }: { sensor: HomeDevice; onClose: () => void }) {
@@ -78,12 +99,13 @@ function SensorHistory({ sensor, onClose }: { sensor: HomeDevice; onClose: () =>
   }, [sensor.id]);
   const temperature = points.flatMap(point => point.temperatureC == null ? [] : [point.temperatureC]);
   const humidity = points.flatMap(point => point.humidityPercent == null ? [] : [point.humidityPercent]);
+  const latest = points.at(-1);
   const polyline = (values: number[]) => {
     const min = Math.min(...values); const max = Math.max(...values);
     return values.map((value, index) => `${10 + index * 320 / Math.max(values.length - 1, 1)},${100 - (value - min) * 80 / (max - min || 1)}`).join(" ");
   };
   const hasHistory = temperature.length > 0 || humidity.length > 0;
-  return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label={`Historique ${sensor.name}`}><section className="sensor-history"><Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer"><X /></Button><h2>{sensor.name}</h2><p>Historique sur 24 heures</p>{hasHistory ? <><svg viewBox="0 0 340 120" role="img" aria-label="Historique de température et humidité">{temperature.length > 0 && <polyline points={polyline(temperature)} fill="none" stroke="#a78bfa" strokeWidth="3" />}{humidity.length > 0 && <polyline points={polyline(humidity)} fill="none" stroke="#67e8f9" strokeWidth="3" />}</svg><p className="history-legend"><span className="temperature">Température · {temperature.length} relevés</span><span className="humidity">Humidité · {humidity.length} relevés</span></p></> : <p>Historique indisponible pour le moment.</p>}</section></div>;
+  return <section className="device-detail sensor-history" aria-label={`Historique ${sensor.name}`}><button type="button" className="detail-back" onClick={onClose}><ChevronLeft size={19} /> Retour aux appareils</button><p className="eyebrow">Capteur</p><h1>{sensor.name}</h1><p>Historique sur 24 heures{latest ? ` · dernier relevé à ${measurementTime(latest.observedAt)}` : ""}</p>{hasHistory ? <><svg viewBox="0 0 340 120" role="img" aria-label="Historique de température et humidité">{temperature.length > 0 && <polyline points={polyline(temperature)} fill="none" stroke="#a78bfa" strokeWidth="3" />}{humidity.length > 0 && <polyline points={polyline(humidity)} fill="none" stroke="#67e8f9" strokeWidth="3" />}</svg><p className="history-legend"><span className="temperature">Température · {temperature.length} relevés</span><span className="humidity">Humidité · {humidity.length} relevés</span></p></> : <p>Historique indisponible pour le moment.</p>}</section>;
 }
 
 function HouseholdList({ kind }: { kind: "chores" | "reminders" }) {
