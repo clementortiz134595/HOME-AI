@@ -77,6 +77,7 @@ Les appels de mutation doivent recevoir une clé d'idempotence lorsqu'une répé
 
 Voir les [diagrammes Mermaid](../diagrammes/README.md) et le [plan Docker](../infrastructure/docker.md).
 L'accès distant privé de la Raspberry Pi est défini dans l'[ADR-0013](adr/0013-acces-distant-tailscale.md).
+L’ouverture optionnelle de Home Panel sur le LAN domestique est encadrée par l'[ADR-0017](adr/0017-acces-lan-home-panel.md).
 Le suivi des coûts, y compris l’export Cloud Billing lu dans BigQuery, est décrit dans [sequence-couts.mmd](../diagrammes/sequence-couts.mmd), l'[ADR-0014](adr/0014-suivi-local-des-couts.md) et l'[ADR-0016](adr/0016-couts-gcp-bigquery.md).
 Le flux des trains SNCF est décrit dans [sequence-trains-sncf.mmd](../diagrammes/sequence-trains-sncf.mmd) et la décision dans l'[ADR-0011](adr/0011-integration-trains-sncf-navitia.md).
 La décision de structure est consignée dans l'[ADR-0001](adr/0001-monolithe-modulaire-docker.md).

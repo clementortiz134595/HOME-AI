@@ -65,6 +65,16 @@ données persistantes ne doivent jamais être stockés dans ce checkout.
 L'override local de Home App (`~/.config/home-ai/home-app.compose.override.yaml`)
 est conservé et chargé lorsqu'il existe.
 
+## Accès LAN optionnel au Home Panel
+
+Par défaut, Home Panel reste limité à `127.0.0.1:13000` et passe par Tailscale Serve. Pour l'ouvrir explicitement aux appareils du réseau local, créer hors du dépôt `~/.config/home-ai/deploy.env` avec :
+
+```sh
+HOME_PANEL_BIND_ADDRESS=0.0.0.0
+```
+
+La release suivante lit ce fichier pour Docker Compose. Seul Home Panel est alors publié sur le LAN ; Home Core et Home Assistant restent privés. Cette ouverture doit être réservée à un réseau domestique de confiance.
+
 Ouvrir ensuite Home Panel sur le port publié par Compose et autoriser le
 microphone dans le navigateur.
 

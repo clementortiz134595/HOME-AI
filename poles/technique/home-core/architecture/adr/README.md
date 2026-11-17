@@ -12,3 +12,4 @@ Les décisions structurantes de Home Core sont consignées ici avant l'implémen
 - [ADR-0014 — Suivi local des coûts](0014-suivi-local-des-couts.md)
 - [ADR-0015 — Releases GitHub déployées par le Raspberry Pi](0015-deploiement-release-github-pi.md)
 - [ADR-0016 — Coûts GCP via l’export Cloud Billing BigQuery](0016-couts-gcp-bigquery.md)
+- [ADR-0017 — Accès LAN explicite au Home Panel](0017-acces-lan-home-panel.md)
