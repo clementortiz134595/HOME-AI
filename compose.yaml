@@ -10,9 +10,9 @@ services:
     restart: "no"
 
   home-core:
+    image: ${HOME_AI_HOME_CORE_IMAGE:-home-ai/home-core:local}
     build:
       context: ./poles/technique/home-core
-    image: home-ai/home-core:local
     depends_on:
       home-core-secrets-init:
         condition: service_completed_successfully
@@ -59,10 +59,10 @@ services:
       start_period: 10s
 
   home-panel:
+    image: ${HOME_AI_HOME_PANEL_IMAGE:-home-ai/home-panel:local}
     build:
       context: ./poles/technique/home-panel
       target: production
-    image: home-ai/home-panel:local
     ports:
       - "${HOME_PANEL_BIND_ADDRESS:-127.0.0.1}:${HOME_PANEL_PORT:-13000}:80"
     depends_on:
