@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  BedDouble,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   CloudSun,
-  CookingPot,
   Home,
   Lightbulb,
   Mail,
   Mic,
-  Monitor,
   MoreHorizontal,
   Settings,
   Server,
-  Sofa,
   Sparkles,
   Plug,
   Recycle,
@@ -47,13 +43,6 @@ import { SystemHealthView } from "@/SystemHealthView";
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
 
-const rooms = [
-  { name: "Salon", detail: "2 lumières · 21°", icon: Sofa, active: true, tone: "bg-sky-100 text-sky-700" },
-  { name: "Cuisine", detail: "2 lumières · 20°", icon: CookingPot, active: true, tone: "bg-amber-100 text-amber-700" },
-  { name: "Chambre", detail: "2 lumières · 19°", icon: BedDouble, active: false, tone: "bg-violet-100 text-violet-700" },
-  { name: "Bureau", detail: "1 lumière · 20°", icon: Monitor, active: false, tone: "bg-teal-100 text-teal-700" },
-];
-
 type Profile = "Duo";
 type View = "dashboard" | "home" | "agenda" | "profile" | "cost" | "system" | "settings";
 
@@ -68,14 +57,18 @@ type WeeklyChore = { id: string; dueDate: string; objective: string; assignees: 
 type Market = { symbol: string; name: string; isin: string; change: number; price: number };
 type MarketDetail = { etf: Market; history: { label: string | number; value: number }[]; dataStatus: string };
 type Train = { id: string; departure: string; arrival?: string; scheduledDeparture: string; lastUpdated?: string; destination: string; trainNumber: string; commercialMode: string; platform?: string; status: "on_time" | "delayed" | "cancelled"; delayMinutes: number; disruption?: { title: string; cause?: string; effect?: string; information?: string } };
+type RoomDialogRoom = { name: string; key: string };
+
+const roomKey = (room: string) => room.trim() || "__unassigned__";
+const roomLabel = (room: string) => room.trim() || "Appareils sans pièce attribuée";
 
 function HomeView() {
   const [devices, setDevices] = useState<HomeDevice[]>([]);
   const [states, setStates] = useState<Record<string, DeviceState>>({});
   const [unavailable, setUnavailable] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [commandError, setCommandError] = useState<string | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<RoomDialogRoom | null>(null);
-  const [activePreset, setActivePreset] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,29 +82,26 @@ function HomeView() {
     return () => controller.abort();
   }, []);
 
-  const lights = devices.filter((device) => device.kind === "light");
-  const lightsOn = lights.some((device) => states[device.id]?.switchOn);
-  const connectedRooms = Array.from(new Set(devices.map((device) => device.room))).map((room) => {
-    const roomDevices = devices.filter((device) => device.room === room);
+  const connectedRooms = Array.from(new Set(devices.map((device) => roomKey(device.room)))).map((key) => {
+    const roomDevices = devices.filter((device) => roomKey(device.room) === key);
     const roomLights = roomDevices.filter((device) => device.kind === "light");
     const temperature = roomDevices.find((device) => states[device.id]?.temperatureC);
-    return { name: room, detail: `${roomLights.length} lumière${roomLights.length > 1 ? "s" : ""}${temperature ? ` · ${Math.round(states[temperature.id].temperatureC!)}°` : ""}`, icon: room === "Cuisine" ? CookingPot : room === "Chambre" ? BedDouble : room === "Bureau" ? Monitor : Sofa, active: roomLights.some((device) => states[device.id]?.switchOn), tone: room === "Cuisine" ? "bg-amber-100 text-amber-700" : room === "Chambre" ? "bg-violet-100 text-violet-700" : room === "Bureau" ? "bg-teal-100 text-teal-700" : "bg-sky-100 text-sky-700", roomDevices, remote: true };
+    return { key, name: roomLabel(roomDevices[0]?.room ?? ""), detail: `${roomLights.length} lumière${roomLights.length > 1 ? "s" : ""}${temperature ? ` · ${Math.round(states[temperature.id].temperatureC!)}°` : ""}`, active: roomLights.some((device) => states[device.id]?.switchOn), roomDevices };
   });
-  const displayedRooms = connectedRooms.length > 0 ? connectedRooms : rooms.map((room) => ({ ...room, roomDevices: [] as HomeDevice[], remote: false }));
 
   const toggleRoom = async (roomDevices: HomeDevice[], on: boolean) => {
-    setPending(roomDevices[0]?.room ?? null);
+    setPending(roomKey(roomDevices[0]?.room ?? ""));
+    setCommandError(null);
     try {
       const results = await Promise.all(roomDevices.filter((device) => device.kind === "light").map((device) => setDeviceSwitch(device.id, on).then((state) => [device.id, state] as const)));
       setStates((current) => ({ ...current, ...Object.fromEntries(results) }));
-    } catch { setUnavailable(true); } finally { setPending(null); }
+    } catch { setCommandError(roomKey(roomDevices[0]?.room ?? "")); } finally { setPending(null); }
   };
 
   return (
     <div className="home-view mt-8">
-      <div><h2 className="text-3xl font-semibold tracking-[-0.04em]">Maison</h2>{unavailable && <p className="mt-2 text-sm text-amber-300">Home Core est indisponible.</p>}</div>
-      <div className="grid grid-cols-5 gap-2" role="group" aria-label="Presets maison">{["Matin", "Journée de travail", "Soirée", "Lecture", "Dodo"].map((preset) => <button key={preset} type="button" onClick={() => setActivePreset(preset)} className={activePreset === preset ? "h-6 truncate rounded-full bg-white px-2 text-[11px] font-semibold leading-6 text-zinc-950" : "h-6 truncate rounded-full border border-white/10 bg-white/[0.04] px-2 text-[11px] leading-6 text-slate-300 hover:bg-white/[0.1]"}>{preset}</button>)}</div>
-      <div className="home-rooms grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">{displayedRooms.map(({ name, detail, icon: Icon, active, tone, roomDevices, remote }) => <Card key={name} onClick={() => setSelectedRoom({ name, icon: Icon, tone })} className="cursor-pointer transition hover:border-white/25"><CardContent className="p-3 sm:p-5"><div className="flex items-start justify-between"><div className={"grid size-9 place-items-center rounded-xl sm:size-11 sm:rounded-2xl " + tone}><Icon className="size-4 sm:size-5" /></div><span className={active ? "size-2 rounded-full bg-emerald-400" : "size-2 rounded-full bg-zinc-600"} /></div><div className="mt-4 flex flex-col gap-1 sm:mt-8 sm:flex-row sm:items-end sm:justify-between sm:gap-3"><div><p className="text-sm font-medium sm:text-base">{name}</p><p className="mt-1 text-xs text-slate-500 sm:text-sm">{detail || "Aucun appareil"}</p></div>{remote === false ? <span className="text-xs text-slate-500">Hors ligne</span> : <Button variant="ghost" className="h-8 self-start px-2 text-xs sm:h-10 sm:self-auto sm:px-4 sm:text-sm" disabled={pending === name} onClick={(event) => { event.stopPropagation(); void toggleRoom(roomDevices, !active); }}>{active ? "Éteindre" : "Allumer"}</Button>}</div></CardContent></Card>)}</div>
+      <div><h2 className="text-3xl font-semibold tracking-[-0.04em]">Maison</h2>{unavailable && <p className="mt-2 text-sm text-amber-300">Home Core est indisponible.</p>}{commandError && <p className="mt-2 text-sm text-rose-300">La commande n’a pas été confirmée par Home Assistant.</p>}</div>
+      <div className="home-rooms grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-3">{unavailable ? <p role="alert" className="col-span-full text-sm text-amber-300">Les appareils Home Assistant sont indisponibles.</p> : connectedRooms.length === 0 ? <p className="col-span-full text-sm text-slate-500">Aucun appareil compatible n’est remonté par Home Assistant.</p> : connectedRooms.map(({ key, name, detail, active, roomDevices }) => <Card key={key} onClick={() => setSelectedRoom({ name, key })} className="cursor-pointer transition hover:border-white/25"><CardContent className="p-3 sm:p-5"><div className="flex items-start justify-between"><div className="grid size-9 place-items-center rounded-xl bg-sky-100 text-sky-700 sm:size-11 sm:rounded-2xl"><Home className="size-4 sm:size-5" /></div><span className={active ? "size-2 rounded-full bg-emerald-400" : "size-2 rounded-full bg-zinc-600"} /></div><div className="mt-4 flex flex-col gap-1 sm:mt-8 sm:flex-row sm:items-end sm:justify-between sm:gap-3"><div><p className="text-sm font-medium sm:text-base">{name}</p><p className="mt-1 text-xs text-slate-500 sm:text-sm">{detail || `${roomDevices.length} appareil${roomDevices.length > 1 ? "s" : ""}`}</p></div><Button variant="ghost" className="h-8 self-start px-2 text-xs sm:h-10 sm:self-auto sm:px-4 sm:text-sm" disabled={pending === key || !roomDevices.some((device) => device.capabilities.includes("switch"))} onClick={(event) => { event.stopPropagation(); void toggleRoom(roomDevices, !active); }}>{active ? "Éteindre" : "Allumer"}</Button></div></CardContent></Card>)}</div>
       {selectedRoom && <RoomDetailDialog room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
     </div>
   );
@@ -640,14 +630,47 @@ function WeatherCard() {
 
 function WeatherDetailDialog({ weather, onClose }: { weather: WeatherReport; onClose: () => void }) {
   const dailyLabel = (date: string) => new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "short" }).format(new Date(`${date}T12:00:00`));
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Prévisions météo"><section className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-zinc-950 p-6 text-zinc-50 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-zinc-400">{weather.location.name}</p><h2 className="mt-1 text-3xl font-semibold">{Math.round(weather.current.temperatureCelsius)}° · {weather.current.summary}</h2></div><Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer"><X /></Button></div><div className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><Metric label="Ressenti" value={`${Math.round(weather.current.apparentCelsius)}°`} /><Metric label="Humidité" value={weather.current.humidityPercent == null ? "—" : `${Math.round(weather.current.humidityPercent)} %`} /><Metric label="Pression" value={weather.current.pressureHPa == null ? "—" : `${Math.round(weather.current.pressureHPa)} hPa`} /><Metric label="Vent" value={weather.current.windSpeedKmh == null ? "—" : `${Math.round(weather.current.windSpeedKmh)} km/h`} /></div><h3 className="mt-7 text-lg font-semibold">Prévisions quotidiennes</h3><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{weather.daily.map(day => <div key={day.date} className="rounded-2xl bg-white/8 p-4"><p className="capitalize font-medium">{dailyLabel(day.date)}</p><p className="mt-2 text-zinc-300">{day.summary}</p><p className="mt-2 text-lg">{Math.round(day.minimumCelsius)}° <span className="text-zinc-500">/</span> {Math.round(day.maximumCelsius)}°</p>{day.precipitationProbabilityPercent != null && <p className="text-xs text-sky-300">Pluie {Math.round(day.precipitationProbabilityPercent)} %</p>}</div>)}</div><HourlyWeatherChart hourly={weather.hourly} /></section></div>;
+}
+
+type HourlyMetric = "temperature" | "precipitation" | "wind";
+type HourlyForecast = WeatherReport["hourly"][number];
+
+const hourlyMetrics: { id: HourlyMetric; label: string; unit: string; color: string; value: (hour: HourlyForecast) => number | undefined }[] = [
+  { id: "temperature", label: "Température", unit: "°C", color: "#fbbf24", value: (hour) => hour.temperatureCelsius },
+  { id: "precipitation", label: "Précipitations", unit: "%", color: "#38bdf8", value: (hour) => hour.precipitationProbabilityPercent },
+  { id: "wind", label: "Vent", unit: "km/h", color: "#a78bfa", value: (hour) => hour.windSpeedKmh },
+];
+
+function HourlyWeatherChart({ hourly }: { hourly: HourlyForecast[] }) {
+  const [requestedMetric, setRequestedMetric] = useState<HourlyMetric>("temperature");
+  const availableMetrics = hourlyMetrics.filter((metric) => hourly.some((hour) => Number.isFinite(metric.value(hour))));
+  const metric = availableMetrics.find((candidate) => candidate.id === requestedMetric) ?? availableMetrics[0];
   const hourLabel = (date: string) => new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(new Date(date));
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-label="Prévisions météo"><section className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-3xl bg-zinc-950 p-6 text-zinc-50 shadow-2xl"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-zinc-400">{weather.location.name}</p><h2 className="mt-1 text-3xl font-semibold">{Math.round(weather.current.temperatureCelsius)}° · {weather.current.summary}</h2></div><Button variant="ghost" size="icon" onClick={onClose} aria-label="Fermer"><X /></Button></div><div className="mt-5 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><Metric label="Ressenti" value={`${Math.round(weather.current.apparentCelsius)}°`} /><Metric label="Humidité" value={weather.current.humidityPercent == null ? "—" : `${Math.round(weather.current.humidityPercent)} %`} /><Metric label="Pression" value={weather.current.pressureHPa == null ? "—" : `${Math.round(weather.current.pressureHPa)} hPa`} /><Metric label="Vent" value={weather.current.windSpeedKmh == null ? "—" : `${Math.round(weather.current.windSpeedKmh)} km/h`} /></div><h3 className="mt-7 text-lg font-semibold">Prévisions quotidiennes</h3><div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{weather.daily.map(day => <div key={day.date} className="rounded-2xl bg-white/8 p-4"><p className="capitalize font-medium">{dailyLabel(day.date)}</p><p className="mt-2 text-zinc-300">{day.summary}</p><p className="mt-2 text-lg">{Math.round(day.minimumCelsius)}° <span className="text-zinc-500">/</span> {Math.round(day.maximumCelsius)}°</p>{day.precipitationProbabilityPercent != null && <p className="text-xs text-sky-300">Pluie {Math.round(day.precipitationProbabilityPercent)} %</p>}</div>)}</div><h3 className="mt-7 text-lg font-semibold">Heure par heure</h3><div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">{weather.hourly.map(hour => <div key={hour.forecastAt} className="rounded-2xl bg-white/8 p-3"><p className="font-medium">{hourLabel(hour.forecastAt)}</p><p className="mt-1 text-lg">{hour.temperatureCelsius == null ? "—" : `${Math.round(hour.temperatureCelsius)}°`}</p><p className="truncate text-xs text-zinc-400">{hour.summary}</p></div>)}</div></section></div>;
+
+  if (!metric) return <><h3 className="mt-7 text-lg font-semibold">Heure par heure</h3><p className="mt-3 rounded-2xl bg-white/8 p-4 text-sm text-zinc-400">Aucune donnée horaire graphique n’est disponible.</p></>;
+
+  const values = hourly.map((hour) => metric.value(hour));
+  const knownValues = values.filter((value): value is number => Number.isFinite(value));
+  const minimum = Math.min(...knownValues);
+  const maximum = Math.max(...knownValues);
+  const spread = maximum - minimum || 1;
+  const width = 720;
+  const height = 220;
+  const padding = { top: 22, right: 24, bottom: 32, left: 42 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const points = values.flatMap((value, index) => value == null ? [] : [{ index, x: padding.left + (index / Math.max(hourly.length - 1, 1)) * chartWidth, y: padding.top + (1 - (value - minimum) / spread) * chartHeight }]);
+  const polyline = points.map((point) => `${point.x},${point.y}`).join(" ");
+  const area = points.length ? `${padding.left},${height - padding.bottom} ${polyline} ${points.at(-1)?.x},${height - padding.bottom}` : "";
+  const labelIndexes = Array.from(new Set([0, Math.round((hourly.length - 1) / 3), Math.round((hourly.length - 1) * 2 / 3), hourly.length - 1]));
+  const latest = knownValues.at(0);
+
+  return <section className="mt-7" aria-labelledby="hourly-chart-title"><div className="flex flex-wrap items-center justify-between gap-3"><div><h3 id="hourly-chart-title" className="text-lg font-semibold">Heure par heure</h3><p className="mt-1 text-sm text-zinc-400">{metric.label} · prochaines {hourly.length} heures</p></div><p className="text-lg font-semibold" style={{ color: metric.color }}>{latest == null ? "—" : `${Math.round(latest)} ${metric.unit}`}</p></div><div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Mesure affichée">{availableMetrics.map((candidate) => <button key={candidate.id} type="button" onClick={() => setRequestedMetric(candidate.id)} aria-pressed={metric.id === candidate.id} className={metric.id === candidate.id ? "rounded-full bg-white px-3 py-1.5 text-sm font-medium text-zinc-950" : "rounded-full bg-white/8 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-white/15"}>{candidate.label}</button>)}</div><div className="hourly-weather-chart mt-4 rounded-2xl bg-white/[0.04] p-3 sm:p-5"><svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full" role="img" aria-label={`Graphique horaire : ${metric.label}`}><defs><linearGradient id="hourly-weather-area" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={metric.color} stopOpacity=".34" /><stop offset="100%" stopColor={metric.color} stopOpacity="0" /></linearGradient></defs>{[0, .5, 1].map((step) => { const y = padding.top + step * chartHeight; const value = Math.round(maximum - step * spread); return <g key={step}><line x1={padding.left} x2={width - padding.right} y1={y} y2={y} stroke="rgba(255,255,255,.12)" strokeDasharray="4 6" /><text x="0" y={y + 4} fill="#a1a1aa" fontSize="11">{value}{metric.unit}</text></g>; })}{area && <polygon points={area} fill="url(#hourly-weather-area)" />}{polyline && <polyline points={polyline} fill="none" stroke={metric.color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />}{points.map((point) => <circle key={`${point.x}-${point.y}`} cx={point.x} cy={point.y} r="4" fill="#09090b" stroke={metric.color} strokeWidth="3"><title>{`${hourLabel(hourly[point.index]?.forecastAt ?? "")} · ${Math.round(values[point.index] ?? 0)} ${metric.unit}`}</title></circle>)}{labelIndexes.map((index) => <text key={index} x={padding.left + (index / Math.max(hourly.length - 1, 1)) * chartWidth} y={height - 8} textAnchor="middle" fill="#a1a1aa" fontSize="11">{hourLabel(hourly[index]?.forecastAt ?? "")}</text>)}</svg><div className="sr-only"><ul>{hourly.map((hour) => <li key={hour.forecastAt}>{hourLabel(hour.forecastAt)} : {metric.value(hour) == null ? "indisponible" : `${metric.value(hour)} ${metric.unit}`}</li>)}</ul></div></div></section>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl bg-white/8 p-3"><p className="text-xs text-zinc-400">{label}</p><p className="mt-1 font-medium">{value}</p></div>; }
 
-type DashboardRoom = (typeof rooms)[number];
-type RoomDialogRoom = Pick<DashboardRoom, "name" | "icon" | "tone">;
 type Reminder = { id: string; time: string; title: string; detail: string; owner: string; tone: string; date: string };
 type ReminderRecord = { id: string; title: string; date: string; details?: string };
 
@@ -656,6 +679,7 @@ function RoomDetailDialog({ room, onClose }: { room: RoomDialogRoom; onClose: ()
   const [states, setStates] = useState<Record<string, DeviceState>>({});
   const [unavailable, setUnavailable] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [commandError, setCommandError] = useState<string | null>(null);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -666,7 +690,7 @@ function RoomDetailDialog({ room, onClose }: { room: RoomDialogRoom; onClose: ()
   useEffect(() => {
     const controller = new AbortController();
     getHomeDevices(controller.signal).then(async (allDevices) => {
-      const roomDevices = allDevices.filter((device) => device.room.toLocaleLowerCase("fr-FR") === room.name.toLocaleLowerCase("fr-FR"));
+      const roomDevices = allDevices.filter((device) => roomKey(device.room) === room.key);
       setDevices(roomDevices);
       const entries = await Promise.all(roomDevices.map(async (device) => [device.id, await getDeviceState(device.id, controller.signal)] as const));
       setStates(Object.fromEntries(entries));
@@ -682,18 +706,18 @@ function RoomDetailDialog({ room, onClose }: { room: RoomDialogRoom; onClose: ()
   const temperature = devices.map((device) => states[device.id]?.temperatureC).find((value): value is number => value !== undefined);
   const setSwitch = async (device: HomeDevice, on: boolean) => {
     setPending(device.id);
+    setCommandError(null);
     try {
       const state = await setDeviceSwitch(device.id, on);
       setStates((current) => ({ ...current, [device.id]: state }));
-    } catch { setUnavailable(true); } finally { setPending(null); }
+    } catch { setCommandError(device.id); } finally { setPending(null); }
   };
 
-  const Icon = room.icon;
   return <div className="fixed inset-0 z-40 grid place-items-center bg-zinc-950/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={onClose}>
     <section role="dialog" aria-modal="true" aria-labelledby="room-dialog-title" className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
-      <div className="flex items-start gap-4"><span className={"grid size-12 place-items-center rounded-2xl " + room.tone}><Icon className="size-6" /></span><div><p className="text-sm text-slate-400">Détail de la pièce</p><h2 id="room-dialog-title" className="text-xl font-semibold">{room.name}</h2></div></div>
+      <div className="flex items-start gap-4"><span className="grid size-12 place-items-center rounded-2xl bg-sky-100 text-sky-700"><Home className="size-6" /></span><div><p className="text-sm text-slate-400">Détail de la pièce</p><h2 id="room-dialog-title" className="text-xl font-semibold">{room.name}</h2></div></div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2"><div className="rounded-2xl bg-white/[0.05] p-4"><div className="flex items-center gap-2 text-slate-500"><Thermometer className="size-4" /><p className="text-xs">Température</p></div><p className="mt-1 text-xl font-semibold">{temperature === undefined ? "—" : `${Math.round(temperature)}°`}</p></div><div className="rounded-2xl bg-white/[0.05] p-4"><p className="text-xs text-slate-500">État de connexion</p><p className="mt-1 font-medium">{unavailable ? "Indisponible" : devices.length === 0 ? "Aucun équipement" : "Connecté"}</p></div></div>
-      {([ ["Lumières", lights, Lightbulb], ["Prises", plugs, Plug] ] as const).map(([label, group, DeviceIcon]) => <div key={label} className="mt-5"><div className="mb-2 flex items-center gap-2"><DeviceIcon className="size-4 text-slate-400" /><p className="text-sm font-semibold">{label}</p></div>{group.length === 0 ? <p className="rounded-xl bg-white/[0.03] px-3 py-2 text-sm text-slate-500">Aucun équipement détecté.</p> : <div className="space-y-2">{group.map((device) => { const isOn = states[device.id]?.switchOn ?? false; return <div key={device.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.05] p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{device.name}</p><p className={isOn ? "mt-0.5 text-xs text-emerald-400" : "mt-0.5 text-xs text-slate-500"}>{isOn ? "Allumée" : "Éteinte"}</p></div><Button variant={isOn ? "secondary" : "default"} className="h-9 shrink-0 px-3 text-xs" disabled={pending === device.id} onClick={() => void setSwitch(device, !isOn)}>{isOn ? "Éteindre" : "Allumer"}</Button></div>; })}</div>}</div>)}
+      {([ ["Lumières", lights, Lightbulb], ["Prises", plugs, Plug] ] as const).map(([label, group, DeviceIcon]) => <div key={label} className="mt-5"><div className="mb-2 flex items-center gap-2"><DeviceIcon className="size-4 text-slate-400" /><p className="text-sm font-semibold">{label}</p></div>{group.length === 0 ? <p className="rounded-xl bg-white/[0.03] px-3 py-2 text-sm text-slate-500">Aucun équipement détecté.</p> : <div className="space-y-2">{group.map((device) => { const isOn = states[device.id]?.switchOn ?? false; return <div key={device.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.05] p-3"><div className="min-w-0"><p className="truncate text-sm font-medium">{device.name}</p><p className={commandError === device.id ? "mt-0.5 text-xs text-rose-300" : isOn ? "mt-0.5 text-xs text-emerald-400" : "mt-0.5 text-xs text-slate-500"}>{commandError === device.id ? "Commande non confirmée" : isOn ? "Allumée" : "Éteinte"}</p></div><Button variant={isOn ? "secondary" : "default"} className="h-9 shrink-0 px-3 text-xs" disabled={pending === device.id} onClick={() => void setSwitch(device, !isOn)}>{isOn ? "Éteindre" : "Allumer"}</Button></div>; })}</div>}</div>)}
     </section>
   </div>;
 }
@@ -722,6 +746,47 @@ function WeeklyChoresCard() {
   const assigneeTone = (task: WeeklyChore) => task.assignees.length > 1 ? "chore-duo" : task.assignees[0] === "Lise" ? "chore-lise" : "chore-clement";
   const completedCount = tasks.filter((task) => task.completed).length;
   return <Card className="dashboard-chores-card"><CardHeader><div><p className="text-lg font-semibold">Tâches ménagères</p><p className="mt-1 text-sm text-slate-500">{completedCount} tâche{completedCount > 1 ? "s" : ""} réalisée{completedCount > 1 ? "s" : ""} sur {tasks.length} aujourd’hui</p></div><Sparkles className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{unavailable ? <p className="text-sm text-amber-300">Tâches ménagères indisponibles.</p> : tasks.length === 0 ? <p className="text-sm text-slate-500">Aucune tâche aujourd’hui.</p> : tasks.map((task) => <button type="button" onClick={() => toggle(task.id)} key={`${task.id}-${task.dueDate}`} className={(task.completed ? "chore-complete " : "") + "chore-item flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left"}><span className={`chore-person-icon grid size-7 shrink-0 place-items-center rounded-lg ${assigneeTone(task)}`}><UtensilsCrossed className="size-4 text-white" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{task.objective}</p><p className="text-xs text-slate-500">{new Date(`${task.dueDate}T12:00:00`).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" })} · {task.assignees.join(" & ")}</p></div></button>)}</CardContent></Card>;
+}
+
+function DashboardDevicesCard() {
+  const [devices, setDevices] = useState<HomeDevice[]>([]);
+  const [states, setStates] = useState<Record<string, DeviceState>>({});
+  const [status, setStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [pending, setPending] = useState<string | null>(null);
+  const [commandError, setCommandError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    getHomeDevices(controller.signal).then(async (loaded) => {
+      const results = await Promise.all(loaded.map(async (device) => {
+        try { return [device.id, await getDeviceState(device.id, controller.signal)] as const; }
+        catch { return [device.id, undefined] as const; }
+      }));
+      setDevices(loaded);
+      setStates(Object.fromEntries(results.filter((entry): entry is [string, DeviceState] => entry[1] !== undefined)));
+      setStatus("ready");
+    }).catch((error: unknown) => {
+      if (!(error instanceof DOMException && error.name === "AbortError")) setStatus("unavailable");
+    });
+    return () => controller.abort();
+  }, []);
+
+  const toggle = async (device: HomeDevice, on: boolean) => {
+    setPending(device.id);
+    setCommandError(null);
+    try {
+      const state = await setDeviceSwitch(device.id, on);
+      setStates((current) => ({ ...current, [device.id]: state }));
+    } catch { setCommandError(device.id); } finally { setPending(null); }
+  };
+
+  return <Card className="dashboard-devices-card"><CardHeader><div><p className="text-lg font-semibold">Appareils</p><p className="mt-1 text-sm text-slate-500">États Home Assistant confirmés</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{status === "unavailable" ? <p role="alert" className="text-sm text-amber-300">État de la maison indisponible.</p> : status === "loading" ? <p className="text-sm text-slate-500">Chargement des appareils…</p> : devices.length === 0 ? <p className="text-sm text-slate-500">Aucun appareil compatible n’est remonté par Home Assistant.</p> : devices.map((device) => {
+    const state = states[device.id];
+    const switchable = device.capabilities.includes("switch");
+    const online = state?.online;
+    const isOn = state?.switchOn === true;
+    return <div key={device.id} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2"><span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sky-100 text-sky-700">{device.kind === "light" ? <Lightbulb className="size-4" /> : <Plug className="size-4" />}</span><span className="min-w-0 flex-1"><span className="flex items-center gap-1 text-sm font-medium"><span className={online === true ? "size-1.5 rounded-full bg-emerald-400" : online === false ? "size-1.5 rounded-full bg-rose-400" : "size-1.5 rounded-full bg-zinc-600"} />{device.name}</span><span className={commandError === device.id ? "block truncate text-xs text-rose-300" : "block truncate text-xs text-slate-500"}>{commandError === device.id ? "Commande non confirmée" : `${device.room || "Sans pièce attribuée"} · ${online === undefined ? "État inconnu" : online ? isOn ? "Allumé" : "Éteint" : "Indisponible"}`}</span></span>{switchable && <Button variant="ghost" className="h-8 shrink-0 px-2 text-xs" disabled={pending === device.id || online !== true} onClick={() => void toggle(device, !isOn)}>{isOn ? "Éteindre" : "Allumer"}</Button>}</div>;
+  })}</CardContent></Card>;
 }
 
 function TrainsCard() {
@@ -916,7 +981,6 @@ function App() {
   const profile: Profile = "Duo";
   const todayLabel = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
   const [navOpen, setNavOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState<DashboardRoom | null>(null);
   const [selectedReminder, setSelectedReminder] = useState<Reminder | null>(null);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const calendarLabel = "Partagé";
@@ -1033,26 +1097,20 @@ function App() {
             <Card className="dashboard-next"><CardHeader><div><p className="text-sm font-medium">Rappel</p><p className="mt-1 text-sm text-slate-400">Aujourd’hui · 20:30</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent><p className="text-lg font-medium">Dîner avec Lise</p><p className="mt-1 text-sm text-slate-500">À la maison</p><div className="mt-5 flex items-center gap-2"><Badge>{calendarLabel}</Badge><span className="next-detail text-xs text-slate-400">Connecté bientôt à iCloud</span></div></CardContent></Card>
           </div>
 
-          <Card className="dashboard-room-summary hidden"><CardContent className="flex items-center justify-between gap-3 p-3"><div className="min-w-0"><p className="text-sm font-semibold">Maison</p><p className="mt-0.5 text-xs text-slate-500">{rooms.length} pièces · {rooms.filter((room) => room.active).length} éclairées</p></div><Button variant="ghost" className="h-8 shrink-0 px-2 text-xs" onClick={() => setView("home")}>Voir</Button></CardContent></Card>
-
           <div className="dashboard-compact-grid grid">
             <WeatherCard />
-            <Card className="dashboard-rooms-card"><CardHeader><div><p className="text-lg font-semibold">Pièces</p><p className="mt-1 text-sm text-slate-500">État instantané</p></div><Home className="size-5 text-slate-400" /></CardHeader><CardContent className="grid grid-cols-2 gap-2">{rooms.map((room) => { const Icon = room.icon; return <button key={room.name} type="button" onClick={() => setSelectedRoom(room)} className="flex min-w-0 items-center gap-2 rounded-xl bg-white/[0.04] p-2 text-left hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"grid size-8 shrink-0 place-items-center rounded-lg " + room.tone}><Icon className="size-4" /></span><span className="min-w-0"><span className="flex items-center gap-1 text-sm font-medium"><span className={room.active ? "size-1.5 rounded-full bg-emerald-400" : "size-1.5 rounded-full bg-zinc-600"} />{room.name}</span><span className="block truncate text-xs text-slate-500">{room.detail}</span></span></button>; })}</CardContent></Card>
+            <DashboardDevicesCard />
             <Card className="dashboard-reminder-card"><CardHeader><div><p className="text-lg font-semibold">Rappels</p><p className="mt-1 text-sm text-slate-400">À venir</p></div><CalendarDays className="size-5 text-slate-400" /></CardHeader><CardContent className="space-y-2">{reminders.length === 0 ? <p className="text-sm text-slate-500">Aucun rappel enregistré.</p> : reminders.slice(0, 3).map((reminder) => <button key={reminder.id} type="button" onClick={() => setSelectedReminder(reminder)} className="flex w-full items-center gap-2 rounded-xl bg-white/[0.04] px-2 py-2 text-left transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400"><span className={"size-2 shrink-0 rounded-full " + reminder.tone} /><span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium">{reminder.title}</span><span className="block text-xs text-slate-500">{reminder.time}</span></span></button>)}</CardContent></Card>
             <WeeklyChoresCard />
             <TrainsCard />
             <MarketsCard />
           </div>
 
-          <div className="hidden"><div><p className="text-lg font-semibold tracking-[-0.02em]">Pièces</p><p className="mt-1 text-sm text-slate-500">Vue instantanée de l’appartement</p></div><span className="text-xs text-slate-500">État vocal disponible</span></div>
-          <div className="hidden">{rooms.map(({ name, detail, icon: Icon, active, tone }) => <Card key={name} className="transition-shadow hover:shadow-[0_16px_40px_rgba(15,23,42,0.08)]"><CardContent className="p-5"><div className="flex items-start justify-between"><div className={"grid size-10 place-items-center rounded-2xl " + tone}><Icon className="size-5" /></div><div className={active ? "size-2 rounded-full bg-emerald-500" : "size-2 rounded-full bg-slate-200"} /></div><p className="mt-8 text-base font-medium">{name}</p><p className="mt-1 text-sm text-slate-500">{detail}</p></CardContent></Card>)}</div>
-
           <div className="hidden"><Card><CardHeader><div><p className="text-lg font-semibold">Routines</p></div><MoreHorizontal className="size-5 text-slate-400" /></CardHeader></Card></div>
           </div>
         </section>
       </div>
       <WakeWordListener />
-      {selectedRoom && <RoomDetailDialog room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
       {selectedReminder && <ReminderDetailDialog reminder={selectedReminder} onClose={() => setSelectedReminder(null)} />}
       <VoiceOverlay status={voiceStatus} open={overlayOpen} onAnswer={(answer) => setVoiceStatus({ state: "answered", answer: answer.text, confirmationId: answer.confirmationId })} onClose={() => { setOverlayOpen(false); setVoiceStatus({ state: "idle" }); void fetch("/v1/assistant/voice/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ state: "idle" }) }); }} />
     </main>

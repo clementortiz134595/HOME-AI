@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant App as Home App
+    participant Core as Home Core / home-control
+    participant HA as Home Assistant
+
+    App->>Core: GET /v1/home-control/devices/{temperature}/history
+    Core->>HA: GET /api/states
+    HA-->>Core: Entité d’humidité associée
+    Core->>HA: GET /api/history/period (température, humidité)
+    HA-->>Core: Séries de relevés
+    Core-->>App: Mesures normalisées sur 24 h

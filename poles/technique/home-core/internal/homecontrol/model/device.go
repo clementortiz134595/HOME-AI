@@ -33,15 +33,28 @@ type Device struct {
 	Capabilities []Capability `json:"capabilities"`
 }
 
+type DevicePatch struct {
+	Name *string `json:"name,omitempty"`
+	Room *string `json:"room,omitempty"`
+}
+
 type DeviceState struct {
-	DeviceID     string    `json:"deviceId"`
-	Online       bool      `json:"online"`
-	SwitchOn     *bool     `json:"switchOn,omitempty"`
-	CurrentAmps  *float64  `json:"currentAmps,omitempty"`
-	PowerWatts   *float64  `json:"powerWatts,omitempty"`
-	Brightness   *int      `json:"brightness,omitempty"`
-	TemperatureC *float64  `json:"temperatureC,omitempty"`
-	ObservedAt   time.Time `json:"observedAt"`
+	DeviceID        string    `json:"deviceId"`
+	Online          bool      `json:"online"`
+	SwitchOn        *bool     `json:"switchOn,omitempty"`
+	CurrentAmps     *float64  `json:"currentAmps,omitempty"`
+	PowerWatts      *float64  `json:"powerWatts,omitempty"`
+	Brightness      *int      `json:"brightness,omitempty"`
+	TemperatureC    *float64  `json:"temperatureC,omitempty"`
+	HumidityPercent *float64  `json:"humidityPercent,omitempty"`
+	BatteryPercent  *float64  `json:"batteryPercent,omitempty"`
+	ObservedAt      time.Time `json:"observedAt"`
+}
+
+type Measurement struct {
+	ObservedAt      time.Time `json:"observedAt"`
+	TemperatureC    *float64  `json:"temperatureC,omitempty"`
+	HumidityPercent *float64  `json:"humidityPercent,omitempty"`
 }
 
 type Action string

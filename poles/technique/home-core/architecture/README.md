@@ -22,7 +22,7 @@ Le Home Panel utilise l'API de Home Core. Home Assistant, Google Calendar, la m�
 | `memory-preferences` | Préférences, mémoire contrôlable et rétention. | Stockage chiffré si retenu. |
 | `system-health` | Santé, capacités disponibles, audit minimal et diagnostics. | Horloge, stockage, sondes d'intégration. |
 | `insights` | Informations externes normalisées, dont les départs ferroviaires et l’historique des ETF suivis. | SNCF/Navitia et Twelve Data via des adaptateurs dédiés. |
-| `costs` | Agrégation locale des coûts confirmés ou estimés et de leur historique. | Stockage local ; sources fournisseurs futures via un flux administrateur contrôlé. |
+| `costs` | Agrégation des coûts et de leur historique. | SQLite local ou export détaillé Cloud Billing dans BigQuery, via un adaptateur dédié. |
 
 Un module est propriétaire de son modèle et de ses règles. Il ne peut pas requêter directement le stockage ou les adaptateurs d'un autre module. Les échanges passent par une façade applicative, un contrat typé ou un événement applicatif local documenté. Les dépendances sont orientées vers le domaine : l'application déclare les ports dont elle a besoin ; les adaptateurs les implémentent.
 
@@ -77,7 +77,10 @@ Les appels de mutation doivent recevoir une clé d'idempotence lorsqu'une répé
 
 Voir les [diagrammes Mermaid](../diagrammes/README.md) et le [plan Docker](../infrastructure/docker.md).
 L'accès distant privé de la Raspberry Pi est défini dans l'[ADR-0013](adr/0013-acces-distant-tailscale.md).
-Le suivi local des coûts est décrit dans [sequence-couts.mmd](../diagrammes/sequence-couts.mmd) et l'[ADR-0014](adr/0014-suivi-local-des-couts.md).
+L’ouverture optionnelle de Home Panel sur le LAN domestique est encadrée par l'[ADR-0017](adr/0017-acces-lan-home-panel.md).
+Le suivi des coûts, y compris l’export Cloud Billing lu dans BigQuery, est décrit dans [sequence-couts.mmd](../diagrammes/sequence-couts.mmd), l'[ADR-0014](adr/0014-suivi-local-des-couts.md) et l'[ADR-0016](adr/0016-couts-gcp-bigquery.md).
+L’historique des capteurs est décrit dans [sequence-historique-capteurs.mmd](../diagrammes/sequence-historique-capteurs.mmd) et l'[ADR-0018](adr/0018-historique-capteurs-home-assistant.md).
+L’inventaire des appareils est administré via Home Core, comme décrit dans [sequence-inventaire-appareils.mmd](../diagrammes/sequence-inventaire-appareils.mmd) et l'[ADR-0019](adr/0019-inventaire-appareils-home-assistant.md).
 Le flux des trains SNCF est décrit dans [sequence-trains-sncf.mmd](../diagrammes/sequence-trains-sncf.mmd) et la décision dans l'[ADR-0011](adr/0011-integration-trains-sncf-navitia.md).
 La décision de structure est consignée dans l'[ADR-0001](adr/0001-monolithe-modulaire-docker.md).
 Le runtime du premier incrément est consigné dans l'[ADR-0002](adr/0002-runtime-go.md).
