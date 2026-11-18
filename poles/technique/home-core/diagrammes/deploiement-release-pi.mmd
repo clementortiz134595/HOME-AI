@@ -1,11 +1,12 @@
 flowchart LR
     mac[Mac\nDéveloppement] -->|commit et push| github[GitHub\nsource de vérité]
     github --> ci[GitHub Actions\ntests et validation Compose]
-    ci -->|succès| tag[Tag de release]
+    ci -->|tests + build ARM64 + publication GHCR| registry[GHCR\nImages versionnées]
+    registry --> tag[Tag de release]
     tag -->|détection toutes les 5 min| watcher[Pi : minuteur systemd]
     watcher -->|git fetch et checkout du tag| pi[Pi : clone propre]
     secrets[Secrets hors Git] --> pi
-    pi --> compose[Docker Compose\nbuild ARM64 et démarrage]
+    pi --> compose[Docker Compose\npull d'images et démarrage]
     compose --> health{Home Core et Home App\nhealthy ?}
     health -->|oui| running[Home Core + Home Panel + Home App]
     health -->|non| rollback[Commit précédemment réussi]

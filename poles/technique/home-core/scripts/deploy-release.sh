@@ -20,6 +20,10 @@ home_app_health_url="${HOME_AI_HOME_APP_HEALTH_URL:-https://127.0.0.1:${HOME_APP
 home_app_override="${HOME_AI_HOME_APP_COMPOSE_OVERRIDE:-$HOME/.config/home-ai/home-app.compose.override.yaml}"
 deploy_env_file="${HOME_AI_DEPLOY_ENV_FILE:-$HOME/.config/home-ai/deploy.env}"
 wait_timeout="${HOME_AI_DEPLOY_WAIT_TIMEOUT:-180}"
+image_registry="${HOME_AI_IMAGE_REGISTRY:-}"
+if [[ -z "$image_registry" && -f "$deploy_env_file" ]]; then
+  image_registry="$(sed -n 's/^HOME_AI_IMAGE_REGISTRY=//p' "$deploy_env_file" | tail -1)"
+fi
 
 if [[ $# -ne 1 ]]; then
   usage
@@ -48,6 +52,17 @@ mkdir -p "$state_dir"
 deploy_revision() {
   local revision="$1"
 
+  if [[ -n "$image_registry" ]]; then
+    local image_tag="${HOME_AI_IMAGE_TAG:-$(git tag --points-at "$revision" | sort -V | tail -1)}"
+    if [[ -z "$image_tag" ]]; then
+      printf '%s\n' "Impossible de déterminer le tag d'image pour $revision." >&2
+      return 1
+    fi
+    export HOME_AI_HOME_CORE_IMAGE="${HOME_AI_HOME_CORE_IMAGE:-$image_registry/home-core:$image_tag}"
+    export HOME_AI_HOME_PANEL_IMAGE="${HOME_AI_HOME_PANEL_IMAGE:-$image_registry/home-panel:$image_tag}"
+    export HOME_AI_HOME_APP_IMAGE="${HOME_AI_HOME_APP_IMAGE:-$image_registry/home-app:$image_tag}"
+  fi
+
   git checkout --detach "$revision"
   if ! docker network inspect home-ai >/dev/null 2>&1; then
     docker network create home-ai >/dev/null
@@ -58,7 +73,12 @@ deploy_revision() {
     home_ai_compose+=(--env-file "$deploy_env_file")
   fi
   home_ai_compose+=(--project-name home-ai)
-  "${home_ai_compose[@]}" up -d --build --wait --wait-timeout "$wait_timeout"
+  if [[ -n "$image_registry" ]]; then
+    "${home_ai_compose[@]}" pull home-core home-panel
+    "${home_ai_compose[@]}" up -d --no-build --wait --wait-timeout "$wait_timeout"
+  else
+    "${home_ai_compose[@]}" up -d --build --wait --wait-timeout "$wait_timeout"
+  fi
   curl --fail --silent --show-error --output /dev/null "$health_url"
   curl --fail --silent --show-error --output /dev/null "$home_panel_health_url"
 
@@ -70,7 +90,12 @@ deploy_revision() {
   if [[ -f "$home_app_override" ]]; then
     home_app_compose+=(--file "$home_app_override")
   fi
-  "${home_app_compose[@]}" up -d --build --wait --wait-timeout "$wait_timeout"
+  if [[ -n "$image_registry" ]]; then
+    "${home_app_compose[@]}" pull app
+    "${home_app_compose[@]}" up -d --no-build --wait --wait-timeout "$wait_timeout"
+  else
+    "${home_app_compose[@]}" up -d --build --wait --wait-timeout "$wait_timeout"
+  fi
   curl --insecure --fail --silent --show-error --output /dev/null "$home_app_health_url"
 }
 

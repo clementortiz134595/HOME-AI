@@ -51,6 +51,21 @@ Le déploiement manuel reste disponible pour une release précise :
 ./poles/technique/home-core/scripts/deploy-release.sh <tag>
 ```
 
+Pour utiliser les images ARM64 publiées par GitHub Actions, configurer dans le
+fichier local `~/.config/home-ai/deploy.env` (ou le fichier indiqué par
+`HOME_AI_DEPLOY_ENV_FILE`) :
+
+```sh
+HOME_AI_IMAGE_REGISTRY=ghcr.io/clementortiz134595
+HOME_AI_HOME_CORE_IMAGE=ghcr.io/clementortiz134595/home-core:v0.1.17
+HOME_AI_HOME_PANEL_IMAGE=ghcr.io/clementortiz134595/home-panel:v0.1.17
+HOME_AI_HOME_APP_IMAGE=ghcr.io/clementortiz134595/home-app:v0.1.17
+```
+
+Le script tire alors les images et utilise `--no-build`. Les identifiants GHCR,
+s'ils sont nécessaires pour des paquets privés, restent dans la configuration
+Docker locale de la Raspberry et ne sont jamais commités.
+
 Le script ne déploie que des tags présents sur `origin`, attend la santé de
 Home Core et annule vers la révision précédente en cas d'échec. Pour demander
 ce retour manuellement :

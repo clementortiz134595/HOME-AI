@@ -1,10 +1,10 @@
 name: home-app
 services:
   app:
+    image: ${HOME_AI_HOME_APP_IMAGE:-home-app:local}
     build:
       context: .
       target: production
-    image: home-app:local
     ports:
       - "127.0.0.1:${HOME_APP_TLS_PORT:-13444}:443"
     volumes:
