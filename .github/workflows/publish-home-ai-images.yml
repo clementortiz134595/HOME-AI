@@ -147,7 +147,11 @@ jobs:
             if [[ "$changed" == "false" ]]; then
               source="${REGISTRY}/${IMAGE_OWNER}/${image}:${{ needs.changes.outputs.previous_tag }}"
               target="${REGISTRY}/${IMAGE_OWNER}/${image}:${RELEASE_TAG}"
-              docker pull "$source"
+              if ! docker pull "$source"; then
+                echo "Image $source indisponible; repli sur latest"
+                source="${REGISTRY}/${IMAGE_OWNER}/${image}:latest"
+                docker pull "$source"
+              fi
               docker tag "$source" "$target"
               docker push "$target"
             fi
