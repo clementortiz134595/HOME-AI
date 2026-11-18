@@ -18,13 +18,42 @@ concurrency:
   group: publish-home-ai-images-${{ github.ref }}
   cancel-in-progress: false
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
-  publish:
+  changes:
     runs-on: ubuntu-latest
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_OWNER: ${{ github.repository_owner }}
-      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    outputs:
+      previous_tag: ${{ steps.detect.outputs.previous_tag }}
+      core: ${{ steps.detect.outputs.core }}
+      panel: ${{ steps.detect.outputs.panel }}
+      app: ${{ steps.detect.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+          previous_tag="$(git tag --sort=-version:refname | grep -v "^${RELEASE_TAG}$" | head -1 || true)"
+          if [[ -z "$previous_tag" ]]; then
+            printf 'previous_tag=\ncore=true\npanel=true\napp=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only "$previous_tag" "$GITHUB_SHA")"
+          echo "previous_tag=$previous_tag" >> "$GITHUB_OUTPUT"
+          grep -qE '^(compose.yaml|poles/technique/home-core/)' <<<"$changed" && echo "core=true" >> "$GITHUB_OUTPUT" || echo "core=false" >> "$GITHUB_OUTPUT"
+          grep -q '^poles/technique/home-panel/' <<<"$changed" && echo "panel=true" >> "$GITHUB_OUTPUT" || echo "panel=false" >> "$GITHUB_OUTPUT"
+          grep -q '^poles/technique/home-app/' <<<"$changed" && echo "app=true" >> "$GITHUB_OUTPUT" || echo "app=false" >> "$GITHUB_OUTPUT"
+
+  home-core:
+    needs: changes
+    if: needs.changes.outputs.core == 'true'
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -34,8 +63,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and publish Home Core
-        uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v6
         with:
           context: poles/technique/home-core
           platforms: linux/arm64
@@ -45,8 +73,21 @@ jobs:
             ghcr.io/${{ env.IMAGE_OWNER }}/home-core:latest
           cache-from: type=gha,scope=home-core
           cache-to: type=gha,mode=max,scope=home-core
-      - name: Build and publish Home Panel
-        uses: docker/build-push-action@v6
+
+  home-panel:
+    needs: changes
+    if: needs.changes.outputs.panel == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
         with:
           context: poles/technique/home-panel
           target: production
@@ -57,8 +98,21 @@ jobs:
             ghcr.io/${{ env.IMAGE_OWNER }}/home-panel:latest
           cache-from: type=gha,scope=home-panel
           cache-to: type=gha,mode=max,scope=home-panel
-      - name: Build and publish Home App
-        uses: docker/build-push-action@v6
+
+  home-app:
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
         with:
           context: poles/technique/home-app
           target: production
@@ -69,3 +123,32 @@ jobs:
             ghcr.io/${{ env.IMAGE_OWNER }}/home-app:latest
           cache-from: type=gha,scope=home-app
           cache-to: type=gha,mode=max,scope=home-app
+
+  promote-unchanged:
+    needs: changes
+    if: needs.changes.outputs.previous_tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Promote unchanged images to the release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          for image in home-core home-panel home-app; do
+            case "$image" in
+              home-core) changed="${{ needs.changes.outputs.core }}" ;;
+              home-panel) changed="${{ needs.changes.outputs.panel }}" ;;
+              home-app) changed="${{ needs.changes.outputs.app }}" ;;
+            esac
+            if [[ "$changed" == "false" ]]; then
+              source="${REGISTRY}/${IMAGE_OWNER}/${image}:${{ needs.changes.outputs.previous_tag }}"
+              target="${REGISTRY}/${IMAGE_OWNER}/${image}:${RELEASE_TAG}"
+              docker pull "$source"
+              docker tag "$source" "$target"
+              docker push "$target"
+            fi
+          done
