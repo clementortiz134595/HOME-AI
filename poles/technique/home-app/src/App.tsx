@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type PointerEvent } from "react";
 import { AssistantOrb } from "@/components/AssistantOrb";
 import { Bell, CheckCheck, Home, Lightbulb, Pencil, RotateCcw, Server, Smartphone, Thermometer, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -96,6 +96,7 @@ function DeviceEditor({ device, rooms, onClose, onSave }: { device: HomeDevice; 
 
 function SensorHistory({ sensor, onClose }: { sensor: HomeDevice; onClose: () => void }) {
   const [points, setPoints] = useState<Measurement[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     void getDeviceHistory(sensor.id, controller.signal).then(setPoints).catch(() => setPoints([]));
@@ -104,12 +105,13 @@ function SensorHistory({ sensor, onClose }: { sensor: HomeDevice; onClose: () =>
   const temperature = points.flatMap(point => point.temperatureC == null ? [] : [point.temperatureC]);
   const humidity = points.flatMap(point => point.humidityPercent == null ? [] : [point.humidityPercent]);
   const latest = points.at(-1);
-  const polyline = (values: number[]) => {
-    const min = Math.min(...values); const max = Math.max(...values);
-    return values.map((value, index) => `${10 + index * 320 / Math.max(values.length - 1, 1)},${100 - (value - min) * 80 / (max - min || 1)}`).join(" ");
-  };
+  const chartWidth = 340; const chartHeight = 150; const plotLeft = 34; const plotRight = 326; const plotTop = 14; const plotBottom = 116;
+  const xFor = (index: number) => plotLeft + index * (plotRight - plotLeft) / Math.max(points.length - 1, 1);
+  const valueFor = (value: number | undefined, values: number[]) => { if (value == null || !values.length) return null; const min = Math.min(...values); const max = Math.max(...values); return plotBottom - (value - min) * (plotBottom - plotTop) / (max - min || 1); };
+  const selectFromPointer = (event: PointerEvent<SVGSVGElement>) => { const rect = event.currentTarget.getBoundingClientRect(); const ratio = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)); setSelectedIndex(Math.round(ratio * Math.max(points.length - 1, 0))); };
+  const selectedPoint = selectedIndex == null ? null : points[selectedIndex];
   const hasHistory = temperature.length > 0 || humidity.length > 0;
-  return <section className="device-detail sensor-history" aria-label={`Historique ${sensor.name}`}><button type="button" className="detail-back" onClick={onClose}>← Retour aux appareils</button><p className="eyebrow">Capteur</p><h1>{sensor.name}</h1><p>Historique sur 24 heures{latest ? ` · dernier relevé à ${measurementTime(latest.observedAt)}` : ""}</p>{hasHistory ? <><svg viewBox="0 0 340 120" role="img" aria-label="Historique de température et humidité">{temperature.length > 0 && <polyline points={polyline(temperature)} fill="none" stroke="#a78bfa" strokeWidth="3" />}{humidity.length > 0 && <polyline points={polyline(humidity)} fill="none" stroke="#67e8f9" strokeWidth="3" />}</svg><p className="history-legend"><span className="temperature">Température · {temperature.length} relevés</span><span className="humidity">Humidité · {humidity.length} relevés</span></p></> : <p>Historique indisponible pour le moment.</p>}</section>;
+  return <section className="device-detail sensor-history" aria-label={`Historique ${sensor.name}`}><button type="button" className="detail-back" onClick={onClose}>← Retour aux appareils</button><p className="eyebrow">Capteur</p><h1>{sensor.name}</h1><p>Historique sur 24 heures{latest ? ` · dernier relevé à ${measurementTime(latest.observedAt)}` : ""}</p>{hasHistory ? <><svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Historique de température et humidité" onPointerDown={selectFromPointer} onPointerMove={event => { if (event.buttons) selectFromPointer(event); }} onPointerUp={() => setSelectedIndex(selectedIndex)} onPointerLeave={() => setSelectedIndex(null)}>{[0, 1, 2, 3].map(step => { const y = plotTop + step * (plotBottom - plotTop) / 3; return <g key={step}><line x1={plotLeft} x2={plotRight} y1={y} y2={y} className="chart-grid" /><text x={plotLeft - 5} y={y + 3} textAnchor="end" className="chart-axis-label">{step === 0 ? "max" : step === 3 ? "min" : ""}</text></g>; })}<line x1={plotLeft} x2={plotLeft} y1={plotTop} y2={plotBottom} className="chart-axis" /><line x1={plotLeft} x2={plotRight} y1={plotBottom} y2={plotBottom} className="chart-axis" />{temperature.length > 0 && <polyline points={temperature.map((value, index) => `${xFor(index)},${valueFor(value, temperature) ?? plotBottom}`).join(" ")} fill="none" stroke="#a78bfa" strokeWidth="3" />}{humidity.length > 0 && <polyline points={humidity.map((value, index) => `${xFor(index)},${valueFor(value, humidity) ?? plotBottom}`).join(" ")} fill="none" stroke="#67e8f9" strokeWidth="3" />}{selectedPoint && <><line x1={xFor(selectedIndex ?? 0)} x2={xFor(selectedIndex ?? 0)} y1={plotTop} y2={plotBottom} className="chart-crosshair" /><circle cx={xFor(selectedIndex ?? 0)} cy={valueFor(selectedPoint.temperatureC, temperature) ?? plotBottom} r="4" className="chart-dot temperature-dot" /><circle cx={xFor(selectedIndex ?? 0)} cy={valueFor(selectedPoint.humidityPercent, humidity) ?? plotBottom} r="4" className="chart-dot humidity-dot" /></>}<text x={plotLeft} y={chartHeight - 8} className="chart-axis-label">{points[0] ? measurementTime(points[0].observedAt) : ""}</text><text x={plotRight} y={chartHeight - 8} textAnchor="end" className="chart-axis-label">{latest ? measurementTime(latest.observedAt) : ""}</text></svg>{selectedPoint && <div className="chart-tooltip"><strong>{measurementTime(selectedPoint.observedAt)}</strong>{selectedPoint.temperatureC != null && <span className="temperature">{selectedPoint.temperatureC.toFixed(1)} °C</span>}{selectedPoint.humidityPercent != null && <span className="humidity">{Math.round(selectedPoint.humidityPercent)} %</span>}</div>}<p className="history-legend"><span className="temperature">Température · {temperature.length} relevés</span><span className="humidity">Humidité · {humidity.length} relevés</span></p></> : <p>Historique indisponible pour le moment.</p>}</section>;
 }
 
 function HouseholdList({ kind }: { kind: "chores" | "reminders" }) {
