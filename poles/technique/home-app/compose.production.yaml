@@ -11,6 +11,7 @@ services:
       - ./certs:/etc/nginx/certs:ro
     networks:
       - home-ai
+    restart: unless-stopped
 networks:
   home-ai:
     external: true
