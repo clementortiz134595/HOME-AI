@@ -14,5 +14,6 @@ Les clés VAPID sont injectées au démarrage depuis `/home/clement/.config/home
 - Les rappels existants de type date seule restent compatibles et ne sont pas envoyés automatiquement.
 - Un rappel horodaté est revendiqué avant l’envoi, marqué envoyé seulement après livraison et retenté après erreur ou redémarrage.
 - Les abonnements HTTP 404/410 sont supprimés.
+- L’assistant vocal interprète localement les rappels relatifs courants (par exemple « demain midi »), transmet l’instant RFC3339 et le fuseau au module `agenda-reminders`, puis annonce uniquement le résultat réellement enregistré.
 - Home App demande l’autorisation uniquement à la suite d’un geste utilisateur. Sur iOS, la PWA doit être installée sur l’écran d’accueil.
 - L’accès reste le périmètre local/Tailscale existant : Home Core n’est pas publié sur le LAN ou Internet. Une authentification utilisateur plus fine reste une évolution de `identity-access` à définir.
