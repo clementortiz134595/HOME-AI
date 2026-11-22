@@ -4,4 +4,4 @@ After=home-ai-compose.service
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c '/usr/bin/docker inspect -f "{{.State.Running}}" home-app-app-1 2>/dev/null | grep -qx true && /usr/bin/curl -kfsS --max-time 5 https://127.0.0.1:13444/ >/dev/null || /usr/bin/docker compose -f /home/clement/deployments/home-ai/poles/technique/home-app/compose.production.yaml up -d'
+ExecStart=/bin/sh -c '/usr/bin/docker inspect -f "{{.State.Running}}" home-app-app-1 2>/dev/null | grep -qx true && /usr/bin/curl -kfsS --max-time 5 https://127.0.0.1:13444/ >/dev/null || HOME_APP_CERTS_DIR=/home/clement/.config/home-ai/home-app-certs /usr/bin/docker compose -f /home/clement/deployments/home-ai/poles/technique/home-app/compose.production.yaml up -d'
