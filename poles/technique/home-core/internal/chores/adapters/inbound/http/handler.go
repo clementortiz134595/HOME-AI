@@ -46,6 +46,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		write(w, http.StatusOK, chore)
 		return
 	}
+	if r.Method == http.MethodDelete {
+		if err := h.service.Delete(strings.Trim(path, "/")); err != nil {
+			write(w, http.StatusNotFound, map[string]string{"error": "not_found"})
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 	write(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 }
 func write(w http.ResponseWriter, status int, body any) {

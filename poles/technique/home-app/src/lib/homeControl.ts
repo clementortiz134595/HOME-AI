@@ -62,3 +62,8 @@ export async function setChoreCompleted(id: string, completed: boolean): Promise
   if (!response.ok) throw new Error("chore_update_failed");
   return response.json() as Promise<Chore>;
 }
+
+export async function deleteChore(id: string): Promise<void> {
+  const response = await fetch(`/v1/chores/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (!response.ok) throw new Error("chore_delete_failed");
+}
