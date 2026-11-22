@@ -1,0 +1,16 @@
+[Unit]
+Description=HOME AI Home App Compose service
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/clement/deployments/home-ai/poles/technique/home-app
+ExecStart=/usr/bin/docker compose -f compose.production.yaml up -d
+ExecStop=/usr/bin/docker compose -f compose.production.yaml stop
+TimeoutStartSec=0
+
+[Install]
+WantedBy=default.target
