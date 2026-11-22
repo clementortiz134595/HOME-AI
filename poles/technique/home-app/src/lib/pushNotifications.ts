@@ -14,6 +14,7 @@ const base64URLToBytes = (value: string) => {
   const padded = value.padEnd(value.length + (4 - value.length % 4) % 4, "=").replace(/-/g, "+").replace(/_/g, "/");
   const bytes = atob(padded); return Uint8Array.from(bytes, char => char.charCodeAt(0));
 };
+const sameBytes = (left: ArrayBuffer | null, right: Uint8Array) => left !== null && left.byteLength === right.byteLength && new Uint8Array(left).every((value, index) => value === right[index]);
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
 const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
 
@@ -41,11 +42,16 @@ export async function enablePushNotifications(): Promise<void> {
     const { publicKey } = await config.json() as { publicKey?: string };
     if (!publicKey) throw new Error("push_configuration_unavailable");
 
+    const applicationServerKey = base64URLToBytes(publicKey);
     const registration = await navigator.serviceWorker.ready;
     await registration.update();
     let subscription = await registration.pushManager.getSubscription();
+    if (subscription && subscription.options.applicationServerKey && !sameBytes(subscription.options.applicationServerKey, applicationServerKey)) {
+      await subscription.unsubscribe();
+      subscription = null;
+    }
     const createdSubscription = !subscription;
-    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64URLToBytes(publicKey) });
+    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
 
     const payload = subscription.toJSON() as PushSubscriptionJSON;
     if (!payload.endpoint || !payload.keys?.p256dh || !payload.keys.auth) throw new Error("push_registration_unavailable");
