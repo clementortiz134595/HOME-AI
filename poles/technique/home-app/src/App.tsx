@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type PointerEvent } from "react";
 import { AssistantOrb } from "@/components/AssistantOrb";
-import { Bell, CheckCheck, Home, Lightbulb, Pencil, RotateCcw, Server, Smartphone, Thermometer, WifiOff, X } from "lucide-react";
+import { Activity, BatteryMedium, Bell, CheckCheck, Home, Lightbulb, Pencil, Plug, RefreshCw, RotateCcw, Server, Smartphone, Thermometer, WifiOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getHomeDevices, getDeviceHistory, getDeviceState, setDeviceSwitch, getChores, updateHomeDevice, type HomeDevice, type DeviceState, type Chore, type Measurement } from "@/lib/homeControl";
 import { useVoice } from "@/lib/useVoice";
@@ -35,6 +35,7 @@ function Devices() {
   const [attempt, setAttempt] = useState(0);
   const [selectedSensor, setSelectedSensor] = useState<HomeDevice | null>(null);
   const [editingDevice, setEditingDevice] = useState<HomeDevice | null>(null);
+  const [filter, setFilter] = useState("all");
   useEffect(() => {
     const controller = new AbortController();
     const initialLoad = devices.length === 0;
@@ -69,6 +70,14 @@ function Devices() {
   // these devices reachable instead of producing an empty, untappable room.
   const roomName = (device: HomeDevice) => device.room?.trim() || "Sans pièce";
   const rooms = Array.from(new Set(devices.map(roomName))).sort();
+  const categoryFor = (device: HomeDevice) => device.kind === "temperature_sensor" || device.capabilities.includes("temperature") ? "sensors" : device.kind === "light" || device.capabilities.includes("brightness") ? "lights" : device.kind === "plug" ? "plugs" : "other";
+  const categoryLabels: Record<string, string> = { sensors: "Capteurs", lights: "Lumières", plugs: "Prises", other: "Autres" };
+  const visibleDevices = devices.filter(device => filter === "all" || categoryFor(device) === filter);
+  const categories = Array.from(new Set(devices.map(categoryFor)));
+  const measured = devices.map(device => states[device.id]).filter(state => state?.temperatureC != null);
+  const averageTemperature = measured.length ? measured.reduce((sum, state) => sum + (state?.temperatureC ?? 0), 0) / measured.length : null;
+  const onlineCount = devices.filter(device => states[device.id]?.online).length;
+  const lightsOn = devices.filter(device => (device.kind === "light" || device.capabilities.includes("brightness")) && states[device.id]?.switchOn).length;
   const saveDevice = async (device: HomeDevice, patch: { name: string; room: string }) => {
     const updated = await updateHomeDevice(device.id, patch);
     setDevices(items => items.map(item => item.id === updated.id ? updated : item));
@@ -78,13 +87,14 @@ function Devices() {
   if (editingDevice) return <DeviceEditor device={editingDevice} rooms={rooms.filter(room => room !== "Sans pièce")} onClose={() => setEditingDevice(null)} onSave={saveDevice} />;
   const renderDevice = (device: HomeDevice) => {
     const state = states[device.id]; const busy = pending.includes(device.id); const controllable = device.capabilities.includes("switch") && state?.online && typeof state.switchOn === "boolean"; const opensHistory = device.kind === "temperature_sensor";
-    const details = opensHistory ? <div className="device-metrics"><span className="device-metric"><strong>{state?.temperatureC == null ? "—" : `${state.temperatureC.toFixed(1)} °C`}</strong><small>Température</small></span><span className="device-metric"><strong>{state?.humidityPercent == null ? "—" : `${Math.round(state.humidityPercent)} %`}</strong><small>Humidité</small></span><span className="device-metric"><strong>{state?.batteryPercent == null ? "—" : `${Math.round(state.batteryPercent)} %`}</strong><small>Batterie</small></span><span className="device-updated">Dernier relevé {measurementTime(state?.observedAt)}</span></div> : <p>{!state ? "État inconnu" : !state.online ? "Hors ligne" : state.switchOn ? "Allumé" : "Éteint"}</p>;
-    return <article className="device" key={device.id} onClick={() => opensHistory && setSelectedSensor(device)} role={opensHistory ? "button" : undefined} tabIndex={opensHistory ? 0 : undefined} onKeyDown={event => { if (opensHistory && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedSensor(device); } }}><div className={"device-icon " + (state?.switchOn ? "on" : "")}>{opensHistory ? <Thermometer size={22} /> : <Lightbulb size={22} />}</div><div className="device-description"><h2>{device.name}</h2>{details}</div>{device.capabilities.includes("switch") && <button type="button" className={"switch " + (state?.switchOn ? "checked" : "")} disabled={!controllable || busy} onClick={event => { event.stopPropagation(); void toggle(device); }} role="switch" aria-checked={Boolean(state?.switchOn)} aria-label={`${state?.switchOn ? "Éteindre" : "Allumer"} ${device.name}`}><span /></button>}</article>;
+    const details = opensHistory ? <div className="device-metrics"><span className="device-metric"><strong>{state?.temperatureC == null ? "—" : `${state.temperatureC.toFixed(1)}°`}</strong><small>Température</small></span><span className="device-metric"><strong>{state?.humidityPercent == null ? "—" : `${Math.round(state.humidityPercent)}%`}</strong><small>Humidité</small></span><span className="device-metric"><strong>{state?.batteryPercent == null ? "—" : `${Math.round(state.batteryPercent)}%`}</strong><small>Batterie</small></span><span className="device-updated">Dernier relevé {measurementTime(state?.observedAt)}</span></div> : <p>{!state ? "État inconnu" : !state.online ? "Hors ligne" : state.switchOn ? "Allumé" : "Éteint"}</p>;
+    const Icon = device.kind === "plug" ? Plug : opensHistory ? Thermometer : Lightbulb;
+    return <article className={`device ${state?.online === false ? "device-unavailable" : ""}`} key={device.id} onClick={() => opensHistory && setSelectedSensor(device)} role={opensHistory ? "button" : undefined} tabIndex={opensHistory ? 0 : undefined} onKeyDown={event => { if (opensHistory && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); setSelectedSensor(device); } }}><div className={"device-icon " + (state?.switchOn ? "on" : "")}><Icon size={21} /></div><div className="device-description"><h2>{device.name}</h2>{details}</div>{device.capabilities.includes("switch") && <button type="button" className={`switch ${state?.switchOn ? "checked" : ""}`} disabled={!controllable || busy} onClick={event => { event.stopPropagation(); void toggle(device); }} role="switch" aria-checked={Boolean(state?.switchOn)} aria-label={`${state?.switchOn ? "Éteindre" : "Allumer"} ${device.name}`}><span /></button>}</article>;
   };
-  return <section className="content"><div className="section-heading"><h1>Domotique</h1><Button variant="ghost" size="icon" aria-label="Actualiser les appareils" onClick={() => setAttempt(value => value + 1)}><RotateCcw size={19} /></Button></div>
+  return <section className="content"><div className="section-heading"><div><p className="eyebrow">Votre maison</p><h1>Domotique</h1><p className="page-subtitle">{rooms.length} pièces · {devices.length} appareils</p></div><Button variant="ghost" size="icon" aria-label="Actualiser les appareils" onClick={() => setAttempt(value => value + 1)}><RefreshCw size={18} /></Button></div>
     {error && <p role="alert" className="notice">{error}</p>}
     {loading ? <p className="empty">Chargement des appareils…</p> : !error && !devices.length ? <div className="empty"><Lightbulb /><h2>Aucun appareil</h2><p>Les appareils autorisés par Home Core apparaîtront ici.</p></div> : null}
-    {!loading && !error && devices.length > 0 && <div className="room-sections">{rooms.map(room => <section className="room-section" key={room}><div className="room-section-heading"><h2>{room}</h2><span>{devices.filter(device => roomName(device) === room).length} appareil(s)</span></div><div className="device-list">{devices.filter(device => roomName(device) === room).map(renderDevice)}</div></section>)}</div>}
+    {!loading && !error && devices.length > 0 && <><div className="home-summary"><div><Thermometer size={16} /><strong>{averageTemperature == null ? "—" : `${averageTemperature.toFixed(1)}°`}</strong><span>Température moyenne</span></div><div><Lightbulb size={16} /><strong>{lightsOn}</strong><span>Lumières allumées</span></div><div><Activity size={16} /><strong>{onlineCount}</strong><span>En ligne</span></div></div><div className="device-filters" role="tablist" aria-label="Filtrer les appareils"><button className={filter === "all" ? "active" : ""} onClick={() => setFilter("all")}>Tous</button>{categories.map(category => <button key={category} className={filter === category ? "active" : ""} onClick={() => setFilter(category)}>{categoryLabels[category] ?? category}</button>)}</div><div className="room-sections">{rooms.map(room => { const roomDevices = visibleDevices.filter(device => roomName(device) === room); if (!roomDevices.length) return null; return <section className="room-section" key={room}><div className="room-section-heading"><div><p className="room-label">Pièce</p><h2>{room}</h2></div><span>{roomDevices.length} appareil{roomDevices.length > 1 ? "s" : ""}</span></div><div className="device-list">{roomDevices.map(renderDevice)}</div></section>; })}</div></>}
   </section>;
 }
 
