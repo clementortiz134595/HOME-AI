@@ -15,3 +15,4 @@ Les décisions structurantes de Home Core sont consignées ici avant l'implémen
 - [ADR-0017 — Accès LAN explicite au Home Panel](0017-acces-lan-home-panel.md)
 - [ADR-0018 — Historique des capteurs via Home Core](0018-historique-capteurs-home-assistant.md)
 - [ADR-0019 — Inventaire des appareils administré via Home Core](0019-inventaire-appareils-home-assistant.md)
+- [ADR-0020 — Notifications Web Push pour les rappels](0020-notifications-web-push-rappels.md)

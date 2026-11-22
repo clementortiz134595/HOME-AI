@@ -8,6 +8,7 @@ import (
 
 	choresmodel "github.com/clementortiz/home-ai/home-core/internal/chores/model"
 	costsmodel "github.com/clementortiz/home-ai/home-core/internal/costs/model"
+	notificationsmodel "github.com/clementortiz/home-ai/home-core/internal/notifications/model"
 	remindersmodel "github.com/clementortiz/home-ai/home-core/internal/reminders/model"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -19,11 +20,44 @@ func Open(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err = db.Exec(`CREATE TABLE IF NOT EXISTS chores (id TEXT PRIMARY KEY, objective TEXT NOT NULL, date TEXT, assignees TEXT NOT NULL, frequency TEXT, interval_weeks INTEGER, alternating INTEGER NOT NULL, completed INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, title TEXT NOT NULL, date TEXT NOT NULL, details TEXT); CREATE TABLE IF NOT EXISTS cost_entries (id TEXT PRIMARY KEY, occurred_at TEXT NOT NULL, category TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0), estimated INTEGER NOT NULL CHECK(estimated IN (0, 1))); CREATE INDEX IF NOT EXISTS cost_entries_occurred_at ON cost_entries(occurred_at);`); err != nil {
+	if _, err = db.Exec(`CREATE TABLE IF NOT EXISTS chores (id TEXT PRIMARY KEY, objective TEXT NOT NULL, date TEXT, assignees TEXT NOT NULL, frequency TEXT, interval_weeks INTEGER, alternating INTEGER NOT NULL, completed INTEGER NOT NULL); CREATE TABLE IF NOT EXISTS reminders (id TEXT PRIMARY KEY, title TEXT NOT NULL, date TEXT NOT NULL, details TEXT); CREATE TABLE IF NOT EXISTS cost_entries (id TEXT PRIMARY KEY, occurred_at TEXT NOT NULL, category TEXT NOT NULL, amount_cents INTEGER NOT NULL CHECK(amount_cents >= 0), estimated INTEGER NOT NULL CHECK(estimated IN (0, 1))); CREATE INDEX IF NOT EXISTS cost_entries_occurred_at ON cost_entries(occurred_at); CREATE TABLE IF NOT EXISTS push_subscriptions (endpoint TEXT PRIMARY KEY, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL);`); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("migrate household database: %w", err)
 	}
+	for _, migration := range []struct{ column, definition string }{
+		{"scheduled_at", "TEXT"}, {"time_zone", "TEXT"}, {"notification_status", "TEXT"}, {"notification_sent_at", "TEXT"}, {"notification_attempted_at", "TEXT"},
+	} {
+		if err := ensureColumn(db, "reminders", migration.column, migration.definition); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("migrate reminders: %w", err)
+		}
+	}
 	return &Store{db: db}, nil
+}
+
+func ensureColumn(db *sql.DB, table, column, definition string) error {
+	rows, err := db.Query(`PRAGMA table_info(` + table + `)`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid int
+		var name, kind string
+		var notNull, primaryKey int
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &kind, &notNull, &defaultValue, &primaryKey); err != nil {
+			return err
+		}
+		if name == column {
+			return nil
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	_, err = db.Exec(`ALTER TABLE ` + table + ` ADD COLUMN ` + column + ` ` + definition)
+	return err
 }
 func (s *Store) Close() error { return s.db.Close() }
 func (s *Store) ListChores() ([]choresmodel.Chore, error) {
@@ -59,7 +93,7 @@ func (s *Store) DeleteChore(id string) error {
 	return err
 }
 func (s *Store) ListReminders() ([]remindersmodel.Reminder, error) {
-	rows, err := s.db.Query(`SELECT id,title,date,details FROM reminders ORDER BY date,id`)
+	rows, err := s.db.Query(`SELECT id,title,date,COALESCE(details,''),COALESCE(scheduled_at,''),COALESCE(time_zone,''),COALESCE(notification_status,''),COALESCE(notification_sent_at,''),COALESCE(notification_attempted_at,'') FROM reminders ORDER BY COALESCE(scheduled_at, date),id`)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +101,7 @@ func (s *Store) ListReminders() ([]remindersmodel.Reminder, error) {
 	result := []remindersmodel.Reminder{}
 	for rows.Next() {
 		var r remindersmodel.Reminder
-		if err := rows.Scan(&r.ID, &r.Title, &r.Date, &r.Details); err != nil {
+		if err := rows.Scan(&r.ID, &r.Title, &r.Date, &r.Details, &r.ScheduledAt, &r.TimeZone, &r.NotificationStatus, &r.NotificationSentAt, &r.NotificationAttemptedAt); err != nil {
 			return nil, err
 		}
 		result = append(result, r)
@@ -75,8 +109,33 @@ func (s *Store) ListReminders() ([]remindersmodel.Reminder, error) {
 	return result, rows.Err()
 }
 func (s *Store) SaveReminder(r remindersmodel.Reminder) error {
-	_, err := s.db.Exec(`INSERT INTO reminders(id,title,date,details) VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,date=excluded.date,details=excluded.details`, r.ID, r.Title, r.Date, r.Details)
+	_, err := s.db.Exec(`INSERT INTO reminders(id,title,date,details,scheduled_at,time_zone,notification_status,notification_sent_at,notification_attempted_at) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET title=excluded.title,date=excluded.date,details=excluded.details,scheduled_at=excluded.scheduled_at,time_zone=excluded.time_zone,notification_status=excluded.notification_status,notification_sent_at=excluded.notification_sent_at,notification_attempted_at=excluded.notification_attempted_at`, r.ID, r.Title, r.Date, r.Details, r.ScheduledAt, r.TimeZone, r.NotificationStatus, r.NotificationSentAt, r.NotificationAttemptedAt)
 	return err
+}
+
+func (s *Store) SavePushSubscription(subscription notificationsmodel.Subscription) error {
+	_, err := s.db.Exec(`INSERT INTO push_subscriptions(endpoint,p256dh,auth,created_at) VALUES(?,?,?,?) ON CONFLICT(endpoint) DO UPDATE SET p256dh=excluded.p256dh,auth=excluded.auth`, subscription.Endpoint, subscription.Keys.P256DH, subscription.Keys.Auth, time.Now().UTC().Format(time.RFC3339))
+	return err
+}
+func (s *Store) DeletePushSubscription(endpoint string) error {
+	_, err := s.db.Exec(`DELETE FROM push_subscriptions WHERE endpoint=?`, endpoint)
+	return err
+}
+func (s *Store) ListPushSubscriptions() ([]notificationsmodel.Subscription, error) {
+	rows, err := s.db.Query(`SELECT endpoint,p256dh,auth FROM push_subscriptions ORDER BY created_at`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []notificationsmodel.Subscription{}
+	for rows.Next() {
+		var subscription notificationsmodel.Subscription
+		if err := rows.Scan(&subscription.Endpoint, &subscription.Keys.P256DH, &subscription.Keys.Auth); err != nil {
+			return nil, err
+		}
+		result = append(result, subscription)
+	}
+	return result, rows.Err()
 }
 func (s *Store) DeleteReminder(id string) error {
 	_, err := s.db.Exec(`DELETE FROM reminders WHERE id=?`, id)

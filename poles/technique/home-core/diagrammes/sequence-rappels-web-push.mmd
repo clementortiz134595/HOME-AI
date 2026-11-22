@@ -1,0 +1,30 @@
+sequenceDiagram
+    actor user as Utilisateur
+    participant app as Home App PWA
+    participant sw as Service Worker
+    participant api as Home Core API
+    participant reminders as Agenda Reminders
+    participant store as SQLite persistant
+    participant push as Service Web Push
+
+    user->>app: Active les notifications
+    app->>sw: Permission après geste utilisateur
+    sw-->>app: PushSubscription
+    app->>api: POST /v1/notifications/push/subscribe
+    api->>store: Sauvegarder endpoint et clés navigateur
+    loop toutes les 30 secondes
+        api->>reminders: Vérifier les échéances RFC3339
+        reminders->>store: Revendiquer le rappel dû
+        reminders->>push: Notification VAPID générique
+        alt livraison confirmée
+            reminders->>store: Marquer envoyé
+        else 404 ou 410
+            reminders->>store: Supprimer abonnement expiré
+        else erreur
+            reminders->>store: Remettre le rappel en attente
+        end
+    end
+    push->>sw: événement push JSON ou texte
+    sw->>user: Notification sans donnée sensible
+    user->>sw: Ouvre la notification
+    sw->>app: /?view=reminders

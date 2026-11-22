@@ -33,6 +33,9 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/insights/adapters/outbound/eodhd"
 	"github.com/clementortiz/home-ai/home-core/internal/insights/adapters/outbound/navitia"
 	insightsapp "github.com/clementortiz/home-ai/home-core/internal/insights/application"
+	notificationshttp "github.com/clementortiz/home-ai/home-core/internal/notifications/adapters/inbound/http"
+	"github.com/clementortiz/home-ai/home-core/internal/notifications/adapters/outbound/webpush"
+	notificationsapp "github.com/clementortiz/home-ai/home-core/internal/notifications/application"
 	remindershttp "github.com/clementortiz/home-ai/home-core/internal/reminders/adapters/inbound/http"
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	"github.com/clementortiz/home-ai/home-core/internal/storage/sqlite"
@@ -110,6 +113,14 @@ func main() {
 	mux.Handle("/v1/chores/", choreshttp.NewHandler(choresService))
 	remindersService := remindersapp.NewService(database)
 	mux.Handle("/v1/reminders", remindershttp.NewHandler(remindersService))
+	notificationsService := notificationsapp.NewService(database, os.Getenv("HOME_CORE_PUSH_VAPID_PUBLIC_KEY"))
+	mux.Handle("/v1/notifications/push/", notificationshttp.NewHandler(notificationsService))
+	pushSender := webpush.NewSender(database, os.Getenv("HOME_CORE_PUSH_VAPID_PUBLIC_KEY"), os.Getenv("HOME_CORE_PUSH_VAPID_PRIVATE_KEY"), os.Getenv("HOME_CORE_PUSH_VAPID_SUBJECT"))
+	if pushSender.Configured() {
+		remindersapp.NewScheduler(remindersService, pushSender, 30*time.Second).Start(context.Background())
+	} else {
+		logger.Warn("web push scheduler disabled: VAPID is not configured")
+	}
 	var costsRepository costsapp.Repository = database
 	if billingTable := os.Getenv("HOME_CORE_GCP_BILLING_TABLE"); billingTable != "" {
 		billingClient, billingErr := gcpbilling.NewClient(&http.Client{Timeout: 30 * time.Second}, billingTable)

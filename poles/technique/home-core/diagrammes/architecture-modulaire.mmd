@@ -10,6 +10,7 @@ flowchart TB
     memory[memory-preferences]
     health[system-health]
     costs[costs]
+    notifications[notifications Web Push]
     storage[(Stockage local)]
     homeAssistant[Home Assistant]
     google[Google Calendar]
@@ -31,6 +32,8 @@ flowchart TB
     routines --> controls
     auth --> storage
     agenda --> storage
+    agenda --> notifications
+    notifications --> storage
     memory --> storage
     health --> storage
     costs --> storage
