@@ -8,7 +8,7 @@ services:
     ports:
       - "127.0.0.1:${HOME_APP_TLS_PORT:-13444}:443"
     volumes:
-      - ./certs:/etc/nginx/certs:ro
+      - ${HOME_APP_CERTS_DIR:-/etc/home-ai/home-app-certs}:/etc/nginx/certs:ro
     networks:
       - home-ai
     restart: unless-stopped

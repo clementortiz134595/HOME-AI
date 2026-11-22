@@ -6,6 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+Environment=HOME_APP_CERTS_DIR=/home/clement/.config/home-ai/home-app-certs
 WorkingDirectory=/home/clement/deployments/home-ai/poles/technique/home-app
 ExecStart=/usr/bin/docker compose -f compose.production.yaml up -d
 ExecStop=/usr/bin/docker compose -f compose.production.yaml stop
