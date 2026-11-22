@@ -28,6 +28,12 @@ Sur téléphone, servir via HTTPS pour utiliser le micro et installer la PWA. Sa
 
 Le Dockerfile fournit une cible de production nginx. `docker compose -f compose.production.yaml up --build` lie le HTTPS du frontend à `127.0.0.1:13444` ; le service `home-core:8080` doit être joignable depuis le réseau Compose (réseau partagé `home-ai`, à créer/configurer avec le déploiement Home Core). Tailscale Serve fournit le HTTPS navigateur sur `https://<raspberry>.tailnet.ts.net:8444/` et transmet en HTTPS interne vers nginx. Aucune exposition directe de Home Assistant, aucun jeton intégré au frontend. L’authentification et l’accès distant restent ceux du déploiement Home Core ; aucun parcours de connexion nouveau n’est implémenté ici.
 
+## Rappels et notifications Push
+
+La vue Rappels crée et modifie les rappels Home AI avec une heure facultative. Les rappels historiques sans heure restent visibles mais ne déclenchent pas de notification. Le bouton « Activer les notifications » ne demande la permission qu’après un geste utilisateur, récupère la clé VAPID publique auprès de Home Core et y transmet l’abonnement chiffré du navigateur.
+
+Sur iPhone, installer d’abord Home App via Safari → Partager → Sur l’écran d’accueil, puis ouvrir cette PWA installée avant d’activer les notifications. Safari ne garantit pas l’autorisation Push dans un onglet ordinaire. Les contenus de notification sont volontairement génériques ; consulter l’application pour le détail du rappel.
+
 Décision et flux : [ADR 001](architecture/adr/001-pwa-mobile.md).
 
 ## GitHub Actions et GitHub Pages

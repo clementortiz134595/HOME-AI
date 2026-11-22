@@ -10,6 +10,7 @@ Ces diagrammes Mermaid sont des sources versionnables : ils décrivent les flux 
 - [Interaction vocale et outil contrôlé](sequence-assistant-vocal-outil.mmd)
 - [Wake word local et capture audio](sequence-assistant-wake-word.mmd)
 - [Lecture protégée du calendrier](sequence-calendrier.mmd)
+- [Échéance de rappel et notification Web Push](sequence-rappels-web-push.mmd)
 - [Météo de La Ciotat](sequence-meteo-la-ciotat.mmd)
 - [Lecture d'un calendrier Apple iCloud](sequence-apple-icloud-calendar.mmd)
 - [Gmail et Google Drive pour les futurs agents](sequence-google-workspace.mmd)

@@ -18,3 +18,15 @@ self.addEventListener("fetch", event => {
     event.respondWith(caches.match(event.request).then(cached => cached || fetch(event.request)));
   }
 });
+self.addEventListener("push", event => {
+  let payload = {};
+  try { payload = event.data ? event.data.json() : {}; } catch { payload = { body: event.data?.text() }; }
+  const title = typeof payload.title === "string" ? payload.title : "Home AI";
+  const body = typeof payload.body === "string" ? payload.body : "Un rappel est arrivé à échéance.";
+  event.waitUntil(self.registration.showNotification(title, { body, icon: new URL("icon-192.png", BASE).href, badge: new URL("icon-192.png", BASE).href, tag: "home-ai-reminder", renotify: true, data: { url: typeof payload.url === "string" ? payload.url : "/?view=reminders" } }));
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || "/?view=reminders", BASE).href;
+  event.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then(windows => { const existing = windows.find(window => window.url.startsWith(BASE.href)); if (existing) return existing.focus().then(() => existing.navigate(target)); return clients.openWindow(target); }));
+});

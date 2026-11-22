@@ -1,8 +1,10 @@
 package application
 
 import (
+	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/clementortiz/home-ai/home-core/internal/reminders/model"
 )
@@ -32,6 +34,47 @@ func TestServiceCreateUpdateAndDelete(t *testing.T) {
 		t.Fatalf("second Delete() error = %v, want ErrNotFound", err)
 	}
 }
+
+func TestServiceKeepsDateOnlyReminderCompatible(t *testing.T) {
+	service := NewService()
+	created, err := service.Create(model.Reminder{Title: "Appeler Mamie", Date: "2026-11-22"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.ScheduledAt != "" || created.NotificationStatus != "" {
+		t.Fatalf("date-only reminder unexpectedly scheduled: %+v", created)
+	}
+	if claimed := service.ClaimDueNotifications(time.Date(2026, 11, 23, 0, 0, 0, 0, time.UTC)); len(claimed) != 0 {
+		t.Fatalf("date-only reminder must not be pushed: %+v", claimed)
+	}
+}
+
+func TestSchedulerSendsDueReminderOnlyOnce(t *testing.T) {
+	service := NewService()
+	created, err := service.Create(model.Reminder{Title: "Prendre un médicament", Date: "2026-11-22", ScheduledAt: "2026-11-22T08:00:00Z"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	notifier := &notifierStub{}
+	scheduler := NewScheduler(service, notifier, time.Minute)
+	scheduler.now = func() time.Time { return time.Date(2026, 11, 22, 8, 1, 0, 0, time.UTC) }
+	scheduler.Tick(context.Background())
+	scheduler.Tick(context.Background())
+	if notifier.calls != 1 {
+		t.Fatalf("notifier calls = %d, want 1", notifier.calls)
+	}
+	updated := service.List()[0]
+	if updated.ID != created.ID || updated.NotificationStatus != model.NotificationSent {
+		t.Fatalf("notification was not marked sent: %+v", updated)
+	}
+}
+
+type notifierStub struct {
+	calls int
+	err   error
+}
+
+func (s *notifierStub) NotifyReminder(context.Context, model.Reminder) error { s.calls++; return s.err }
 
 func TestServiceRejectsIncompleteReminder(t *testing.T) {
 	service := NewService()

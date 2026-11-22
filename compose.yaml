@@ -19,6 +19,9 @@ services:
     env_file:
       - path: ${HOME_AI_SECRETS_FILE:-${HOME}/.config/home-ai/home-core.env}
         required: false
+    # HOME_CORE_PUSH_VAPID_PUBLIC_KEY, HOME_CORE_PUSH_VAPID_PRIVATE_KEY and
+    # HOME_CORE_PUSH_VAPID_SUBJECT are supplied exclusively by this protected
+    # env_file. Never put their values in Compose or source control.
     environment:
       HOME_CORE_PORT: "8080"
       HOME_CORE_FIXTURE_PATH: /app/fixtures/maison-demo.json
