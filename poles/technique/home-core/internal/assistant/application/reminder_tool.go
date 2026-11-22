@@ -7,6 +7,7 @@ import (
 	remindersapp "github.com/clementortiz/home-ai/home-core/internal/reminders/application"
 	remindersmodel "github.com/clementortiz/home-ai/home-core/internal/reminders/model"
 	"log/slog"
+	"time"
 )
 
 type ReminderTool struct{ service *remindersapp.Service }
@@ -18,7 +19,9 @@ func (tool ReminderTool) Execute(_ context.Context, intent model.Intent) (model.
 	title, _ := p["title"].(string)
 	date, _ := p["date"].(string)
 	details, _ := p["details"].(string)
-	value := remindersmodel.Reminder{Title: title, Date: date, Details: details}
+	scheduledAt, _ := p["scheduledAt"].(string)
+	timeZone, _ := p["timeZone"].(string)
+	value := remindersmodel.Reminder{Title: title, Date: date, Details: details, ScheduledAt: scheduledAt, TimeZone: timeZone}
 	slog.Info("reminder tool invoked", "intent", intent.Name, "has_id", id != "", "title_length", len(title), "date", date, "details_present", details != "")
 	switch intent.Name {
 	case "reminders.create":
@@ -28,7 +31,15 @@ func (tool ReminderTool) Execute(_ context.Context, intent model.Intent) (model.
 			return model.ActionResult{Status: model.ActionFailed, Message: "Le rappel est invalide."}, err
 		}
 		slog.Info("reminder created", "reminder_id", created.ID)
-		return model.ActionResult{Status: model.ActionExecuted, Message: fmt.Sprintf("Événement ajouté : %s.", created.Title)}, nil
+		when := created.Date
+		if scheduled, ok := created.ScheduledTime(); ok {
+			location, err := time.LoadLocation(created.TimeZone)
+			if err != nil {
+				location = time.UTC
+			}
+			when = scheduled.In(location).Format("02/01 à 15:04")
+		}
+		return model.ActionResult{Status: model.ActionExecuted, Message: fmt.Sprintf("Rappel créé : %s, prévu le %s.", created.Title, when)}, nil
 	case "reminders.update":
 		updated, err := tool.service.Update(id, value)
 		if err != nil {

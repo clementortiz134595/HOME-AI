@@ -39,6 +39,20 @@ func TestDeterministicInterpreterRoutesNaturalReminderCreation(t *testing.T) {
 	}
 }
 
+func TestReminderCommandSchedulesTomorrowAtNoon(t *testing.T) {
+	paris, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Fatal(err)
+	}
+	intent, ok := reminderCommandAt("rappelle-moi demain midi de sortir les poubelles", time.Date(2026, time.November, 5, 19, 0, 0, 0, paris))
+	if !ok || intent.Name != "reminders.create" || intent.Parameters["title"] != "sortir les poubelles" {
+		t.Fatalf("unexpected intent: %+v", intent)
+	}
+	if intent.Parameters["date"] != "2026-11-06" || intent.Parameters["scheduledAt"] != "2026-11-06T11:00:00Z" || intent.Parameters["timeZone"] != "Europe/Paris" {
+		t.Fatalf("unexpected schedule: %+v", intent.Parameters)
+	}
+}
+
 func TestDeterministicInterpreterRoutesPrivateSources(t *testing.T) {
 	for _, test := range []struct{ text, name string }{{"cherche mes mails facture", "gmail.search"}, {"regarde mes mails concernant la facture", "gmail.search"}, {"trouve le document budget dans Drive", "drive.search"}} {
 		intent, err := NewDeterministicInterpreter().Interpret(context.Background(), model.Interaction{Text: test.text})

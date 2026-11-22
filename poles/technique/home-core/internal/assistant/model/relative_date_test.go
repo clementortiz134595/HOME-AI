@@ -22,3 +22,18 @@ func TestRelativeDateFrenchExpressions(t *testing.T) {
 		}
 	}
 }
+
+func TestRelativeScheduleResolvesTomorrowAtNoonInParis(t *testing.T) {
+	paris, err := time.LoadLocation("Europe/Paris")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, time.November, 5, 19, 0, 0, 0, paris)
+	date, scheduledAt, timeZone, ok := RelativeSchedule("demain midi", now)
+	if !ok || date != "2026-11-06" || timeZone != "Europe/Paris" {
+		t.Fatalf("RelativeSchedule() = %q, %q, %q, %v", date, scheduledAt, timeZone, ok)
+	}
+	if scheduledAt != "2026-11-06T11:00:00Z" {
+		t.Fatalf("scheduledAt = %q, want Paris noon in UTC", scheduledAt)
+	}
+}

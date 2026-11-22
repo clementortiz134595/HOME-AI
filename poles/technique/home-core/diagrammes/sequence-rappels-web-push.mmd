@@ -12,6 +12,11 @@ sequenceDiagram
     sw-->>app: PushSubscription
     app->>api: POST /v1/notifications/push/subscribe
     api->>store: Sauvegarder endpoint et clés navigateur
+    user->>app: « Rappelle-moi demain midi de … »
+    app->>api: Commande vocale transcrite
+    api->>reminders: Interpréter date/heure et créer le rappel
+    reminders->>store: Enregistrer l’échéance RFC3339
+    api-->>app: Confirmer le rappel réellement créé
     loop toutes les 30 secondes
         api->>reminders: Vérifier les échéances RFC3339
         reminders->>store: Revendiquer le rappel dû

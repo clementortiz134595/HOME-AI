@@ -43,26 +43,48 @@ func (DeterministicInterpreter) Interpret(_ context.Context, interaction model.I
 	return model.Intent{Name: "assistant.question", Parameters: map[string]any{"text": strings.TrimSpace(interaction.Text)}}, nil
 }
 
-func reminderCommand(text string) (model.Intent, bool) {
+func reminderCommand(text string) (model.Intent, bool) { return reminderCommandAt(text, time.Now()) }
+
+func reminderCommandAt(text string, now time.Time) (model.Intent, bool) {
 	if !strings.Contains(text, "rappelle-moi") && !strings.Contains(text, "rappelle moi") && !strings.Contains(text, "rappel-moi") && !strings.Contains(text, "rappel moi") && !strings.Contains(text, "crée un rappel") && !strings.Contains(text, "cree un rappel") && !strings.Contains(text, "créer un rappel") && !strings.Contains(text, "creer un rappel") && !strings.Contains(text, "ajoute un rappel") && !strings.Contains(text, "ajouter un rappel") {
 		return model.Intent{}, false
 	}
 	for _, prefix := range []string{"rappelle-moi", "rappelle moi", "rappel-moi", "rappel moi", "crée un rappel", "cree un rappel", "créer un rappel", "creer un rappel", "ajoute un rappel", "ajouter un rappel"} {
 		text = strings.TrimSpace(strings.TrimPrefix(text, prefix))
 	}
-	text = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(text), "de"))
-	text = strings.TrimSpace(strings.TrimPrefix(text, "pour"))
-	date, _ := model.RelativeDate(text, time.Now())
-	for _, phrase := range []string{"après-demain", "apres-demain", "demain", "aujourd'hui", "aujourd hui", "ce soir", "dans une semaine", "dans deux semaines", "dans trois semaines", "lundi prochain", "mardi prochain", "mercredi prochain", "jeudi prochain", "vendredi prochain", "samedi prochain", "dimanche prochain"} {
+	text = trimLeadingReminderWord(text, "de")
+	text = trimLeadingReminderWord(text, "pour")
+	date, scheduledAt, timeZone, ok := model.RelativeSchedule(text, now)
+	if !ok {
+		date = now.Format("2006-01-02")
+	}
+	for _, phrase := range []string{"après-demain", "apres-demain", "demain", "aujourd'hui", "aujourd hui", "ce soir", "dans une semaine", "dans deux semaines", "dans trois semaines", "lundi prochain", "mardi prochain", "mercredi prochain", "jeudi prochain", "vendredi prochain", "samedi prochain", "dimanche prochain", "midi", "minuit"} {
 		text = strings.Replace(text, phrase, "", 1)
 	}
-	text = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(text), "de"))
+	text = model.RemoveReminderClock(text)
+	text = trimLeadingReminderWord(text, "de")
 	text = strings.TrimSpace(strings.Trim(text, " :,-"))
 	if text == "" {
 		return model.Intent{}, false
 	}
 	slog.Info("deterministic reminder intent", "date", date, "title_length", len(text))
-	return model.Intent{Name: "reminders.create", Parameters: map[string]any{"title": text, "date": date}}, true
+	parameters := map[string]any{"title": text, "date": date}
+	if scheduledAt != "" {
+		parameters["scheduledAt"] = scheduledAt
+		parameters["timeZone"] = timeZone
+	}
+	return model.Intent{Name: "reminders.create", Parameters: parameters}, true
+}
+
+func trimLeadingReminderWord(text, word string) string {
+	text = strings.TrimSpace(text)
+	if text == word {
+		return ""
+	}
+	if strings.HasPrefix(text, word+" ") {
+		return strings.TrimSpace(strings.TrimPrefix(text, word+" "))
+	}
+	return text
 }
 
 func calendarPeriod(text string) string {
