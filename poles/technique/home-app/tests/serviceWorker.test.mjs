@@ -8,4 +8,5 @@ test('le service worker gère Push et ouvre la vue rappels sans contenu sensible
   assert.match(worker, /addEventListener\("notificationclick"/);
   assert.match(worker, /\?view=reminders/);
   assert.match(worker, /Un rappel est arrivé à échéance/);
+  assert.match(worker, /skipWaiting/);
 });

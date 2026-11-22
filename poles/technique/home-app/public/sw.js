@@ -4,7 +4,7 @@ const ASSETS = [/* BUILD_ASSETS */];
 const CACHE = PREFIX + ASSETS.join("|");
 const shell = ["", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"].map(path => new URL(path, BASE).href);
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll([...shell, ...ASSETS])));
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll([...shell, ...ASSETS])).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(PREFIX) && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
