@@ -114,8 +114,8 @@ func main() {
 	remindersService := remindersapp.NewService(database)
 	mux.Handle("/v1/reminders", remindershttp.NewHandler(remindersService))
 	notificationsService := notificationsapp.NewService(database, os.Getenv("HOME_CORE_PUSH_VAPID_PUBLIC_KEY"))
-	mux.Handle("/v1/notifications/push/", notificationshttp.NewHandler(notificationsService))
 	pushSender := webpush.NewSender(database, os.Getenv("HOME_CORE_PUSH_VAPID_PUBLIC_KEY"), os.Getenv("HOME_CORE_PUSH_VAPID_PRIVATE_KEY"), os.Getenv("HOME_CORE_PUSH_VAPID_SUBJECT"))
+	mux.Handle("/v1/notifications/push/", notificationshttp.NewHandler(notificationsService, pushSender))
 	if pushSender.Configured() {
 		remindersapp.NewScheduler(remindersService, pushSender, 30*time.Second).Start(context.Background())
 	} else {

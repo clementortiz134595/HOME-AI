@@ -25,6 +25,18 @@ func NewSender(repository notificationsapp.Repository, publicKey, privateKey, su
 func (s *Sender) Configured() bool { return s.publicKey != "" && s.privateKey != "" && s.subject != "" }
 
 func (s *Sender) NotifyReminder(ctx context.Context, reminder remindersmodel.Reminder) error {
+	// Notification content is intentionally generic: reminders may contain
+	// personal information and lock-screen notifications are not private.
+	return s.sendNotification(ctx, "Un rappel est arrivé à échéance.")
+}
+
+// SendTest exercises the same VAPID delivery path as reminder notifications.
+// It deliberately carries no user data so it is safe to show on a lock screen.
+func (s *Sender) SendTest(ctx context.Context) error {
+	return s.sendNotification(ctx, "Notification de test reçue.")
+}
+
+func (s *Sender) sendNotification(ctx context.Context, body string) error {
 	if !s.Configured() {
 		return notificationsapp.ErrNotConfigured
 	}
@@ -35,9 +47,7 @@ func (s *Sender) NotifyReminder(ctx context.Context, reminder remindersmodel.Rem
 	if len(subscriptions) == 0 {
 		return errors.New("no push subscriptions")
 	}
-	// Notification content is intentionally generic: reminders may contain
-	// personal information and lock-screen notifications are not private.
-	payload, _ := json.Marshal(map[string]any{"title": "Home AI", "body": "Un rappel est arrivé à échéance.", "url": "/?view=reminders"})
+	payload, _ := json.Marshal(map[string]any{"title": "Home AI", "body": body, "url": "/?view=reminders"})
 	delivered := false
 	var failures []string
 	for _, subscription := range subscriptions {
