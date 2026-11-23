@@ -20,6 +20,7 @@ home_app_health_url="${HOME_AI_HOME_APP_HEALTH_URL:-https://127.0.0.1:${HOME_APP
 home_app_override="${HOME_AI_HOME_APP_COMPOSE_OVERRIDE:-$HOME/.config/home-ai/home-app.compose.override.yaml}"
 deploy_env_file="${HOME_AI_DEPLOY_ENV_FILE:-$HOME/.config/home-ai/deploy.env}"
 wait_timeout="${HOME_AI_DEPLOY_WAIT_TIMEOUT:-180}"
+default_home_app_certs_dir="$HOME/.config/home-ai/home-app-certs"
 image_registry="${HOME_AI_IMAGE_REGISTRY:-}"
 if [[ -z "$image_registry" && -f "$deploy_env_file" ]]; then
   image_registry="$(sed -n 's/^HOME_AI_IMAGE_REGISTRY=//p' "$deploy_env_file" | tail -1)"
@@ -29,6 +30,24 @@ if [[ $# -ne 1 ]]; then
   usage
   exit 2
 fi
+
+# The GitHub runner is a systemd service and does not inherit the interactive
+# shell environment used by the legacy Home App service. Prefer the per-user
+# directory when it exists; an explicit HOME_APP_CERTS_DIR remains authoritative.
+if [[ -z "${HOME_APP_CERTS_DIR:-}" && -d "$default_home_app_certs_dir" ]]; then
+  export HOME_APP_CERTS_DIR="$default_home_app_certs_dir"
+fi
+home_app_certs_dir="${HOME_APP_CERTS_DIR:-/etc/home-ai/home-app-certs}"
+
+validate_home_app_certificates() {
+  local certificate_file="$home_app_certs_dir/home-app.pem"
+  local private_key_file="$home_app_certs_dir/home-app-key.pem"
+
+  if [[ ! -r "$certificate_file" || ! -r "$private_key_file" ]]; then
+    printf 'Certificats HTTPS Home App introuvables ou illisibles dans %s. Déploiement annulé avant modification des conteneurs.\n' "$home_app_certs_dir" >&2
+    return 1
+  fi
+}
 
 cd "$repository_root"
 
@@ -119,6 +138,8 @@ else
   fi
   target_revision="$(git rev-parse "$1^{commit}")"
 fi
+
+validate_home_app_certificates
 
 if ! deploy_revision "$target_revision"; then
   printf '%s\n' "Le déploiement a échoué ; retour à la révision précédente." >&2
