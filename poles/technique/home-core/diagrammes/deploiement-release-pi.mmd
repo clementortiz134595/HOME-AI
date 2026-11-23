@@ -5,7 +5,7 @@ flowchart LR
     registry --> release[Release tag\nimages publiées]
     release -->|événement workflow_run| runner[Pi : GitHub Actions Runner\nlabel home-ai-rpi]
     runner -->|git fetch et checkout du tag| pi[Pi : clone propre]
-    release -.->|rattrapage toutes les 5 min| watcher[Pi : minuteur systemd]
+    release -.->|secours manuel uniquement| watcher[Pi : minuteur systemd]
     watcher -.->|git fetch et checkout du tag| pi
     secrets[Secrets hors Git] --> pi
     pi --> compose[Docker Compose\npull d'images et démarrage]

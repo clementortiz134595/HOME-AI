@@ -44,6 +44,11 @@ jobs:
 
       - name: Deploy published release
         shell: bash
+        # This directory is local to the Pi and contains no Git-tracked data.
+        # Supplying it here also protects deployments of releases created
+        # before deploy-release.sh learned its automatic fallback.
+        env:
+          HOME_APP_CERTS_DIR: /home/clement/.config/home-ai/home-app-certs
         run: >-
           /home/clement/deployments/home-ai/poles/technique/home-core/scripts/deploy-release.sh
           "${{ steps.release.outputs.tag }}"

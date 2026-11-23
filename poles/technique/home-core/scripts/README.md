@@ -50,10 +50,16 @@ une variable shell persistante ou le dépôt. Vérifier l'état depuis GitHub ou
 sudo systemctl status actions.runner.clementortiz134595-HOME-AI.home-ai-rpi
 ```
 
-La Pi conserve le minuteur de vérification des tags `v*` toutes les cinq
-minutes comme filet de sécurité. Il ne doit normalement rien déployer : il
-rattrape uniquement un événement manqué pendant un arrêt du runner, de GitHub
-Actions ou de la Raspberry Pi.
+Le minuteur de vérification périodique des tags est désactivé en production :
+le runner est l'unique déclencheur automatique. Il peut être réactivé
+explicitement comme solution de secours lors d'un incident, puis désactivé à
+nouveau :
+
+```bash
+sudo systemctl enable --now home-ai-release-watcher.timer
+# après rattrapage :
+sudo systemctl disable --now home-ai-release-watcher.timer
+```
 
 Installer cette surveillance une seule fois, depuis le clone de déploiement
 propre sur la Raspberry Pi :
@@ -104,6 +110,13 @@ manuel refusent de déployer si le checkout a été modifié. Les secrets et
 données persistantes ne doivent jamais être stockés dans ce checkout.
 L'override local de Home App (`~/.config/home-ai/home-app.compose.override.yaml`)
 est conservé et chargé lorsqu'il existe.
+
+Home App requiert les fichiers locaux `home-app.pem` et
+`home-app-key.pem`. Le script de release choisit automatiquement
+`~/.config/home-ai/home-app-certs` lorsqu'il existe ; sinon, définir
+`HOME_APP_CERTS_DIR` dans l'environnement du service runner. Il vérifie ces
+deux fichiers **avant** de mettre à jour les conteneurs, afin qu'un certificat
+manquant ne provoque jamais de déploiement partiel suivi d'un rollback.
 
 ## Accès LAN optionnel au Home Panel
 

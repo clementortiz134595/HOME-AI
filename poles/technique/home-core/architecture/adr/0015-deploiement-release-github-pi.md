@@ -28,10 +28,11 @@ secret de déploiement dans GitHub.
 `scripts/deploy-release.sh <tag>` sélectionne exactement le commit du tag,
 tire les images publiées ou construit localement si aucun registre n'est
 configuré, attend la santé de Home Core et Home App, puis conserve les deux
-dernières révisions réussies pour un rollback local. Le minuteur systemd de
-vérification des tags demeure un filet de sécurité temporaire : il permet de
-rattraper une release si le runner est arrêté ou si GitHub Actions est
-indisponible, mais n'est plus le déclencheur normal du déploiement.
+dernières révisions réussies pour un rollback local. Il valide les certificats
+HTTPS locaux de Home App avant toute modification des conteneurs. Le minuteur
+systemd de vérification des tags est désactivé en production ; il reste
+installable manuellement pour un rattrapage exceptionnel, sans redevenir le
+déclencheur normal.
 
 Le Pi ne reçoit aucune connexion entrante de GitHub : le déploiement est un
 pull contrôlé depuis le réseau domestique. Les secrets, jetons OAuth et
@@ -48,7 +49,7 @@ sauvegarde et de restauration n'a pas été validée.
 | Alternative | Décision | Motif |
 | --- | --- | --- |
 | Runner GitHub Actions auto-hébergé sur le Pi | Retenue | Déclenche le déploiement dès la publication de l'image, sans polling ni accès entrant au réseau domestique. |
-| Surveillance locale périodique des tags | Filet de sécurité | Rattrape les échecs du déclenchement événementiel ou les indisponibilités du runner. |
+| Surveillance locale périodique des tags | Secours manuel | Disponible en incident, mais désactivée pour ne pas effectuer de polling permanent. |
 | GitHub Actions vers le Pi en SSH | Écartée | Demande une connectivité entrante et des secrets CI supplémentaires. |
 | Image publiée dans un registre privé | Déjà utilisée via GHCR | Évite un build local systématique et garde les images versionnées ARM64. |
 | Modifications directes du code sur le Pi | Écartée | Empêche de connaître et de reproduire la version déployée. |
@@ -58,12 +59,15 @@ sauvegarde et de restauration n'a pas été validée.
 - Le clone de production doit être propre ; le script refuse un déploiement si
   des fichiers sont modifiés ou non suivis.
 - Un tag de release déploie dès que la publication des images a réussi et que
-  le runner est disponible. Le minuteur assure le rattrapage après un arrêt de
-  la Pi ou une indisponibilité de GitHub Actions.
+  le runner est disponible. Après un arrêt de la Pi ou une indisponibilité de
+  GitHub Actions, l'administrateur peut relancer une release précise ou activer
+  ponctuellement le minuteur de secours.
 - Le runner est associé exclusivement à ce dépôt, porte le label
   `home-ai-rpi` et ne reçoit que le workflow de déploiement versionné sur la
   branche par défaut. Son jeton d'enregistrement est éphémère et n'est jamais
   conservé dans le dépôt ni dans les fichiers de configuration du projet.
+- Les certificats HTTPS Home App restent hors Git. Leur présence est une
+  précondition vérifiée par le script avant de remplacer les conteneurs.
 - Un rollback applicatif peut revenir au commit précédent, mais ne remplace pas
   une restauration de données après une migration destructive.
 - GitLab ne reçoit plus de push manuel : il peut être retiré ou configuré comme
