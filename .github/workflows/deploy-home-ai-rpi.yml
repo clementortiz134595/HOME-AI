@@ -1,0 +1,53 @@
+name: Deploy HOME AI on Raspberry Pi
+
+on:
+  workflow_run:
+    workflows: ["Publish Home AI images"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to deploy (for example v0.1.37)
+        required: true
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: home-ai-rpi-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # workflow_run is emitted only after GHCR image publication finishes.  The
+    # self-hosted job deliberately checks out nothing: the trusted deployment
+    # script lives in the Pi's clean deployment clone and selects this tag.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && startsWith(inputs.tag, 'v')) ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
+    runs-on: [self-hosted, linux, arm64, home-ai-rpi]
+    timeout-minutes: 30
+    steps:
+      - name: Select release tag
+        id: release
+        shell: bash
+        env:
+          MANUAL_TAG: ${{ inputs.tag }}
+          WORKFLOW_TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          tag="${MANUAL_TAG:-$WORKFLOW_TAG}"
+          [[ "$tag" =~ ^v[0-9] ]] || { echo "Tag de release invalide: $tag" >&2; exit 2; }
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy published release
+        shell: bash
+        run: >-
+          /home/clement/deployments/home-ai/poles/technique/home-core/scripts/deploy-release.sh
+          "${{ steps.release.outputs.tag }}"
+
+      - name: Check Home Core health
+        shell: bash
+        run: curl --fail --silent --show-error http://127.0.0.1:18080/healthz

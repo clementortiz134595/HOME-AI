@@ -2,9 +2,11 @@ flowchart LR
     mac[Mac\nDéveloppement] -->|commit et push| github[GitHub\nsource de vérité]
     github --> ci[GitHub Actions\ntests et validation Compose]
     ci -->|tests + build ARM64 + publication GHCR| registry[GHCR\nImages versionnées]
-    registry --> tag[Tag de release]
-    tag -->|détection toutes les 5 min| watcher[Pi : minuteur systemd]
-    watcher -->|git fetch et checkout du tag| pi[Pi : clone propre]
+    registry --> release[Release tag\nimages publiées]
+    release -->|événement workflow_run| runner[Pi : GitHub Actions Runner\nlabel home-ai-rpi]
+    runner -->|git fetch et checkout du tag| pi[Pi : clone propre]
+    release -.->|rattrapage toutes les 5 min| watcher[Pi : minuteur systemd]
+    watcher -.->|git fetch et checkout du tag| pi
     secrets[Secrets hors Git] --> pi
     pi --> compose[Docker Compose\npull d'images et démarrage]
     compose --> health{Home Core et Home App\nhealthy ?}

@@ -24,11 +24,36 @@ docker compose up -d --build
 
 ## Déployer une release GitHub sur le Raspberry Pi
 
-La Pi surveille les tags `v*` toutes les cinq minutes. Lorsqu'un nouveau tag
-est détecté, elle sélectionne son commit, reconstruit localement les images
-ARM64 de Home Core, Home Panel et Home App, puis vérifie les trois services.
-Le déploiement reste pull-based : GitHub ne peut pas se connecter au
-réseau domestique.
+Le déploiement normal est déclenché par un runner GitHub Actions installé sur
+la Pi lorsque le workflow de publication GHCR d'un tag `v*` se termine. Le
+runner établit lui-même une connexion sortante vers GitHub : aucun port entrant
+sur le réseau domestique, secret SSH GitHub ou webhook local n'est nécessaire.
+
+Créer le runner une seule fois depuis **Settings > Actions > Runners > New
+self-hosted runner** du dépôt. Choisir Linux/ARM64, puis exécuter les commandes
+affichées avec l'utilisateur `clement`, en ajoutant le label `home-ai-rpi` :
+
+```bash
+mkdir -p ~/actions-runner && cd ~/actions-runner
+# télécharger et extraire l'archive Linux ARM64 proposée par GitHub
+./config.sh --url https://github.com/clementortiz134595/HOME-AI \
+  --token '<jeton-éphémère-GitHub>' --name home-ai-rpi \
+  --labels home-ai-rpi --work _work --unattended
+sudo ./svc.sh install clement
+sudo ./svc.sh start
+```
+
+Le jeton affiché par GitHub expire rapidement. Ne pas le copier dans un fichier,
+une variable shell persistante ou le dépôt. Vérifier l'état depuis GitHub ou :
+
+```bash
+sudo systemctl status actions.runner.clementortiz134595-HOME-AI.home-ai-rpi
+```
+
+La Pi conserve le minuteur de vérification des tags `v*` toutes les cinq
+minutes comme filet de sécurité. Il ne doit normalement rien déployer : il
+rattrape uniquement un événement manqué pendant un arrêt du runner, de GitHub
+Actions ou de la Raspberry Pi.
 
 Installer cette surveillance une seule fois, depuis le clone de déploiement
 propre sur la Raspberry Pi :
