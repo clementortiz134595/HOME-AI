@@ -2,6 +2,7 @@ package webpush
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"testing"
@@ -39,5 +40,23 @@ func TestExpiredSubscriptionIsRemoved(t *testing.T) {
 	}
 	if len(repository.values) != 0 {
 		t.Fatalf("expired subscription remains: %+v", repository.values)
+	}
+}
+
+func TestSendTestUsesGenericPayload(t *testing.T) {
+	repository := &repositoryStub{values: []model.Subscription{{Endpoint: "https://push.example/test", Keys: model.Keys{P256DH: "key", Auth: "auth"}}}}
+	sender := NewSender(repository, "public", "private", "mailto:home@example.invalid")
+	sender.send = func(payload []byte, _ *push.Subscription, _ *push.Options) (*http.Response, error) {
+		var notification map[string]string
+		if err := json.Unmarshal(payload, &notification); err != nil {
+			t.Fatal(err)
+		}
+		if notification["body"] != "Notification de test reçue." || notification["url"] != "/?view=reminders" {
+			t.Fatalf("unexpected test payload: %#v", notification)
+		}
+		return &http.Response{StatusCode: http.StatusCreated, Body: io.NopCloser(nil)}, nil
+	}
+	if err := sender.SendTest(context.Background()); err != nil {
+		t.Fatalf("SendTest() error = %v", err)
 	}
 }

@@ -1,6 +1,7 @@
 package notificationshttp
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,9 +11,22 @@ import (
 	"github.com/clementortiz/home-ai/home-core/internal/notifications/model"
 )
 
-type Handler struct{ service *notificationsapp.Service }
+type testSender interface {
+	SendTest(context.Context) error
+}
 
-func NewHandler(service *notificationsapp.Service) *Handler { return &Handler{service: service} }
+type Handler struct {
+	service *notificationsapp.Service
+	tester  testSender
+}
+
+func NewHandler(service *notificationsapp.Service, testers ...testSender) *Handler {
+	var tester testSender
+	if len(testers) > 0 {
+		tester = testers[0]
+	}
+	return &Handler{service: service, tester: tester}
+}
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/v1/notifications/push"), "/")
@@ -52,6 +66,20 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		write(w, http.StatusOK, map[string]string{"status": "unsubscribed"})
+	case r.Method == http.MethodPost && path == "test":
+		if h.tester == nil {
+			write(w, http.StatusServiceUnavailable, map[string]string{"error": "push_not_configured"})
+			return
+		}
+		if err := h.tester.SendTest(r.Context()); err != nil {
+			if errors.Is(err, notificationsapp.ErrNotConfigured) {
+				write(w, http.StatusServiceUnavailable, map[string]string{"error": "push_not_configured"})
+			} else {
+				write(w, http.StatusBadGateway, map[string]string{"error": "push_delivery_failed"})
+			}
+			return
+		}
+		write(w, http.StatusOK, map[string]string{"status": "sent"})
 	default:
 		write(w, http.StatusNotFound, map[string]string{"error": "not_found"})
 	}
