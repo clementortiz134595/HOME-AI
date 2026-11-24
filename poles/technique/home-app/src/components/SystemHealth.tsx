@@ -42,7 +42,6 @@ export function SystemHealth() {
 
   const retry = () => { setLoading(true); setAttempt(value => value + 1); };
   return <section className="content system-health"><div className="section-heading"><div><p className="eyebrow">Infrastructure locale</p><h1>Raspberry Pi</h1></div><Button variant="ghost" size="icon" aria-label="Actualiser les métriques système" onClick={retry}><RotateCcw size={19} /></Button></div>
-    <p className="system-intro">Ressources de votre serveur · actualisation toutes les 5 secondes</p>
     {error && <div className="notice" role="alert"><p>Les métriques sont momentanément indisponibles.</p><Button variant="secondary" onClick={retry}>Réessayer</Button></div>}
     {loading && !metrics ? <p className="empty">Lecture des métriques système…</p> : null}
     {metrics && <><div className="system-metrics">
